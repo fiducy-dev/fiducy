@@ -64,6 +64,8 @@ Every public CA must check CAA, so no other CA, and no other Let's Encrypt accou
 
 | Threat | Result |
 | --- | --- |
+| Your app server is fully taken over | Attacker can use your users' keys through the gateway until a spend limit or a freeze stops them. They can't read a key: there is no endpoint that returns one |
+| A poisoned npm release of the SDK or widget | Packages publish only from this repository's `main` branch through npm trusted publishing, with provenance. Check with `npm audit signatures` |
 | Your database leaks | Attacker gets handles. Useless without the enclave and your app secret |
 | Fiducy's storage leaks | Attacker gets records. Useless without the handles |
 | Your server logs leak | Only handles and the app secret appear; rotate the secret |
@@ -95,3 +97,28 @@ Your users' keys can't be stolen from your servers, because they were never ther
 3. **Unfreeze.** Your users keep their keys and rotate nothing with their provider: no plaintext key was ever on your server.
 
 "Revoke all keys" in the same panel deletes every sealed key the dashboard has seen and makes every handle useless. Each user has to connect their key again. Use it when you are shutting the app down, or when your users must start over. A freeze already stops all use, including keys the dashboard never heard about.
+
+## Who is responsible for what
+
+Fiducy is open source and you run it in your own AWS account. The guarantees above hold only while both sides do their part.
+
+**The Fiducy project:**
+
+- the source code, the enclave image definition and the deploy scripts in this repository
+- the npm packages, published only from `main` with provenance
+- fixing reported vulnerabilities within the windows in [SECURITY.md](https://github.com/fiducy-dev/fiducy/blob/main/SECURITY.md)
+
+**You, when you self-host:**
+
+- the AWS account: MFA on the root user, a short list of people who can change the KMS key policy, CloudTrail and the alarms left on
+- checking an enclave image hash before you tell KMS to trust it
+- keeping the SDK, the widget and the gateway image up to date
+- setting spend limits that fit your app
+- freezing the app and rotating its secret when your servers are breached
+- your own app: sign-in, and which user gets which handle
+
+**Not covered:**
+
+- use of your users' keys through the gateway while your app is compromised, up to the limits you set and until you freeze it
+- a flaw in AWS Nitro Enclaves or AWS KMS
+- anything done with your AWS account's root user
