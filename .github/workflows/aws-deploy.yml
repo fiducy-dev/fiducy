@@ -29,6 +29,7 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       FIDUCY_CONTROL_PLANE_URL: ${{ vars.FIDUCY_CONTROL_PLANE_URL }}
       FIDUCY_DEMO_URL: ${{ vars.FIDUCY_DEMO_URL }}
+      FIDUCY_GATEWAY_HOST: ${{ vars.FIDUCY_GATEWAY_HOST }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Check configuration

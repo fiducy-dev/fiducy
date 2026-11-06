@@ -6,6 +6,8 @@
 #                     then (re)start the enclave on it. The enclave terminates TLS itself.
 # Required env: AWS_REGION, FIDUCY_BUCKET, FIDUCY_KMS_KEY_ID, FIDUCY_KEYS_TABLE, FIDUCY_PUBLIC_IP,
 #               FIDUCY_CONTROL_PLANE_URL, FIDUCY_RELEASE_COMMIT (build), FIDUCY_PINNED_PCR0 (pin)
+# Optional env: FIDUCY_GATEWAY_HOST, a domain whose A record points at the Elastic IP
+#               (default gw.<dashed-ip>.sslip.io). It is baked into the image, so it changes PCR0.
 # The dashboard and the demo run elsewhere, so the host only runs the gateway enclave. TLS ends
 # inside the enclave, so the parent never holds a certificate key or sees plaintext traffic.
 set -euo pipefail
@@ -22,7 +24,7 @@ ENCLAVE_CPU_COUNT=1
 ENCLAVE_MEMORY_MB=1536
 GATEWAY_TOKEN_PARAMETER=/fiducy/gateway-token
 DASHED_IP="${FIDUCY_PUBLIC_IP//./-}"
-GATEWAY_HOST="gw.${DASHED_IP}.sslip.io"
+GATEWAY_HOST="${FIDUCY_GATEWAY_HOST:-gw.${DASHED_IP}.sslip.io}"
 CONTROL_PLANE_URL="${FIDUCY_CONTROL_PLANE_URL:?Set FIDUCY_CONTROL_PLANE_URL to the dashboard URL}"
 CONTROL_PLANE_HOST="${CONTROL_PLANE_URL#https://}"
 CONTROL_PLANE_HOST="${CONTROL_PLANE_HOST%%/*}"
@@ -119,7 +121,8 @@ build_release() {
   pcr0=$(jq -r '.Measurements.PCR0' "$STATE_DIR/enclave-build.json")
   jq -n --arg pcr0 "$pcr0" --arg commit "$commit" --arg image "fiducy-enclave:${commit}" \
     --arg builtAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg controlPlane "$CONTROL_PLANE_URL" \
-    '{pcr0: $pcr0, commit: $commit, imageTag: $image, builtAt: $builtAt, controlPlaneURL: $controlPlane}' \
+    --arg gatewayHost "$GATEWAY_HOST" \
+    '{pcr0: $pcr0, commit: $commit, imageTag: $image, builtAt: $builtAt, controlPlaneURL: $controlPlane, gatewayHost: $gatewayHost}' \
     > "$BUILD_INFO_FILE"
   aws s3 cp --quiet "$BUILD_INFO_FILE" "s3://${FIDUCY_BUCKET}/build-info.json"
   aws s3 cp --quiet "$STATE_DIR/enclave-build.json" "s3://${FIDUCY_BUCKET}/enclave-build.json"

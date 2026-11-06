@@ -44,6 +44,7 @@ confirm_build() {
   BUILT_PCR0=$(echo "$build_info" | jq -r '.pcr0 // empty')
   RELEASE_COMMIT=$(echo "$build_info" | jq -r '.commit // empty')
   CONTROL_PLANE_URL=$(echo "$build_info" | jq -r '.controlPlaneURL // empty')
+  GATEWAY_HOST=$(echo "$build_info" | jq -r --arg fallback "$GATEWAY_HOST" '.gatewayHost // $fallback')
   local built_at
   built_at=$(echo "$build_info" | jq -r '.builtAt // "unknown"')
   if [ "$BUILT_PCR0" != "$PCR0" ]; then
@@ -53,6 +54,7 @@ confirm_build() {
   log "Last build on the host:"
   log "  commit   $RELEASE_COMMIT"
   log "  PCR0     $BUILT_PCR0"
+  log "  gateway  $GATEWAY_HOST"
   log "  built at $built_at"
   log "Check that the commit is the one you reviewed on main, then type the first 8 characters of the PCR0 to trust it."
   local typed
@@ -71,3 +73,4 @@ PINNED_PCR0="$PCR0"
 run_on_host pin
 check_gateway
 log "Trusted. The gateway at https://${GATEWAY_HOST} runs image $PCR0 from $RELEASE_COMMIT"
+log "Set FIDUCY_ENCLAVE_PCR0=$PCR0 in your app so the SDK and widget accept this gateway"
