@@ -7,6 +7,7 @@ import type {
   UsageDay,
   UsageSummary
 } from '@/lib/types';
+import type { SpendLimits } from '@/lib/types';
 import type { ReactElement, ReactNode } from 'react';
 
 export type AuthMode = 'sign-in' | 'sign-up';
@@ -179,6 +180,10 @@ export interface CopyButtonProps extends CopyValueProps {
 
 export interface AppSettingsFieldsProps {
   defaults?: AppSettings;
+}
+
+export interface SpendLimitFieldsProps {
+  spendLimits?: SpendLimits;
 }
 
 export interface CreateAppFormProps {

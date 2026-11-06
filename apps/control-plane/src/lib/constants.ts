@@ -21,3 +21,20 @@ export const GATEWAY_REACHABLE_WITHIN_MILLISECONDS = 2 * 60 * 1000;
 export const DEFAULT_USAGE_SERIES_DAYS = 30;
 export const MAXIMUM_USAGE_SERIES_DAYS = 90;
 export const UNKNOWN_PROVIDER = 'unknown';
+export const MAXIMUM_DOLLAR_LIMIT = 1000000;
+export const MAXIMUM_CONCURRENT_REQUEST_LIMIT = 1000;
+export const MAXIMUM_OUTPUT_TOKEN_LIMIT = 1000000;
+export const DEFAULT_SPEND_LIMITS = {
+  dailyDollarLimitPerKey: 5,
+  dailyDollarLimitPerApp: 200,
+  minuteDollarLimitPerApp: 20,
+  concurrentRequestLimitPerKey: 4,
+  maximumOutputTokens: 16384
+};
+export const SPEND_LIMIT_NAMES = [
+  'dailyDollarLimitPerKey',
+  'dailyDollarLimitPerApp',
+  'minuteDollarLimitPerApp',
+  'concurrentRequestLimitPerKey',
+  'maximumOutputTokens'
+] as const;

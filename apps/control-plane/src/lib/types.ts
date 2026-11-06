@@ -11,7 +11,18 @@ export interface AppSettings {
   allowedOrigins: string[];
   recordStorage?: RecordStorage;
   allowKeyImport?: boolean;
+  spendLimits?: SpendLimits;
 }
+
+export interface SpendLimits {
+  dailyDollarLimitPerKey?: number;
+  dailyDollarLimitPerApp?: number;
+  minuteDollarLimitPerApp?: number;
+  concurrentRequestLimitPerKey?: number;
+  maximumOutputTokens?: number;
+}
+
+export type SpendLimitName = keyof SpendLimits;
 
 export interface StoredApp extends AppSettings {
   appID: string;

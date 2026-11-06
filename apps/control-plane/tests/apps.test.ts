@@ -80,6 +80,28 @@ describe('changing an app', () => {
     expect(gatewayApp?.allowKeyImport).toBe(true);
   });
 
+  it('sends spend limits to the gateway and clears them with an empty object', async () => {
+    const store = createTestStore();
+    const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
+    const limits = appSettingsUpdateSchema.parse({
+      spendLimits: { dailyDollarLimitPerKey: 5, maximumOutputTokens: 4096 }
+    });
+    await updateApp(store, OWNER_ID, app.appID, limits);
+    expect((await listGatewayApps(store))[0]?.spendLimits).toEqual({
+      dailyDollarLimitPerKey: 5,
+      maximumOutputTokens: 4096
+    });
+    await updateApp(store, OWNER_ID, app.appID, appSettingsUpdateSchema.parse({ spendLimits: {} }));
+    expect((await listGatewayApps(store))[0]?.spendLimits).toEqual({});
+  });
+
+  it('refuses spend limits that make no sense', () => {
+    const negative = { spendLimits: { dailyDollarLimitPerApp: -1 } };
+    const fractional = { spendLimits: { concurrentRequestLimitPerKey: 1.5 } };
+    expect(appSettingsUpdateSchema.safeParse(negative).success).toBe(false);
+    expect(appSettingsUpdateSchema.safeParse(fractional).success).toBe(false);
+  });
+
   it('keeps where sealed keys live fixed after creation', () => {
     const parsed = appSettingsUpdateSchema.parse({ name: 'Renamed', recordStorage: 'app' });
     expect(parsed).toEqual({ name: 'Renamed' });
