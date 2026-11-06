@@ -109,10 +109,10 @@ Needs the AWS CLI, `jq`, `openssl` and admin credentials for the first run, whic
 By default the gateway answers at `gw.<dashed-ip>.sslip.io`, a free name that resolves to the Elastic IP. It works with no setup, but you do not own it, so you cannot restrict who may issue certificates for it. For production, use a domain you control:
 
 1. Add a DNS `A` record for, say, `gateway.yourapp.com` pointing at the stack's Elastic IP (`PublicIp` output).
-2. Add `CAA` records on that name allowing only the two CAs Caddy uses inside the enclave: `0 issue "letsencrypt.org"` and `0 issue "sectigo.com"` (ZeroSSL, its fallback). Any other CA then refuses to issue a certificate for it.
+2. Lock down which certificates can exist for that name with a `CAA` record and Certificate Transparency alerts, as described in [Lock down the gateway hostname](/docs/security#lock-down-the-gateway-hostname).
 3. Set `FIDUCY_GATEWAY_HOST=gateway.yourapp.com` for `deploy.sh`, or as a repository variable for the workflow, and deploy.
 
-The host name is baked into the enclave image, so changing it produces a new `PCR0` that a custodian has to pin like any other change. `pin.sh` shows the host name it is about to trust next to the commit. Once it runs, watch Certificate Transparency logs for the name (for example with a free crt.sh or Cert Spotter alert): every certificate should be one the enclave requested.
+The host name is baked into the enclave image, so changing it produces a new `PCR0` that a custodian has to pin like any other change. `pin.sh` shows the host name it is about to trust next to the commit.
 
 ## Tear down
 
