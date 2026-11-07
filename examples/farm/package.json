@@ -1,0 +1,22 @@
+{
+  "name": "@fiducy/example-farm",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "farm dev",
+    "build": "farm build"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "4.0.93",
+    "@farm.js/core": "0.1.40",
+    "@fiducy/farm": "^0.3.0-beta.0",
+    "@fiducy/sdk": "^0.3.0-beta.0",
+    "ai": "7.0.139",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@farm.js/cli": "0.1.40"
+  }
+}

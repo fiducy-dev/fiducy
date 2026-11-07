@@ -207,9 +207,9 @@ html:root {
   }
 }
 
-/* Docs code tabs: the selected tab gets the code title's hatch and a solid border, not an underline. */
+/* Docs code tabs: the selected tab gets the code title's hatch, not an underline. */
 .fd-code-group [role="tab"] {
-  border: 1px solid transparent !important;
+  border: 0 !important;
   outline: none;
   transition-property: color;
 }
@@ -220,7 +220,6 @@ html:root {
 }
 
 .fd-code-group [role="tab"][data-state="active"] {
-  border-color: var(--color-fd-foreground) !important;
   color: var(--color-fd-foreground);
   background-image: repeating-linear-gradient(
     -45deg,

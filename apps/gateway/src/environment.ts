@@ -6,19 +6,25 @@ import { createEnclaverAttestation } from './attestation';
 import { createCachingKeyWrapper } from './cachingKeyWrapper';
 import { GATEWAY_TOKEN_PURPOSE, MOCK_PROVIDER_PATH_PREFIX } from './constants';
 import { SHARE_CACHE_MAXIMUM_ENTRIES, SHARE_CACHE_TIME_TO_LIVE_MILLISECONDS } from './constants';
+import { KEY_UPLOAD_BUCKET_CAPACITY, KEY_UPLOAD_MAXIMUM_TRACKED_CLIENTS } from './constants';
+import { KEY_UPLOAD_REFILL_PER_SECOND } from './constants';
+import { createDynamoBlobStore } from './dynamoBlobStore';
 import { createDynamoClient, createDynamoKeyStore } from './dynamoKeyStore';
 import { createKmsClient, createKmsKeyWrapper, decryptBootSecret } from './kmsKeyWrapper';
-import { createMemoryAppDirectory, createMemoryKeyStore } from './memoryStores';
-import { createMemoryUsageLedger } from './memoryStores';
+import { createMemoryAppDirectory, createMemoryBlobStore } from './memoryStores';
+import { createMemoryKeyStore, createMemoryUsageLedger } from './memoryStores';
 import { createPostgresKeyStore } from './postgresKeyStore';
 import { createRemoteAppDirectory } from './remoteAppDirectory';
 import { createRemoteKeyEvents } from './remoteKeyEvents';
 import { createRemoteUsageLedger } from './remoteUsageLedger';
 import { createGateway } from './router';
+import { startTlsFront } from './tlsFront';
+import { createTokenBucketRateLimiter } from './tokenBucketRateLimiter';
 
 import type { Bytes, KeyWrapper } from '@fiducy/core';
 import type { AppRegistration, ControlPlaneConnection, GatewayRuntime } from './types';
-import type { KeyStore, KmsSettings, RequestHandler } from './types';
+import type { BlobStore, KeyStore, KmsSettings } from './types';
+import type { RequestHandler } from './types';
 
 function readMasterKey(): Bytes {
   const encodedMasterKey = process.env.FIDUCY_MASTER_KEY;
@@ -66,6 +72,13 @@ function selectKeyStore(): KeyStore {
   return createMemoryKeyStore();
 }
 
+function selectBlobStore(): BlobStore {
+  const tableName = process.env.FIDUCY_KEYS_TABLE;
+  if (!tableName) return createMemoryBlobStore();
+  const client = createDynamoClient(process.env.AWS_REGION ?? 'us-east-1');
+  return createDynamoBlobStore({ client, tableName });
+}
+
 function selectKeyWrapper(kms: KmsSettings | null): KeyWrapper {
   if (!kms) return createLocalKeyWrapper(readMasterKey());
   return createCachingKeyWrapper({
@@ -99,8 +112,9 @@ export async function createGatewayFromEnvironment(): Promise<GatewayRuntime> {
   const usageLedger = connection
     ? createRemoteUsageLedger({ ...connection, flushIntervalMilliseconds: 5000 })
     : null;
+  const keyWrapper = selectKeyWrapper(kms);
   const gateway = createGateway({
-    keyWrapper: selectKeyWrapper(kms),
+    keyWrapper,
     keyStore: selectKeyStore(),
     keyEvents: connection ? createRemoteKeyEvents(connection) : undefined,
     appDirectory: connection
@@ -110,11 +124,26 @@ export async function createGatewayFromEnvironment(): Promise<GatewayRuntime> {
     providerRegistry: createProviderRegistry(
       mockProviderURL ? { openai: mockProviderURL, anthropic: mockProviderURL } : undefined
     ),
-    attest: enclaveAPIURL ? createEnclaverAttestation(enclaveAPIURL) : undefined
+    attest: enclaveAPIURL ? createEnclaverAttestation(enclaveAPIURL) : undefined,
+    mockProviders: mockProviderURL !== null,
+    controlPlaneToken: connection?.gatewayToken,
+    rateLimiter: createTokenBucketRateLimiter({
+      capacity: KEY_UPLOAD_BUCKET_CAPACITY,
+      refillPerSecond: KEY_UPLOAD_REFILL_PER_SECOND,
+      maximumTrackedClients: KEY_UPLOAD_MAXIMUM_TRACKED_CLIENTS
+    })
   });
   return {
     handleRequest: withMockProvider(gateway, mockProviderURL),
     usageLedger,
+    keyWrapper,
     keyWrapperName: kms ? 'KMS' : 'a local master key'
   };
+}
+
+export async function startTlsFrontFromEnvironment(keyWrapper: KeyWrapper): Promise<void> {
+  const directory = process.env.FIDUCY_TLS_STATE_DIR;
+  const caddyConfigPath = process.env.FIDUCY_CADDY_CONFIG;
+  if (!directory || !caddyConfigPath) return;
+  await startTlsFront({ directory, caddyConfigPath, blobStore: selectBlobStore(), keyWrapper });
 }

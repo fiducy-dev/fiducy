@@ -1,6 +1,6 @@
 ---
 title: Gateway API
-order: 7
+order: 8
 description: The HTTP endpoints the gateway serves.
 ---
 
@@ -22,6 +22,7 @@ Server calls send the app secret: `authorization: Bearer fsk_...`. The widget's 
 | `GET /attestation?nonce=` | anyone | Nitro attestation document for the running enclave |
 | `GET /widget?app=&origin=` | the iframe | Key entry page. CSP locks `frame-ancestors` to `origin` |
 | `POST /keys` | the iframe | Seal a key. Returns `{ handle }` or `{ handle, record }` |
+| `POST /keys/import` | your server | Seal up to 100 keys you already store: `{ apiKeys: [...] }`. Returns `{ keys: [{ handle, record? }] }` in the same order. Off unless the app turns on key import |
 | `DELETE /keys/:keyID` | your server | Revoke (Fiducy-stored records only) |
 | `ANY /{provider}/...` | your server | Proxy to the provider with the user's key |
 

@@ -7,21 +7,26 @@ import { KEY_NOT_FOUND } from './failures';
 import { toUsageMonth } from './usageService';
 
 import type { AppKeyView, ControlResult, ControlStore, StoredKeyEntry } from './types';
-import type { KeyEvent, UsageEvent } from './types';
+import type { GatewayClient, KeyEvent, UsageEvent } from './types';
 
 function laterTime(first: string | null, second: string): string {
   return first && first > second ? first : second;
 }
 
-export async function noteSavedKey(store: ControlStore, { appID, keyID }: KeyEvent) {
-  if (await store.findKeyEntry(appID, keyID)) return;
+export async function noteSavedKey(store: ControlStore, { appID, keyID, source }: KeyEvent) {
+  const existing = await store.findKeyEntry(appID, keyID);
+  if (existing) {
+    if (source && !existing.source) await store.saveKeyEntry({ ...existing, source });
+    return;
+  }
   await store.saveKeyEntry({
     keyID,
     appID,
     provider: UNKNOWN_PROVIDER,
     createdAt: new Date().toISOString(),
     lastUsedAt: null,
-    status: 'active'
+    status: 'active',
+    source: source ?? 'widget'
   });
 }
 
@@ -83,6 +88,7 @@ export async function listAppKeys(
 
 export async function revokeAppKey(
   store: ControlStore,
+  gateway: GatewayClient,
   ownerID: string,
   appID: string,
   keyID: string
@@ -91,6 +97,10 @@ export async function revokeAppKey(
   if (!owned.ok) return fail(owned.error);
   const entry = await store.findKeyEntry(appID, keyID);
   if (!entry) return fail(KEY_NOT_FOUND);
+  if (owned.value.recordStorage !== 'app') {
+    const deleted = await gateway.deleteRecord(appID, keyID);
+    if (!deleted.ok) return deleted;
+  }
   await noteRevokedKey(store, appID, keyID);
   return succeed(keyID);
 }
@@ -99,7 +109,8 @@ export async function noteRevokedKey(store: ControlStore, appID: string, keyID: 
   const entry = await store.findKeyEntry(appID, keyID);
   if (!entry) return;
   await store.saveKeyEntry({ ...entry, status: 'revoked' });
-  await store.addRevokedKeyID(appID, keyID);
+  const app = await store.findApp(appID);
+  if (app?.recordStorage === 'app') await store.addRevokedKeyID(appID, keyID);
 }
 
 export async function noteKeyEvent(store: ControlStore, event: KeyEvent) {

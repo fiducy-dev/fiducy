@@ -1,7 +1,13 @@
 import { buildWidgetScript } from './script';
 import { WIDGET_STYLES } from './styles';
 
-import type { WidgetPageInput } from '../types';
+import type { WidgetPageInput, WidgetProtection } from '../types';
+
+const PROTECTION_BADGES: Record<WidgetProtection, string> = {
+  enclave: `<span class="inline-flex items-center gap-1.5 border border-border px-1.5 py-0.5 text-xs text-muted-foreground"><span class="size-1.5 bg-ink"></span>Sealed in an enclave</span>`,
+  test: `<span class="inline-flex items-center gap-1.5 border border-dashed border-ink px-1.5 py-0.5 text-xs font-medium text-ink"><span class="size-1.5 border border-ink"></span>Test gateway</span>`,
+  unattested: `<span class="inline-flex items-center gap-1.5 border border-dashed border-ink px-1.5 py-0.5 text-xs font-medium text-ink"><span class="size-1.5 border border-ink"></span>No enclave</span>`
+};
 
 function escapeHTML(text: string): string {
   return text
@@ -12,7 +18,18 @@ function escapeHTML(text: string): string {
     .replaceAll("'", '&#39;');
 }
 
-export function renderWidgetPage({ appID, appName, parentOrigin, nonce }: WidgetPageInput): string {
+function describeProtection(protection: WidgetProtection, appName: string): string {
+  if (protection === 'test') {
+    return 'This is a test gateway without an enclave. Enter a made-up key, not a real one.';
+  }
+  if (protection === 'unattested') {
+    return `${appName} never sees your key, but this gateway is not running in an enclave, your keys are not secure.`;
+  }
+  return `${appName} never sees your key. It is sealed and only opened to call your AI provider.`;
+}
+
+export function renderWidgetPage(input: WidgetPageInput): string {
+  const { appID, appName, parentOrigin, nonce, protection } = input;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -25,7 +42,7 @@ export function renderWidgetPage({ appID, appName, parentOrigin, nonce }: Widget
 <form id="key-form" class="grid grid-cols-[minmax(0,1fr)] gap-2.5" autocomplete="off">
   <div class="flex flex-wrap items-baseline justify-between gap-2">
     <label for="api-key" class="text-[15px] font-semibold tracking-[-0.01em]">Your API key</label>
-    <span class="inline-flex items-center gap-1.5 border border-border px-1.5 py-0.5 text-xs text-muted-foreground"><span class="size-1.5 bg-ink"></span>Sealed in an enclave</span>
+    ${PROTECTION_BADGES[protection]}
   </div>
   <div class="flex gap-2">
     <div class="flex min-w-0 flex-1 items-center border border-input bg-white shadow-xs/5 transition-shadow focus-within:border-ink focus-within:ring-2 focus-within:ring-ink/10">
@@ -34,7 +51,7 @@ export function renderWidgetPage({ appID, appName, parentOrigin, nonce }: Widget
     </div>
     <button id="save-button" type="submit" class="inline-flex h-9 shrink-0 cursor-pointer items-center border border-primary bg-primary px-3 font-medium text-white shadow-xs hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-1 disabled:cursor-wait disabled:opacity-64">Save key</button>
   </div>
-  <p class="m-0 text-xs font-light text-muted-foreground">${escapeHTML(appName)} never sees your key. It is sealed and only opened to call your AI provider.</p>
+  <p id="protection" class="${protection === 'enclave' ? 'm-0 text-xs font-light text-muted-foreground' : 'm-0 text-xs text-ink'}">${escapeHTML(describeProtection(protection, appName))}</p>
   <p id="status" class="m-0 min-h-[1.55em] text-[13px] data-[state=error]:text-destructive" role="status"></p>
 </form>
 <div id="saved" class="grid grid-cols-[minmax(0,1fr)] animate-settle gap-2.5 motion-reduce:animate-none" hidden>

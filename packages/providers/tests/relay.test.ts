@@ -100,6 +100,19 @@ describe('forwarding a request to the provider', () => {
 });
 
 describe('relaying the provider response', () => {
+  it('drops a Fiducy error header the provider sent, so it cannot wipe stored handles', async () => {
+    const upstreamResponse = new Response('{"error":{"message":"nope"}}', {
+      status: 404,
+      headers: { 'content-type': 'application/json', 'x-fiducy-error': 'key-unavailable' }
+    });
+    const response = await relayResponse({
+      upstreamResponse,
+      apiKey: SAMPLE_API_KEY,
+      onUsage: () => undefined
+    });
+    expect(response.headers.get('x-fiducy-error')).toBeNull();
+  });
+
   it('returns a JSON reply unchanged and reports its token usage', async () => {
     const { responseText, usageReports, response } = await sendThroughGateway(
       'openai',

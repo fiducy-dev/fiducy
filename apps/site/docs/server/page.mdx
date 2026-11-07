@@ -14,8 +14,6 @@ import { createFiducy, keyValueStorage, memoryStorage } from '@fiducy/sdk/server
 
 ```ts
 const fiducy = createFiducy({
-  gatewayURL: 'https://gateway.yourapp.com',
-  appSecret: process.env.FIDUCY_APP_SECRET!,
   storage: keyValueStorage(driver),
   getUserID: (request) => readSession(request)?.userID ?? null, // readSession: your own auth's lookup
   basePath: '/api/fiducy' // optional, this is the default
@@ -24,11 +22,13 @@ const fiducy = createFiducy({
 
 | Option | Type | Notes |
 | --- | --- | --- |
-| `gatewayURL` | `string` | Your gateway, for example `https://gateway.yourapp.com` |
-| `appSecret` | `string` | `fsk_...` from the dashboard. Server only |
+| `gatewayURL` | `string` | Optional. Defaults to `FIDUCY_GATEWAY_URL` |
+| `appID` | `string` | Optional. Defaults to `FIDUCY_APP_ID`. Served to the browser by `GET {basePath}/config` |
+| `appSecret` | `string` | Optional. Defaults to `FIDUCY_APP_SECRET`. Server only: Fiducy refuses to run if it finds it in a `NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`, `NUXT_PUBLIC_`, `EXPO_PUBLIC_` or `REACT_APP_` env var |
 | `storage` | `FiducyStorage` | Where handles (and records) live. See [Storage](/docs/storage) |
 | `getUserID` | `(request) => string \| null` | Your signed-in user. May be async |
 | `basePath` | `string` | Where the handler is mounted. Default `/api/fiducy` |
+| `env` | `Record<string, string \| undefined>` | Optional. Where to read `FIDUCY_*` from when your framework keeps `.env` out of `process.env` (SvelteKit: pass its env module) |
 | `fetch` | `typeof fetch` | Optional, for tests |
 
 ## fiducy.handler(request)
@@ -37,34 +37,38 @@ A standard `Request => Response` handler. Mount it under `basePath` in any frame
 
 | Route | Body | Result |
 | --- | --- | --- |
+| `GET {basePath}/config` | | `{ data: { gatewayURL, appID, basePath }, message }`. Public values, no sign-in needed |
 | `GET {basePath}/keys` | | `{ data: { keys: UserKeySummary[] }, message }` |
 | `POST {basePath}/keys` | `{ provider, handle, record? }` | `201 { data: UserKeySummary, message }` |
 | `DELETE {basePath}/keys/:keyID` | | `{ data: { keyID }, message }` |
 
-- Every route answers `401` when `getUserID` returns `null`.
-- `POST` and `DELETE` answer `403` when the request's `Origin` is a different site.
+- Every route except `/config` answers `401` when `getUserID` returns `null`.
+- `POST` and `DELETE` answer `403` when the request's `Origin` is a different site. `POST` takes only `application/json` bodies up to 16 KB.
 - Saving a key for a provider replaces and revokes that user's previous key for the same provider.
 - Removing a key revokes it on the gateway first, then deletes your row. If the gateway is unreachable, `DELETE` answers `502` and the key stays, so a user never ends up with a key that looks removed but still works.
 - The cross-site check compares `Origin` with the request's `Host`. If a proxy in front of your app rewrites `Host`, forward the original one (most platforms do).
 - Errors have the same shape: `{ data: null, message }`.
 
-Mount it in your framework (more examples in the [Quickstart](/docs/quickstart#3-mount-the-key-route)):
+Mount it with your framework's helper; see [Frameworks](/docs/frameworks):
 
 ```ts title="Next.js: app/api/fiducy/[...path]/route.ts"
-export const GET = fiducy.handler;
-export const POST = fiducy.handler;
-export const DELETE = fiducy.handler;
+import { toNextJsHandler } from '@fiducy/sdk/next';
+
+export const { GET, POST, DELETE } = toNextJsHandler(fiducy);
 ```
 
-## `fiducy.providerSettings(provider, { userID })`
+## `fiducy.providerSettings(provider, user)`
 
-Returns settings for the AI SDK provider factories, or `null` when the user has no key for that provider.
+`user` is `{ request }`, `{ headers }` or `{ userID }` (for background jobs). Returns settings for the AI SDK provider factories, or `{ ok: false, reason: 'signed-out' | 'no-key' }`.
 
 ```ts
-const settings = await fiducy.providerSettings('anthropic', { userID });
-// { baseURL: 'https://gateway.yourapp.com/anthropic/v1', apiKey: 'fsk_...', headers: { 'x-key-handle': 'kh_...' } }
-const anthropic = createAnthropic(settings!);
+const settings = await fiducy.providerSettings('anthropic', { request });
+if (!settings.ok) return respondToMissingKey(settings); // 401 or 409
+// { ok: true, baseURL: 'https://gateway.yourapp.com/anthropic/v1', apiKey: 'fsk_...', headers: { 'x-key-handle': 'kh_...' }, fetch }
+const anthropic = createAnthropic(settings);
 ```
+
+`fetch` is optional to pass along. When the gateway no longer has the user's key (revoked elsewhere, or a reset local gateway), it drops the stale handle so the next call reports `no-key`, and it turns gateway errors into the provider's error shape so your AI library shows a readable message.
 
 Providers: `openai`, `anthropic`, `gemini`, `openrouter`.
 
@@ -74,10 +78,11 @@ Providers: `openai`, `anthropic`, `gemini`, `openrouter`.
 await fiducy.listKeys(userID);                         // UserKeySummary[]
 await fiducy.saveKey(userID, { provider, handle });    // UserKeySummary
 await fiducy.revokeKey(userID, keyID);                 // boolean
+await fiducy.importKeys([{ userID, provider, apiKey }]); // { imported, skipped }
 ```
 
-`UserKeySummary` is `{ keyID, provider, createdAt }`. Handles never leave your server through these methods.
+`UserKeySummary` is `{ keyID, provider, createdAt }`. Handles never leave your server through these methods. `importKeys` moves keys you already store into Fiducy; see [Migrate existing keys](/docs/migrate).
 
 ## Low-level client
 
-For scripts or custom flows, `@fiducy/sdk` exports `createGatewayClient({ gatewayURL, appSecret })` with `providerSettings(provider, handle)` and `revokeKey(handle)`.
+For scripts or custom flows, `@fiducy/sdk` exports `createGatewayClient({ gatewayURL, appSecret })` with `providerSettings(provider, handle)`, `revokeKey(handle)` and `importKeys(apiKeys)`.

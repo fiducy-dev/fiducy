@@ -9,6 +9,7 @@ import type {
   GatewayProvider,
   GatewayResponseBody,
   GatewayResult,
+  ImportedKeys,
   ProviderSettings,
   RevokedKey
 } from './types.ts';
@@ -76,9 +77,17 @@ export function createGatewayClient({
     return callGateway(fetchGateway, url, { method: 'DELETE', headers: authorization });
   };
 
+  const importKeys = (apiKeys: string[]): Promise<GatewayResult<ImportedKeys>> =>
+    callGateway(fetchGateway, joinURL(gatewayURL, '/keys/import'), {
+      method: 'POST',
+      headers: { ...authorization, 'content-type': 'application/json' },
+      body: JSON.stringify({ apiKeys })
+    });
+
   return {
     providerSettings: (provider, handle) =>
       createProviderSettings(gatewayURL, appSecret, provider, handle),
-    revokeKey
+    revokeKey,
+    importKeys
   };
 }

@@ -1,0 +1,49 @@
+---
+title: Migrate existing keys
+order: 7
+description: Move API keys your app already stores into Fiducy without asking users to paste them again.
+---
+
+# Migrate existing keys
+
+If your app already keeps users' API keys in its own database, you can move them into Fiducy in one run. Users keep working and never see the widget for keys you imported.
+
+## 1. Turn on key import
+
+In the dashboard, open the app's settings and set **Key import** to **On**. It is off by default, and the gateway refuses imports while it is off.
+
+## 2. Run an import script on your server
+
+```ts
+import { fiducy } from './fiducy';
+
+const rows = await db.query('select user_id, provider, api_key from user_api_keys');
+
+const { imported, skipped } = await fiducy.importKeys(
+  rows.map((row) => ({ userID: row.user_id, provider: row.provider, apiKey: row.api_key }))
+);
+
+console.log(`Imported ${imported.length}, skipped ${skipped.length}`);
+```
+
+For each key, the SDK:
+
+1. Sends it to the gateway with your app secret, in batches of 100.
+2. The gateway seals it the same way the widget does and returns a handle.
+3. The SDK saves the handle in your `storage`, tagged `source: 'import'`.
+
+Users who already have a key for that provider are skipped, so a key they connected through the widget is never replaced. It also means you can run the script again after a failure and it picks up where it stopped.
+
+## 3. Delete the plain keys and turn import off
+
+Check that chats work for a few imported users, then drop the plaintext column from your database. Set **Key import** back to **Off**.
+
+## Why import is off by default
+
+The widget is what lets you tell users that your servers never see their keys. While import is on, your server could keep sending keys through it, so:
+
+- the dashboard tags every imported key as **Imported**
+- the Security panel shows whether import is on
+- the gateway refuses import calls that come from a browser
+
+Imported keys passed through your servers before, so keep treating them as exposed to your old storage. Encourage users to rotate them with their provider when they can.

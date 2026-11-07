@@ -12,3 +12,6 @@ export const SEALED_RECORD_FIELDS = [
   'iv',
   'wrappedShareB'
 ] as const;
+export const GATEWAY_ERROR_HEADER = 'x-fiducy-error';
+export const KEY_UNAVAILABLE_ERROR = 'key-unavailable';
+export const GATEWAY_FAILURE_ERROR = 'gateway-failure';

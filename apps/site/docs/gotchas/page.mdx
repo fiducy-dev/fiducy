@@ -1,0 +1,87 @@
+---
+title: Gotchas
+order: 7.5
+description: The things that trip people up when adding Fiducy, and how to fix each one.
+---
+
+# Gotchas
+
+Most of what used to go wrong is now handled for you: `init` writes the files, `dev` writes the env, the widget reads its config from your key route, and stale keys clean themselves up. This page covers what is left.
+
+## Env
+
+**Restart your dev server after changing env files.** Next.js, Vite, Nuxt and Farm read `.env` when they start. `npx fiducy dev` writes `.env` on its first run, so restart your app once after that.
+
+**"Fiducy needs FIDUCY_GATEWAY_URL" (or `_APP_ID`, `_APP_SECRET`).** The server can't see the variable. Check that it is in the env file your framework reads (`.env`, `.env.local`), with exactly that name and no `NEXT_PUBLIC_` or `VITE_` prefix. Plain Node needs `--env-file=.env`.
+
+**SvelteKit can't find the env at all.** SvelteKit keeps `.env` out of `process.env`. Pass its env module: `createFiducy({ env, ... })` with `import * as env from '$app/env/private'` (SvelteKit 3, which also needs the names declared in `src/env.ts`) or `import { env } from '$env/dynamic/private'` (SvelteKit 2). See [SvelteKit](/docs/frameworks/sveltekit).
+
+**"NEXT_PUBLIC_FIDUCY_APP_SECRET is a public env var."** Fiducy refuses to run when the app secret is in a variable your bundler ships to the browser (`NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`, `NUXT_PUBLIC_`, `EXPO_PUBLIC_`, `REACT_APP_`). Rename it to plain `FIDUCY_APP_SECRET`, and rotate the secret in the dashboard if that build was ever deployed. The widget needs no public variables.
+
+**Build-time env.** The env is read the first time Fiducy is used, not when the module loads, so `next build` does not need the values unless a page calls Fiducy while prerendering.
+
+## Sign-in
+
+**You need sign-in before keys.** Every key belongs to a signed-in user. Signed out, the widget says "Sign in to connect your OpenAI key." and the model route answers `401`. Fiducy has no anonymous mode on purpose.
+
+**`getUserID` must read your server session.** Return the user ID from your auth's server-side session and `null` when nobody is signed in. Never read it from the request body, the query or a header the browser sets, or anyone could act as anyone.
+
+**The widget keeps saying "connect" after you saved a key.** The key route and the model route disagree on who the user is. Use the same `getUserID` (the one in your server module) and pass `{ request }` to `providerSettings`, so both read the same session cookie.
+
+**Better Auth: "Invalid origin" or cookies on the wrong port.** Set `BETTER_AUTH_URL` to the URL your app runs on. Farm Auth needs `FARM_AUTH_URL` the same way.
+
+**Auth.js: `user.id` is undefined.** With JWT sessions, copy it in your `session` callback: `session.user.id = token.sub`.
+
+## Widget
+
+**"This dev gateway does not allow ... to embed the key widget."** Your app runs on a port `fiducy dev` doesn't allow by default. Restart it with `npx fiducy dev --origin http://localhost:<port>`. With a deployed gateway, add the exact origin (scheme, host and port) to the app's allowed origins in the dashboard.
+
+**"No Fiducy route answers at /api/fiducy/config."** The key route is not mounted where the widget looks. Mount it (see [Frameworks](/docs/frameworks)) or, if you mounted it elsewhere, set `basePath` on both `createFiducy` and the widget.
+
+**The widget says "Test gateway" or "No enclave".** It says "Sealed in an enclave" only when the gateway can prove it runs in one (it serves `/attestation`). `npx fiducy dev --mock` and other gateways with mock providers show "Test gateway" and ask for a made-up key. Any other gateway without an enclave shows "No enclave". Deploy the gateway in an enclave for production; see [Self-hosting](/docs/self-hosting).
+
+**"Set provider on `<fiducy-key>`."** The element needs `provider="openai"` (or `anthropic`, `gemini`, `openrouter`).
+
+**Vue warns about an unknown `fiducy-key` element.** You used the raw tag. Use `FiducyKey` from `@fiducy/sdk/vue` instead, which registers it.
+
+## Model calls
+
+**"Connect your OpenAI key to keep going."** This is the `409` from `respondToMissingKey`: the user has no key for that provider. Show the widget where the reply would be (see [Key widget](/docs/widget#where-to-put-it)), or use [assistant-ui](/docs/assistant-ui), which does it for you.
+
+**"The saved OpenAI key is no longer available. Connect it again."** The gateway no longer has the key: the user revoked it elsewhere, or a local gateway was reset. Fiducy already removed the stale handle, so the widget shows the key box again on the next load. Nothing to fix.
+
+**"OPENAI_API_KEY is missing."** Some code still builds the provider from your own env key, usually a template's `import { openai } from '@ai-sdk/openai'`. Build it from the user's settings: `createOpenAI(settings)`.
+
+**Wrong model API.** `createOpenAI(settings)('gpt-4o-mini')` uses the Responses API and `.chat('gpt-4o-mini')` uses Chat Completions. Both go through the gateway.
+
+**Anthropic SDK paths.** `createAnthropic(settings)` works as is. The official `@anthropic-ai/sdk` adds `/v1` itself, so pass `baseURL.replace(/\/v1$/, '')`.
+
+**Old chat threads stay stuck.** A chat that failed before you fixed something keeps its failed tool call in history. Start a new chat after each fix.
+
+## Storage
+
+**"The Fiducy table does not exist yet."** Run `npx fiducy migrate` (Kysely), or `npx fiducy generate` and your ORM's migrate command (Drizzle, Prisma), against the same database your app uses.
+
+**The local SQLite file on a serverless host.** `init` falls back to `.fiducy/keys.sqlite` when it finds no database. Vercel and Netlify wipe the disk, so switch to hosted Postgres before deploying. See [Storage](/docs/storage).
+
+**Paths in SQLite are relative to where the server starts.** Start your dev server and the CLI from the project root.
+
+## Local development
+
+**Port already in use.** `npx fiducy dev` says which port is busy. Pass `--port`; it remembers it and prints the new `FIDUCY_GATEWAY_URL`.
+
+**Starting fresh.** Delete `.fiducy/`. Your app keeps handles that no longer open anything; each one is cleaned up the first time it is used.
+
+**`--mock` vs real keys.** With `--mock`, the gateway answers with a fake model and any string works as a key. Without it, calls go to the real provider with the user's real key.
+
+## Frameworks
+
+**Express: mount it like any route.** `app.all('/api/fiducy/{*path}', toNodeHandler(fiducy))` on Express 5, `'/api/fiducy/*'` on Express 4. It works before or after `express.json()`.
+
+**Behind a proxy.** Saving and removing keys is refused (`403`) when the request's `Origin` doesn't match its `Host`. Forward the original `Host` header from your proxy.
+
+**TanStack Start in a monorepo answers "Cannot GET /".** Two Vite versions are installed. Keep one.
+
+**SvelteKit 3 removed `$lib`.** Import with `#lib/...` (a `package.json` `imports` entry) or a relative path.
+
+**Farm.js storage mounts.** Look the mount up inside each storage method, not when the module loads. See [Farm.js](/docs/frameworks/farm).

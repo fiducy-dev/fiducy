@@ -1,0 +1,121 @@
+---
+title: Next.js
+order: 1
+description: Add Fiducy to a Next.js App Router app.
+---
+
+# Next.js
+
+```bash
+npx fiducy init
+```
+
+Or by hand: `npm install @fiducy/sdk`, then the files below. The working version is [`examples/next`](https://github.com/fiducy-dev/fiducy/tree/main/examples/next).
+
+## Run the example
+
+Copy the example app and run it with a local gateway:
+
+```bash
+npx degit fiducy-dev/fiducy/examples/next my-app
+cd my-app
+npm install
+npx fiducy dev --mock
+```
+
+`fiducy dev` writes `.env` and keeps running. In a second terminal, add the example's session secret and start the app:
+
+```bash
+echo "EXAMPLE_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
+npm run dev
+```
+
+Sign in as the test user, paste any string as the key (`--mock` answers with a fake model), and ask a question. The example signs users in with a test cookie and keeps handles in a JSON file (`example-kit`); swap both for your own auth and [storage](/docs/storage).
+
+## Server module
+
+```ts title="lib/fiducy.ts"
+import { createFiducy } from '@fiducy/sdk/server';
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+
+import { auth } from '@/lib/auth';
+import { pool } from '@/lib/db';
+
+export const fiducy = createFiducy({
+  storage: kyselyStorage(pool),
+  getUserID: async (request) => {
+    const session = await auth.api.getSession({ headers: request.headers });
+    return session?.user.id ?? null;
+  }
+});
+```
+
+`getUserID` for other auth libraries:
+
+| Auth | `getUserID` |
+| --- | --- |
+| Better Auth | `async (request) => (await auth.api.getSession({ headers: request.headers }))?.user.id ?? null` |
+| Auth.js | `async () => (await auth())?.user?.id ?? null` |
+| Clerk | `async () => (await auth()).userId` (`auth` from `@clerk/nextjs/server`) |
+| Supabase | `async () => (await supabase.auth.getUser()).data.user?.id ?? null` |
+
+With Auth.js on JWT sessions, `session.user.id` is only set if your `session` callback copies `token.sub` into it.
+
+## Key route
+
+```ts title="app/api/fiducy/[...path]/route.ts"
+import { toNextJsHandler } from '@fiducy/sdk/next';
+
+import { fiducy } from '@/lib/fiducy';
+
+export const { GET, POST, DELETE } = toNextJsHandler(fiducy);
+```
+
+`[...path]` is a real folder name with the brackets: it is Next's catch-all segment.
+
+## Env
+
+```bash title=".env.local"
+FIDUCY_GATEWAY_URL=http://localhost:3438
+FIDUCY_APP_ID=app_...
+FIDUCY_APP_SECRET=fsk_...
+```
+
+No `NEXT_PUBLIC_` copies: the widget reads the public values from `/api/fiducy/config`. If the app secret ever sits in a `NEXT_PUBLIC_` variable, Fiducy refuses to run. Restart `next dev` after changing env files.
+
+## Widget
+
+The widget is a client component:
+
+```tsx title="components/KeySettings.tsx"
+'use client';
+
+import { FiducyKey } from '@fiducy/sdk/react';
+
+export const KeySettings = () => <FiducyKey provider="openai" />;
+```
+
+Use it from any page or layout, server component or not.
+
+## Model route
+
+```ts title="app/api/chat/route.ts"
+import { createOpenAI } from '@ai-sdk/openai';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '@/lib/fiducy';
+
+export async function POST(request: Request) {
+  const settings = await fiducy.providerSettings('openai', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const result = streamText({ model: createOpenAI(settings).chat('gpt-4o-mini'), messages });
+  return result.toUIMessageStreamResponse();
+}
+```
+
+## Notes
+
+- **Edge runtime:** the route works on the Node runtime by default. On `export const runtime = 'edge'`, use storage that runs on the edge (a Kysely edge dialect or a key-value store), since `pg` pools and `node:sqlite` need Node.
+- **Server actions:** call `fiducy.providerSettings(provider, { headers: await headers() })` from `next/headers` when you have no `Request`.

@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
-# Deploys the prototype from a machine with AWS admin credentials (GitHub Actions or a laptop).
+# Deploys the gateway enclave from a machine with AWS admin credentials (GitHub Actions or a laptop).
 #   1. Create or update the CloudFormation stack
-#   2. Ship the repo to the host and build the enclave image there
-#   3. Lock the KMS key to the new enclave image hash (PCR0)
-#   4. Start everything and check the public endpoints
+#   2. Make sure the gateway token exists in Parameter Store (replace it with --rotate-token)
+#   3. Remind you to give the token to the dashboard (wherever it runs)
+#   4. Ship the repo to the host and build the enclave image there
+#   5. Lock the KMS key to the new enclave image hash (PCR0)
+#   6. Start the enclave and check the public endpoints
+# Required env: FIDUCY_CONTROL_PLANE_URL. Optional: FIDUCY_DEMO_URL.
 set -euo pipefail
+
+ROTATE_TOKEN=false
+for argument in "$@"; do
+  case "$argument" in
+    --rotate-token) ROTATE_TOKEN=true ;;
+    *) echo "Unknown option $argument (expected --rotate-token)" >&2; exit 2 ;;
+  esac
+done
 
 STACK_NAME="${FIDUCY_STACK_NAME:-fiducy-prototype}"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
@@ -12,6 +23,8 @@ export AWS_DEFAULT_REGION="$AWS_REGION"
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 TEMPLATE="$ROOT_DIR/infra/aws/stack.yaml"
 AMI_PARAMETER=/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+GATEWAY_TOKEN_PARAMETER=/fiducy/gateway-token
+CONTROL_PLANE_URL="${FIDUCY_CONTROL_PLANE_URL:?Set FIDUCY_CONTROL_PLANE_URL to the dashboard URL}"
 
 log() { echo "[deploy $(date -u +%H:%M:%S)] $*"; }
 summary() { [ -n "${GITHUB_STEP_SUMMARY:-}" ] && echo "$*" >> "$GITHUB_STEP_SUMMARY" || true; }
@@ -34,6 +47,26 @@ deploy_stack() {
     ${overrides[@]:+--parameter-overrides "${overrides[@]}"}
 }
 
+ensure_gateway_token() {
+  if [ "$ROTATE_TOKEN" = false ] &&
+    aws ssm get-parameter --name "$GATEWAY_TOKEN_PARAMETER" >/dev/null 2>&1; then
+    return 0
+  fi
+  log "Writing a new gateway token to $GATEWAY_TOKEN_PARAMETER"
+  aws ssm put-parameter --name "$GATEWAY_TOKEN_PARAMETER" --type SecureString --overwrite \
+    --value "$(openssl rand -hex 32)" >/dev/null
+}
+
+read_gateway_token() {
+  aws ssm get-parameter --name "$GATEWAY_TOKEN_PARAMETER" --with-decryption \
+    --query Parameter.Value --output text
+}
+
+remind_token_handoff() {
+  log "The dashboard needs this token as FIDUCY_GATEWAY_TOKEN. Read it with:"
+  log "  aws ssm get-parameter --name $GATEWAY_TOKEN_PARAMETER --with-decryption --query Parameter.Value --output text"
+}
+
 wait_for_ssm() {
   log "Waiting for the host to register with SSM"
   for _ in $(seq 1 60); do
@@ -48,27 +81,35 @@ wait_for_ssm() {
   return 1
 }
 
+host_environment() {
+  jq -cn --arg bucket "$BUCKET" --arg key "$KEY_ARN" --arg ip "$PUBLIC_IP" --arg region "$AWS_REGION" \
+    --arg table "$KEYS_TABLE" --arg controlPlane "$CONTROL_PLANE_URL" '
+    "export AWS_REGION=\($region) FIDUCY_BUCKET=\($bucket) FIDUCY_KMS_KEY_ID=\($key) " +
+    "FIDUCY_PUBLIC_IP=\($ip) FIDUCY_KEYS_TABLE=\($table) FIDUCY_CONTROL_PLANE_URL=\($controlPlane)"'
+}
+
+host_commands() {
+  local step="$1"
+  if [ "$step" = "start" ]; then
+    jq -cn --argjson environment "$(host_environment)" '[
+      "set -euo pipefail", $environment,
+      "bash /opt/fiducy/release/infra/aws/parent/host.sh start"
+    ]'
+    return 0
+  fi
+  jq -cn --argjson environment "$(host_environment)" --arg bucket "$BUCKET" --arg step "$step" '[
+    "set -euo pipefail", $environment,
+    "rm -rf /opt/fiducy/release && mkdir -p /opt/fiducy/release",
+    "aws s3 cp --quiet s3://\($bucket)/release.tar.gz /tmp/fiducy-release.tar.gz",
+    "tar -xzf /tmp/fiducy-release.tar.gz -C /opt/fiducy/release",
+    "bash /opt/fiducy/release/infra/aws/parent/host.sh \($step)"
+  ]'
+}
+
 run_on_host() {
   local step="$1"
   local commands
-  commands=$(jq -cn --arg bucket "$BUCKET" --arg key "$KEY_ARN" --arg ip "$PUBLIC_IP" \
-    --arg region "$AWS_REGION" --arg table "$KEYS_TABLE" --arg step "$step" '[
-      "set -euo pipefail",
-      "export AWS_REGION=\($region) FIDUCY_BUCKET=\($bucket) FIDUCY_KMS_KEY_ID=\($key) FIDUCY_PUBLIC_IP=\($ip) FIDUCY_KEYS_TABLE=\($table)",
-      "rm -rf /opt/fiducy/release && mkdir -p /opt/fiducy/release",
-      "aws s3 cp --quiet s3://\($bucket)/release.tar.gz /tmp/fiducy-release.tar.gz",
-      "tar -xzf /tmp/fiducy-release.tar.gz -C /opt/fiducy/release",
-      "bash /opt/fiducy/release/infra/aws/parent/host.sh \($step)"
-    ]')
-  if [ "$step" = "start" ]; then
-    # Keep the built apps and enclave image from the build step; only rerun the start logic.
-    commands=$(jq -cn --arg bucket "$BUCKET" --arg key "$KEY_ARN" --arg ip "$PUBLIC_IP" \
-      --arg region "$AWS_REGION" --arg table "$KEYS_TABLE" '[
-        "set -euo pipefail",
-        "export AWS_REGION=\($region) FIDUCY_BUCKET=\($bucket) FIDUCY_KMS_KEY_ID=\($key) FIDUCY_PUBLIC_IP=\($ip) FIDUCY_KEYS_TABLE=\($table)",
-        "bash /opt/fiducy/release/infra/aws/parent/host.sh start"
-      ]')
-  fi
+  commands=$(host_commands "$step")
 
   log "Running host step: $step"
   local command_id
@@ -116,6 +157,9 @@ BUCKET=$(stack_output BucketName)
 KEYS_TABLE=$(stack_output KeysTableName)
 log "Host $INSTANCE_ID at $PUBLIC_IP, key $KEY_ARN"
 
+ensure_gateway_token
+remind_token_handoff
+
 log "Uploading release"
 (cd "$ROOT_DIR" && git archive --format=tar.gz -o /tmp/fiducy-release.tar.gz HEAD)
 aws s3 cp --quiet /tmp/fiducy-release.tar.gz "s3://$BUCKET/release.tar.gz"
@@ -130,16 +174,17 @@ run_on_host start
 DASHED_IP="${PUBLIC_IP//./-}"
 check_endpoint "https://gw.${DASHED_IP}.sslip.io/health"
 check_endpoint "https://gw.${DASHED_IP}.sslip.io/attestation"
-check_endpoint "https://app.${DASHED_IP}.sslip.io/api/config"
-if aws ssm get-parameter --name /fiducy/demo/app-id >/dev/null 2>&1; then
-  check_endpoint "https://demo.${DASHED_IP}.sslip.io/"
-fi
+check_endpoint "${CONTROL_PLANE_URL}/api/config"
+[ -z "${FIDUCY_DEMO_URL:-}" ] || check_endpoint "${FIDUCY_DEMO_URL}/"
 
-summary "## Fiducy prototype deployed"
+summary "## Fiducy gateway deployed"
 summary ""
 summary "- Gateway (in the enclave): https://gw.${DASHED_IP}.sslip.io"
-summary "- Dashboard: https://app.${DASHED_IP}.sslip.io"
-summary "- Demo chat: https://demo.${DASHED_IP}.sslip.io"
+summary "- Dashboard: ${CONTROL_PLANE_URL}"
+[ -z "${FIDUCY_DEMO_URL:-}" ] || summary "- Demo chat: ${FIDUCY_DEMO_URL}"
 summary "- Site and docs: https://fiducy.dev"
 summary "- Enclave image PCR0: \`${PCR0}\`"
+if [ "$ROTATE_TOKEN" = true ]; then
+  summary "- Gateway token rotated: set the new value as FIDUCY_GATEWAY_TOKEN on the dashboard now. Until you do, the gateway cannot load app settings from it"
+fi
 log "Done"

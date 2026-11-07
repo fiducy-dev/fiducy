@@ -9,11 +9,9 @@ import { createDemoStorageClient } from './src/lib/storage';
 export default defineConfig({
   deploy: { target: 'vercel' },
   env: {
-    public: {
-      FIDUCY_APP_ID: z.string().min(1),
-      FIDUCY_GATEWAY_URL: z.string().url()
-    },
     server: {
+      FIDUCY_APP_ID: z.string().min(1),
+      FIDUCY_GATEWAY_URL: z.string().url(),
       FIDUCY_APP_SECRET: z.string().min(1)
     }
   },

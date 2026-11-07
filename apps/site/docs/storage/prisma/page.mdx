@@ -1,0 +1,90 @@
+---
+title: Prisma
+order: 3
+description: Store handles with Prisma. Add the generated model to your schema and migrate with prisma migrate.
+---
+
+# Prisma
+
+**Quickest:** `npx fiducy generate` writes the model to `prisma/schema/fiducy.prisma` when you use a schema folder, or prints it for you to paste into a single `schema.prisma`; then run `prisma migrate dev`. The steps below do the same by hand.
+
+`prismaStorage` keeps handles in a model of your [Prisma](https://www.prisma.io) schema, using the `PrismaClient` you already have. It works on Postgres, MySQL and SQLite. Migrations go through Prisma, like the rest of your schema.
+
+Fiducy doesn't install or import Prisma. It calls four methods on your client's model: `upsert`, `findFirst`, `findMany` and `deleteMany`. It is tested with Prisma 7 and its driver adapters (`@prisma/adapter-pg`, `@prisma/adapter-mariadb`, `@prisma/adapter-libsql`), and the same calls work on Prisma 5 and 6.
+
+## 1. Add the model to your schema
+
+Generate the model for your database:
+
+```ts
+import { generateSchema } from '@fiducy/sdk/storage';
+
+const { contents } = generateSchema({ adapter: 'prisma', dialect: 'postgres' }); // or 'mysql', 'sqlite'
+```
+
+For Postgres and SQLite it is:
+
+```prisma title="prisma/schema/fiducy.prisma"
+model FiducyUserKey {
+  userID    String   @map("user_id")
+  keyID     String   @map("key_id")
+  provider  String
+  handle    String
+  record    String?
+  source    String?
+  createdAt String   @map("created_at")
+
+  @@id([userID, keyID])
+  @@index([userID, provider], map: "fiducy_user_key_user_provider_idx")
+  @@map("fiducy_user_key")
+}
+```
+
+On MySQL, `record` is `String? @db.Text`, because a sealed record can be longer than Prisma's default `varchar(191)`.
+
+Where to put it:
+
+- **Schema folder** (`schema: 'prisma/schema'` in `prisma.config.ts`, or `prisma/schema/*.prisma`): save it as a new file, `prisma/schema/fiducy.prisma`.
+- **One `schema.prisma` file:** paste the model at the end.
+
+## 2. Migrate and generate
+
+```bash
+npx prisma migrate dev --name add_fiducy
+# or, while prototyping:
+npx prisma db push
+```
+
+Both regenerate the client, so `prisma.fiducyUserKey` exists afterwards.
+
+## 3. Connect
+
+```ts title="lib/fiducy.ts"
+import { prismaStorage } from '@fiducy/sdk/storage/prisma';
+
+import { prisma } from '@/lib/prisma'; // your PrismaClient
+
+export const storage = prismaStorage(prisma, { provider: 'postgresql' });
+```
+
+Then pass it to `createFiducy`:
+
+```ts
+export const fiducy = createFiducy({ gatewayURL, appSecret, storage, getUserID });
+```
+
+## Options
+
+| Option | Default | Notes |
+| --- | --- | --- |
+| `provider` | required | `'postgresql'`, `'mysql'` or `'sqlite'`, the same value as `provider` in your `datasource` block (and in Better Auth's Prisma adapter) |
+| `tableName` | `fiducy_user_key` | The `@@map` name. The model name is derived from it (`ai_key_handles` gives `AiKeyHandles`). Pass the same name to `generateSchema` |
+| `model` | from `tableName` | Use it if you renamed the model, for example `{ model: 'AiKey' }` |
+
+## Gotchas
+
+- **"The Prisma client has no FiducyUserKey model."** You added the model but didn't regenerate the client. Run `npx prisma generate` (or `migrate dev`, which runs it).
+- **"The Fiducy table does not exist yet."** The client has the model but the database doesn't have the table. Run `npx prisma migrate deploy` against the same `DATABASE_URL` your app uses.
+- **Keep the field names.** Fiducy reads `userID`, `keyID`, `provider`, `handle`, `record`, `source` and `createdAt`, and upserts on the compound ID `userID_keyID`. Rename the model or table if you like, but keep the fields and `@@id([userID, keyID])`.
+- **Don't add `@@unique([userID, provider])`.** Fiducy saves a user's new key before it revokes the old one; see [the table](/docs/storage#the-table).
+- **Create one `PrismaClient`.** Reuse the client your app already exports, especially in Next.js dev mode, where hot reload can otherwise open a new connection pool on every change.

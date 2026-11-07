@@ -19,7 +19,7 @@ export const FAQ: FaqItem[] = [
   {
     question: 'How do I add it to an existing app?',
     answer:
-      'Install the SDK, create one server instance with your gateway URL and app secret, mount the route handler, and drop the ConnectKeyWidget into your settings page. Your model calls keep using the AI SDK or the provider client you already have; they simply receive provider settings from Fiducy instead of a key from your database. Most apps finish in an afternoon, and a coding agent can do it from the setup prompt on this page.'
+      'Run npx fiducy init in your app: it adds the server module and key route for your framework and installs the SDK. Then drop the key widget into your settings page. Your model calls keep using the AI SDK or the provider client you already have; they simply receive provider settings from Fiducy instead of a key from your database. Most apps finish in an afternoon, and a coding agent can do it from the setup prompt on this page.'
   },
   {
     question: 'How can my users verify the enclave?',

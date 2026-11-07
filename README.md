@@ -82,3 +82,7 @@ Add a changeset to your pull request with `bunx changeset`. Merging to main open
 ## License
 
 Apache-2.0. See [LICENSE](./LICENSE).
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) to set up the repo and open a pull request. Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md), never in a public issue.

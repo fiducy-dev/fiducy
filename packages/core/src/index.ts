@@ -1,4 +1,5 @@
-export { SEALED_RECORD_FIELDS } from './constants.ts';
+export { GATEWAY_ERROR_HEADER, GATEWAY_FAILURE_ERROR } from './constants.ts';
+export { KEY_UNAVAILABLE_ERROR, SEALED_RECORD_FIELDS } from './constants.ts';
 export { combineShares, decryptSecret, encryptSecret } from './crypto.ts';
 export { generateDataKey, splitDataKey } from './crypto.ts';
 export { createHandle, generateKeyID, parseHandle } from './handle.ts';

@@ -1,4 +1,4 @@
-import { ConnectKeyWidget } from '@fiducy/sdk/react';
+import { FiducyKey } from '@fiducy/sdk/react';
 import { useState } from 'react';
 
 import { PROVIDER_LABELS } from './constants.ts';
@@ -35,7 +35,7 @@ export function ConnectKeyToolUI({
   return (
     <div className="fiducy-tool" data-state="waiting">
       <p className="fiducy-tool-title">Connect your {label} key</p>
-      <ConnectKeyWidget
+      <FiducyKey
         gatewayURL={gatewayURL}
         appID={appID}
         provider={args.provider}

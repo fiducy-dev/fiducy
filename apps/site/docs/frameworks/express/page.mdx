@@ -1,0 +1,133 @@
+---
+title: Express and Node
+order: 6
+description: Add Fiducy to Express, Fastify, NestJS or a plain Node http server.
+---
+
+# Express and Node
+
+Servers built on Node's `req` and `res` use `toNodeHandler` from `@fiducy/sdk/node`, which turns the request into a Web `Request` and streams the `Response` back.
+
+```bash
+npx fiducy init
+```
+
+Or by hand: `npm install @fiducy/sdk`, then the files below. The working version is [`examples/express`](https://github.com/fiducy-dev/fiducy/tree/main/examples/express).
+
+## Run the example
+
+Copy the example app and run it with a local gateway:
+
+```bash
+npx degit fiducy-dev/fiducy/examples/express my-app
+cd my-app
+npm install
+npx fiducy dev --mock
+```
+
+`fiducy dev` writes `.env` and keeps running. In a second terminal, add the example's session secret and start the app:
+
+```bash
+echo "EXAMPLE_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
+npm run dev
+```
+
+Sign in as the test user, paste any string as the key (`--mock` answers with a fake model), and ask a question. The example signs users in with a test cookie and keeps handles in a JSON file (`example-kit`); swap both for your own auth and [storage](/docs/storage).
+
+## Server module
+
+```ts title="src/fiducy.ts"
+import { createFiducy } from '@fiducy/sdk/server';
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+
+import { auth } from './auth';
+import { pool } from './db';
+
+export const fiducy = createFiducy({
+  storage: kyselyStorage(pool),
+  getUserID: async (request) => {
+    const session = await auth.api.getSession({ headers: request.headers });
+    return session?.user.id ?? null;
+  }
+});
+```
+
+## Key route
+
+<CodeGroup>
+
+```ts title="Express 5"
+import { toNodeHandler } from '@fiducy/sdk/node';
+
+import { fiducy } from './fiducy';
+
+app.all('/api/fiducy/{*path}', toNodeHandler(fiducy));
+```
+
+```ts title="Express 4"
+app.all('/api/fiducy/*', toNodeHandler(fiducy));
+```
+
+```ts title="Fastify"
+app.all('/api/fiducy/*', async (request, reply) => {
+  const response = await fiducy.handler(toWebRequest(request.raw, request.body));
+  return reply.status(response.status).headers(Object.fromEntries(response.headers)).send(await response.text());
+});
+```
+
+```ts title="node:http"
+import { createServer } from 'node:http';
+import { toNodeHandler } from '@fiducy/sdk/node';
+
+const handleFiducy = toNodeHandler(fiducy);
+
+createServer((request, response) => {
+  if (request.url?.startsWith('/api/fiducy/')) return handleFiducy(request, response);
+  yourApp(request, response);
+}).listen(3000);
+```
+
+</CodeGroup>
+
+Order with body parsers does not matter: when `express.json()` already read the body, `toNodeHandler` uses `req.body` instead of the spent stream.
+
+## Env
+
+Node does not read `.env` on its own. Load it with `node --env-file=.env`, `tsx --env-file=.env` or `dotenv`.
+
+## Widget
+
+With no UI framework, load the element once and use the tag:
+
+```html title="index.html"
+<script type="module">
+  import '@fiducy/sdk/element';
+</script>
+
+<fiducy-key provider="openai"></fiducy-key>
+```
+
+The import needs a bundler or dev server (the example uses Vite in middleware mode). See [Key widget](/docs/widget).
+
+## Model route
+
+```ts title="src/server.ts"
+import { createOpenAI } from '@ai-sdk/openai';
+import { sendWebResponse, toWebRequest } from '@fiducy/sdk/node';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+app.post('/api/chat', express.json(), async (request, response) => {
+  const settings = await fiducy.providerSettings('openai', { request: toWebRequest(request) });
+  if (!settings.ok) return sendWebResponse(respondToMissingKey(settings), response);
+  const model = createOpenAI(settings).chat('gpt-4o-mini');
+  const result = streamText({ model, messages: request.body.messages });
+  await sendWebResponse(result.toUIMessageStreamResponse(), response);
+});
+```
+
+`sendWebResponse` streams the body and keeps every `set-cookie` header.
+
+## Behind a proxy
+
+The key route rejects cross-site writes by comparing the `Origin` header with `Host`. If a proxy rewrites `Host`, forward the original one (`proxy_set_header Host $host;` in nginx).

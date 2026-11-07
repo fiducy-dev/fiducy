@@ -9,12 +9,7 @@ function readDemoUser(request: Request): string | null {
   return match?.[1] ?? null;
 }
 
-const { FIDUCY_GATEWAY_URL, FIDUCY_APP_SECRET } = process.env;
-if (!FIDUCY_GATEWAY_URL || !FIDUCY_APP_SECRET) throw new Error('Set the Fiducy env vars');
-
 export const fiducyServer = createFiducy({
-  gatewayURL: FIDUCY_GATEWAY_URL,
-  appSecret: FIDUCY_APP_SECRET,
   storage: keyValueStorage({
     getItem: (key) => getStorage(FIDUCY_STORAGE_MOUNT).getItem(key),
     setItem: (key, value) => getStorage(FIDUCY_STORAGE_MOUNT).setItem(key, value),

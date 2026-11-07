@@ -22,7 +22,8 @@ export const appSettingsSchema = z.object({
   name: z.string().trim().min(1, 'Give the app a name').max(80),
   monthlyRequestLimitPerKey: z.coerce.number().int().min(1).max(MAXIMUM_MONTHLY_REQUEST_LIMIT),
   allowedOrigins: z.array(originSchema).max(MAXIMUM_ALLOWED_ORIGINS),
-  recordStorage: z.enum(['fiducy', 'app']).default('fiducy')
+  recordStorage: z.enum(['fiducy', 'app']).default('fiducy'),
+  allowKeyImport: z.boolean().default(false)
 });
 
 export const appSettingsUpdateSchema = appSettingsSchema.omit({ recordStorage: true }).partial();
@@ -52,5 +53,6 @@ export const usageSeriesQuerySchema = z.object({
 export const keyEventSchema = z.object({
   type: z.enum(['saved', 'revoked']),
   appID: z.string().min(1).max(80),
-  keyID: z.string().regex(/^[A-Za-z0-9_-]{22}$/, 'Use a 22 character key ID')
+  keyID: z.string().regex(/^[A-Za-z0-9_-]{22}$/, 'Use a 22 character key ID'),
+  source: z.enum(['widget', 'import']).optional()
 });

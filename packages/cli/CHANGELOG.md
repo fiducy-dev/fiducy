@@ -1,0 +1,11 @@
+# fiducy
+
+## 0.3.0-beta.0
+
+### Minor Changes
+
+- [#67](https://github.com/fiducy-dev/fiducy/pull/67) [`84dad6c`](https://github.com/fiducy-dev/fiducy/commit/84dad6cfe0c526d86cbed1f61a15a5b18dd918f0) Thanks [@Benonii](https://github.com/Benonii)! - New `fiducy` CLI: `fiducy init` adds Fiducy to an existing app with new files only, `fiducy dev` runs a local gateway whose keys survive restarts (with `--mock`, its widget says "Test gateway" and asks for a made-up key), and `fiducy generate` and `fiducy migrate` create the storage table. `sendWebResponse` now streams and keeps every cookie, and Drizzle and Prisma storage find their table on first use, so the CLI can load your server module before the table exists.
+
+### Patch Changes
+
+- [#76](https://github.com/fiducy-dev/fiducy/pull/76) [`b153a53`](https://github.com/fiducy-dev/fiducy/commit/b153a531df11640bda8698974a4ad621bab78a01) Thanks [@Benonii](https://github.com/Benonii)! - `fiducy dev` now listens on port 3438 (FIDU on a phone keypad) instead of 8787, so it no longer clashes with the repo prototype gateway. `fiducy init --framework farm` is now `--framework farmjs`, so it isn't confused with farm-fe.

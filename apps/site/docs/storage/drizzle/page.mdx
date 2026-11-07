@@ -1,0 +1,113 @@
+---
+title: Drizzle
+order: 2
+description: Store handles with Drizzle ORM. Generate the table, add it to your schema, and migrate with drizzle-kit.
+---
+
+# Drizzle
+
+**Quickest:** `npx fiducy generate` writes `fiducy-schema.ts` next to the schema named in your `drizzle.config`; export it from your schema and run `drizzle-kit generate` and `drizzle-kit migrate`. Pass `provider` to `drizzleStorage` so the CLI can load your server module before the table exists. The steps below do the same by hand.
+
+`drizzleStorage` keeps handles in a table of your [Drizzle](https://orm.drizzle.team) schema, using the `db` you already have. It is tested with node-postgres, mysql2 and bun:sqlite on Drizzle 0.45 and 1.0. It only uses plain selects, inserts and deletes, so other Drizzle drivers for Postgres, MySQL and SQLite (postgres.js, Neon, PlanetScale, libSQL, D1) should work as well. Migrations go through drizzle-kit, like the rest of your schema.
+
+## 1. Add the table to your schema
+
+Generate the table for your database:
+
+```ts
+import { generateSchema } from '@fiducy/sdk/storage';
+
+const { contents } = generateSchema({ adapter: 'drizzle', dialect: 'postgres' }); // or 'mysql', 'sqlite'
+```
+
+Save it as a new file next to your schema. For Postgres it is:
+
+```ts title="src/db/fiducy-schema.ts"
+import { index, pgTable, primaryKey, text } from 'drizzle-orm/pg-core';
+
+export const fiducyUserKey = pgTable(
+  'fiducy_user_key',
+  {
+    userID: text('user_id').notNull(),
+    keyID: text('key_id').notNull(),
+    provider: text('provider').notNull(),
+    handle: text('handle').notNull(),
+    record: text('record'),
+    source: text('source'),
+    createdAt: text('created_at').notNull()
+  },
+  (table) => [
+    primaryKey({ columns: [table.userID, table.keyID] }),
+    index('fiducy_user_key_user_provider_idx').on(table.userID, table.provider)
+  ]
+);
+```
+
+Make sure drizzle-kit sees the file. If `schema` in `drizzle.config.ts` points at a single file, re-export the table from it:
+
+```ts title="src/db/schema.ts"
+export * from './fiducy-schema';
+```
+
+If it points at a folder or a glob (`./src/db/*.ts`), the new file is already included.
+
+## 2. Migrate
+
+Use the same commands as for the rest of your schema:
+
+```bash
+npx drizzle-kit generate && npx drizzle-kit migrate
+# or, while prototyping:
+npx drizzle-kit push
+```
+
+## 3. Connect
+
+<CodeGroup>
+
+```ts title="Pass the table"
+// lib/fiducy.ts
+import { drizzleStorage } from '@fiducy/sdk/storage/drizzle';
+
+import { db } from '@/db';
+import { fiducyUserKey } from '@/db/fiducy-schema';
+
+export const storage = drizzleStorage(db, { table: fiducyUserKey });
+```
+
+```ts title="Pass your schema"
+// lib/fiducy.ts
+import { drizzleStorage } from '@fiducy/sdk/storage/drizzle';
+
+import { db } from '@/db';
+import * as schema from '@/db/schema';
+
+export const storage = drizzleStorage(db, { schema });
+```
+
+</CodeGroup>
+
+Then pass it to `createFiducy`:
+
+```ts
+export const fiducy = createFiducy({ gatewayURL, appSecret, storage, getUserID });
+```
+
+`drizzleStorage` looks for the table in this order: the `table` option, then the `fiducyUserKey` export in `schema` (or in the schema you gave `drizzle()` on Drizzle 0.45), then a table named `fiducy_user_key`. It reads the database type from the table, so there is no `provider` to set.
+
+## Options
+
+| Option | Default | Notes |
+| --- | --- | --- |
+| `table` | | The Drizzle table. Takes priority over `schema` |
+| `schema` | the schema given to `drizzle()` | An object of tables, such as `import * as schema` |
+| `tableName` | `fiducy_user_key` | Finds the table in `schema` by its SQL name. Pass the same name to `generateSchema` |
+| `provider` | read from the table | `'pg'`, `'mysql'` or `'sqlite'`, as in Better Auth's Drizzle adapter. With it, the table is looked up on first use instead of at startup, so tools such as `fiducy generate` can load your server module before the table exists |
+
+## Gotchas
+
+- **"The Fiducy table does not exist yet."** The table is in your schema but not in the database. Run `drizzle-kit migrate` (or `push`) against the same `DATABASE_URL` your app uses.
+- **Keep the field names.** Fiducy reads `userID`, `keyID`, `provider`, `handle`, `record`, `source` and `createdAt`. You can rename the SQL table (pass `tableName` to `generateSchema`), but not the fields.
+- **Don't add a unique constraint on `userID` and `provider`.** Fiducy saves a user's new key before it revokes the old one; see [the table](/docs/storage#the-table).
+- **No transactions needed.** Every write is a single statement, so drivers without transactions, such as `neon-http` and D1, work.
+- **Drizzle 1.0 no longer takes `schema` in `drizzle()`.** Pass `{ table }` or `{ schema }` to `drizzleStorage` instead.

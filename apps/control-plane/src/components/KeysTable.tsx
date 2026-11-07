@@ -35,7 +35,12 @@ export function KeysTable({ appID, keys, usage, monthlyLimit }: KeysTableProps) 
             className={key.status === 'revoked' ? 'text-ink-quiet' : undefined}
           >
             <TableCell className="font-mono text-xs">{shortenIdentifier(key.keyID, 14)}</TableCell>
-            <TableCell>{formatProvider(key.provider)}</TableCell>
+            <TableCell>
+              <span className="flex items-center gap-2">
+                {formatProvider(key.provider)}
+                {key.source === 'import' ? <Badge variant="secondary">Imported</Badge> : null}
+              </span>
+            </TableCell>
             <TableCell>
               <KeyLimitMeter
                 requestCount={usage?.requestsByKey[key.keyID] ?? 0}

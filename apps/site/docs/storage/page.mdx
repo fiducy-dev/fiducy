@@ -1,7 +1,7 @@
 ---
 title: Storage
 order: 6
-description: Where handles and sealed records live, and how to plug in your own database.
+description: Where handles and sealed records live, and which storage adapter to pick.
 ---
 
 # Storage
@@ -10,6 +10,21 @@ There are two things to store:
 
 - the **handle**, always in your app, through the `storage` adapter you pass to `createFiducy`
 - the **sealed record**, either with Fiducy (default) or in your app
+
+## Pick an adapter
+
+| You have | Use | Import |
+| --- | --- | --- |
+| Drizzle | [`drizzleStorage`](/docs/storage/drizzle) | `@fiducy/sdk/storage/drizzle` |
+| Prisma | [`prismaStorage`](/docs/storage/prisma) | `@fiducy/sdk/storage/prisma` |
+| Postgres, MySQL or SQLite (any driver) | [`kyselyStorage`](/docs/storage/sql) | `@fiducy/sdk/storage/kysely` |
+| Redis, Upstash, Vercel KV, Cloudflare KV, the file system | [`keyValueStorage`](#keyvaluestoragedriver) | `@fiducy/sdk/server` |
+| Tests | [`memoryStorage`](#memorystorage) | `@fiducy/sdk/server` |
+| Something else | [Your own four methods](#your-own-storage) | `@fiducy/sdk/server` |
+
+No database yet? Use SQLite while you build and Postgres when you deploy; see [SQL databases](/docs/storage/sql#no-database-yet).
+
+Every adapter is server-only code. Nothing here adds a route: the only routes are the ones `fiducy.handler` already serves.
 
 ## Where sealed records live
 
@@ -22,9 +37,26 @@ Set this per app in the dashboard under "Where sealed keys live".
 
 In `app` mode the gateway keeps nothing per key. A record is ciphertext plus a KMS-wrapped share, so your database still cannot open a key on its own. Revoking a key means deleting the row; the SDK does this for you.
 
-## Adapters
+## The table
 
-### keyValueStorage(driver)
+The SQL adapters all use one table, `fiducy_user_key` by default:
+
+| Column | Holds |
+| --- | --- |
+| `user_id` | The ID `getUserID` returned |
+| `key_id` | The key's ID, taken from its handle |
+| `provider` | `openai`, `anthropic`, `gemini` or `openrouter` |
+| `handle` | The key handle |
+| `record` | The sealed record as JSON, only in `app` mode |
+| `source` | `widget` or `import` (keys added with `fiducy.importKeys`) |
+| `created_at` | ISO timestamp, used to pick the newest key |
+
+The primary key is `(user_id, key_id)`, with an index on `(user_id, provider)`. Two details matter if you write the table yourself:
+
+- **No unique constraint on `(user_id, provider)`.** When a user connects a new key, Fiducy saves the new one first and then revokes the old one at the gateway. A unique constraint makes the save fail, or, with an upsert, overwrites the old row so the old key is never revoked at the gateway.
+- **The primary key includes `user_id`.** Every read and delete is scoped to the signed-in user, and a user who somehow holds someone else's handle can only ever create their own row, never overwrite another user's.
+
+## keyValueStorage(driver)
 
 Takes any [unstorage](https://unstorage.unjs.io)-style driver: an object with `getItem`, `setItem`, `removeItem` and `getKeys`.
 
@@ -36,41 +68,32 @@ import redisDriver from 'unstorage/drivers/redis';
 const storage = keyValueStorage(createStorage({ driver: redisDriver({ url: process.env.REDIS_URL }) }));
 ```
 
-unstorage has drivers for Redis, Postgres (via `db0`), Cloudflare KV, Vercel KV, the file system and more. On Farm.js, use a storage mount; see [Farm.js](/docs/farm).
+unstorage has drivers for Redis, Upstash, Cloudflare KV, Vercel KV, the file system and more. On Farm.js, use a storage mount; see [Farm.js](/docs/frameworks/farm). Keys are stored as `fiducy:<userID>:<keyID>`.
 
-Keys are stored as `fiducy:<userID>:<keyID>`.
+## memoryStorage()
 
-### memoryStorage()
+In-memory, for tests and local experiments. Everything is lost on restart, and every serverless instance has its own copy.
 
-In-memory, for tests and local experiments. Everything is lost on restart.
+## Your own storage
 
-### Your own database
-
-Implement four methods:
+Implement four methods. A stored key is `{ userID, provider, keyID, handle, record?, source?, createdAt }`.
 
 ```ts
 import type { FiducyStorage } from '@fiducy/sdk/server';
 
 export const storage: FiducyStorage = {
-  saveKey: (key) => db.insert(userKeys).values(key),
-  findKey: (userID, provider) => db.query.userKeys.findFirst({ where: { userID, provider } }),
-  listKeys: (userID) => db.query.userKeys.findMany({ where: { userID } }),
-  deleteKey: async (userID, keyID) => (await db.delete(userKeys).where({ userID, keyID })).count > 0
+  saveKey: async (key) => { /* insert, or update the row with the same userID and keyID */ },
+  findKey: async (userID, provider) => { /* newest key for this user and provider, or null */ },
+  listKeys: async (userID) => { /* this user's keys, newest first */ },
+  deleteKey: async (userID, keyID) => { /* delete only this user's key; true if a row was deleted */ }
 };
 ```
 
-A stored key is `{ userID, provider, keyID, handle, record?, createdAt }`. One table is enough:
+Store `record` as JSON text and parse it back in `findKey` and `listKeys`. Store `source` as it is.
 
-```sql
-create table fiducy_user_key (
-  key_id     text primary key,
-  user_id    text not null references "user"(id) on delete cascade,
-  provider   text not null,
-  handle     text not null,
-  record     text,            -- JSON, only when records live in your app
-  created_at text not null,
-  unique (user_id, provider)
-);
-```
+## Common gotchas
 
-Store `record` as JSON text and parse it back in `findKey` and `listKeys`. The foreign key removes a user's handles when the user is deleted. Treat the handle like a password hash: it is not secret enough to publish, but it is useless without the gateway.
+- **Create the storage once, in your server module.** Don't build a new connection per request. On Farm.js, look the mount up inside each method instead; see [Farm.js](/docs/frameworks/farm).
+- **Serverless hosts wipe the disk.** SQLite files, the unstorage file driver and `memoryStorage` all lose keys on Vercel, Netlify and similar hosts. Use a hosted database there (Postgres from Neon or Supabase, Turso, Upstash Redis).
+- **Deleting a user.** A foreign key with `on delete cascade` removes the rows, but skips the gateway, so in `fiducy` mode the sealed records stay there. Before you delete a user, call `fiducy.revokeKey(userID, keyID)` for each key from `fiducy.listKeys(userID)`.
+- **The handle is not the key, but keep it private.** It is useless without your app secret and the gateway, so treat it like a password hash: never send it to the browser or log it. `fiducy.handler` never returns it.

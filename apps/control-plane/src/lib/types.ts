@@ -3,11 +3,14 @@ import type { Vector2, WebGLRenderTarget } from 'three';
 
 export type RecordStorage = 'fiducy' | 'app';
 
+export type KeySource = 'widget' | 'import';
+
 export interface AppSettings {
   name: string;
   monthlyRequestLimitPerKey: number;
   allowedOrigins: string[];
   recordStorage?: RecordStorage;
+  allowKeyImport?: boolean;
 }
 
 export interface StoredApp extends AppSettings {
@@ -99,6 +102,7 @@ export interface AppKeyView {
   lastUsedAt: string | null;
   requestCount: number;
   status: KeyStatus;
+  source?: KeySource;
 }
 
 export interface UsageDay {
@@ -135,6 +139,7 @@ export interface StoredKeyEntry {
   createdAt: string;
   lastUsedAt: string | null;
   status: KeyStatus;
+  source?: KeySource;
 }
 
 export interface TokenTotals {
@@ -152,12 +157,22 @@ export interface GatewayHeartbeat {
   lastSeenAt: string;
 }
 
+export interface GatewayConnection {
+  gatewayURL: string;
+  gatewayToken: string | null;
+}
+
+export interface GatewayClient {
+  deleteRecord: (appID: string, keyID: string) => Promise<ControlResult<null>>;
+}
+
 export type KeyEventType = 'saved' | 'revoked';
 
 export interface KeyEvent {
   type: KeyEventType;
   appID: string;
   keyID: string;
+  source?: KeySource;
 }
 
 export interface DitherKeyParts {

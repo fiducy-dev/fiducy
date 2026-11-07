@@ -1,0 +1,110 @@
+---
+title: TanStack Start
+order: 2
+description: Add Fiducy to a TanStack Start app with a server route.
+---
+
+# TanStack Start
+
+```bash
+npx fiducy init
+```
+
+Or by hand: `npm install @fiducy/sdk`, then the files below. The working version is [`examples/tanstack-start`](https://github.com/fiducy-dev/fiducy/tree/main/examples/tanstack-start).
+
+## Run the example
+
+Copy the example app and run it with a local gateway:
+
+```bash
+npx degit fiducy-dev/fiducy/examples/tanstack-start my-app
+cd my-app
+npm install
+npx fiducy dev --mock
+```
+
+`fiducy dev` writes `.env` and keeps running. In a second terminal, add the example's session secret and start the app:
+
+```bash
+echo "EXAMPLE_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
+npm run dev
+```
+
+Sign in as the test user, paste any string as the key (`--mock` answers with a fake model), and ask a question. The example signs users in with a test cookie and keeps handles in a JSON file (`example-kit`); swap both for your own auth and [storage](/docs/storage).
+
+## Server module
+
+```ts title="src/lib/fiducy.ts"
+import { createFiducy } from '@fiducy/sdk/server';
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+
+import { auth } from '@/lib/auth';
+import { pool } from '@/lib/db';
+
+export const fiducy = createFiducy({
+  storage: kyselyStorage(pool),
+  getUserID: async (request) => {
+    const session = await auth.api.getSession({ headers: request.headers });
+    return session?.user.id ?? null;
+  }
+});
+```
+
+## Key route
+
+A server route with a splat (`$`) catches every path under `/api/fiducy`:
+
+```ts title="src/routes/api/fiducy/$.ts"
+import { toTanStackHandlers } from '@fiducy/sdk/tanstack';
+import { createFileRoute } from '@tanstack/react-router';
+
+import { fiducy } from '@/lib/fiducy';
+
+export const Route = createFileRoute('/api/fiducy/$')({
+  server: { handlers: toTanStackHandlers(fiducy) }
+});
+```
+
+The router plugin regenerates `routeTree.gen.ts` when the dev server sees the new file.
+
+## Env
+
+Put the three `FIDUCY_` values in `.env`. Vite loads `.env` into `process.env` for server code; nothing needs a `VITE_` prefix, and Fiducy refuses to run if the app secret has one.
+
+## Widget
+
+```tsx title="src/components/KeySettings.tsx"
+import { FiducyKey } from '@fiducy/sdk/react';
+
+export const KeySettings = () => <FiducyKey provider="openai" />;
+```
+
+## Model route
+
+```ts title="src/routes/api/chat.ts"
+import { createOpenAI } from '@ai-sdk/openai';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { createFileRoute } from '@tanstack/react-router';
+import { streamText } from 'ai';
+
+import { fiducy } from '@/lib/fiducy';
+
+export const Route = createFileRoute('/api/chat')({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const settings = await fiducy.providerSettings('openai', { request });
+        if (!settings.ok) return respondToMissingKey(settings);
+        const { messages } = await request.json();
+        const model = createOpenAI(settings).chat('gpt-4o-mini');
+        return streamText({ model, messages }).toUIMessageStreamResponse();
+      }
+    }
+  }
+});
+```
+
+## Notes
+
+- **One Vite:** in a monorepo, keep a single `vite` version. Two copies make TanStack Start answer "Cannot GET /".
+- Server functions (`createServerFn`) can call `fiducy.providerSettings(provider, { request: getRequest() })` with `getRequest` from `@tanstack/react-start/server`.

@@ -1,0 +1,45 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #111111;
+  background: #ffffff;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  display: grid;
+  gap: 24px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid #111111;
+  background: #111111;
+  color: #ffffff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ask {
+  display: grid;
+  gap: 8px;
+}
+
+.ask input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #8a8a8a;
+  font: inherit;
+}

@@ -19,6 +19,22 @@ function createWidgetFrame(gatewayURL: string, appID: string): HTMLIFrameElement
   return iframe;
 }
 
+/** Fails early with a clear message instead of the browser's "undefined is not a valid URL". */
+function assertWidgetOptions(gatewayURL: string, appID: string): void {
+  if (!gatewayURL)
+    throw new Error(
+      'Fiducy: gatewayURL is missing. Pass your gateway URL, for example from a public env var such as NEXT_PUBLIC_FIDUCY_GATEWAY_URL.'
+    );
+  if (!URL.canParse(gatewayURL))
+    throw new Error(
+      `Fiducy: gatewayURL "${gatewayURL}" is not a valid URL. Use the full URL, for example http://localhost:3438.`
+    );
+  if (!appID)
+    throw new Error(
+      'Fiducy: appID is missing. Pass your app ID, for example from a public env var such as NEXT_PUBLIC_FIDUCY_APP_ID.'
+    );
+}
+
 export function mountKeyWidget({
   gatewayURL,
   appID,
@@ -26,6 +42,7 @@ export function mountKeyWidget({
   onHandle,
   onError
 }: MountKeyWidgetOptions): MountedKeyWidget {
+  assertWidgetOptions(gatewayURL, appID);
   const gatewayOrigin = new URL(gatewayURL).origin;
   const iframe = createWidgetFrame(gatewayURL, appID);
 

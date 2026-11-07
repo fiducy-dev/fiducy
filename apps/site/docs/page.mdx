@@ -25,16 +25,21 @@ Storing user API keys yourself means one database leak or one bad log line expos
 
 ## How you add it
 
-Fiducy fits into any app as four pieces: a server instance, one route handler, the key widget, and a storage adapter you choose. Nothing is tied to a framework or a chat library.
+```bash
+npx fiducy init       # adds the server module and key route to your app
+npx fiducy dev --mock # local gateway while you build
+```
+
+Fiducy fits into the app you already have as four pieces. Nothing is tied to one framework or chat library.
 
 | Piece | What it does |
 | --- | --- |
-| `createFiducy()` | Server instance: route handler, `providerSettings`, list, save, revoke |
-| `fiducy.handler` | A standard `Request => Response` handler you mount at `/api/fiducy/*` in any framework |
-| `<ConnectKeyWidget />` or `mountKeyWidget()` | Drops the gateway iframe into your page (React, or any framework) and saves the handle |
-| `useFiducyKeys()` | Optional TanStack Query hook (`@fiducy/sdk/react-query`) that lists and revokes the signed-in user's keys |
+| `createFiducy()` | Server instance: key route handler, `providerSettings`, list, save, revoke |
+| The key route | `fiducy.handler` at `/api/fiducy/*`, mounted with a one-line helper for [your framework](/docs/frameworks) |
+| `<fiducy-key>` | The [key widget](/docs/widget), with React, Vue, Svelte and Solid wrappers |
+| A storage adapter | Where handles live: [Prisma, Drizzle, SQL](/docs/storage) or a key-value store |
 
-Optional extras: [Farm.js](/docs/farm) mounts the route for you, and [assistant-ui](/docs/assistant-ui) opens the key box inside the chat thread.
+Optional extras: [Farm.js](/docs/frameworks/farm) mounts the route for you, and [assistant-ui](/docs/assistant-ui) opens the key box inside the chat thread. Hit a snag? See [Gotchas](/docs/gotchas).
 
 Start with the [Quickstart](/docs/quickstart).
 

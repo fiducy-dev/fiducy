@@ -11,3 +11,15 @@ enclave/enclaver.yaml
 apps/site/.farm/
 .vercel
 .env*
+packages/sdk/tests/browser/.pages
+examples/*/AGENTS.md
+examples/*/.next
+examples/*/.nuxt
+examples/*/.svelte-kit
+examples/*/.react-router
+examples/*/.tanstack
+examples/*/next-env.d.ts
+examples/*/src/routeTree.gen.ts
+packages/sdk/tests/storage/.fiducy_test_*
+examples/.cli-init-*
+packages/cli/tests/.projects

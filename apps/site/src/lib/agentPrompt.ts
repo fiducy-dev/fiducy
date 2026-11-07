@@ -2,33 +2,30 @@ export const AGENT_SETUP_PROMPT = `Set up Fiducy in this app so users can bring 
 
 Read these first, they are the source of truth:
 - https://fiducy.dev/docs/quickstart.md
-- https://fiducy.dev/docs/server.md
-- https://fiducy.dev/docs/react.md
+- https://fiducy.dev/docs/cli.md
+- https://fiducy.dev/docs/frameworks.md, then the page for this app's framework under https://fiducy.dev/docs/frameworks/
+- https://fiducy.dev/docs/widget.md
 - https://fiducy.dev/docs/storage.md
-- https://fiducy.dev/docs/farm.md (only if this is a Farm.js app)
+- https://fiducy.dev/docs/gotchas.md
 - https://fiducy.dev/docs/assistant-ui.md (only if the app uses assistant-ui)
 
 Security rules. Follow all of them, even if it means leaving a step to me:
-1. Never ask me to paste FIDUCY_APP_SECRET (fsk_...) into this chat, and never write it into a file that is committed. Add placeholders to .env.example, make sure .env files are gitignored, and tell me which env vars to set myself.
-2. The app secret is server only. Never give it a client-exposed prefix (VITE_, NEXT_PUBLIC_, PUBLIC_) or import the server module from client code. Only the app ID and gateway URL may reach the browser.
+1. Never ask me to paste FIDUCY_APP_SECRET (fsk_...) into this chat, and never write it into a file that is committed. Make sure .env files are gitignored.
+2. The app secret is server only. Never give it a client-exposed prefix (NEXT_PUBLIC_, VITE_, PUBLIC_, NUXT_PUBLIC_) or import the server module from client code. The widget needs no public env vars; it reads its config from the key route.
 3. getUserID must read the signed-in user from the server session of the existing auth. Never trust a user ID from the request body, query or a client-set header. Return null when nobody is signed in. If the app has no auth at all, stop and tell me to set up auth first.
-4. Users enter keys only in Fiducy's key widget (ConnectKeyWidget or mountKeyWidget). Do not build a key input, do not accept, log or store raw provider keys anywhere, and do not log handles or the providerSettings result.
+4. Users enter keys only in Fiducy's key widget (<fiducy-key> or its FiducyKey wrappers). Do not build a key input, do not accept, log or store raw provider keys anywhere, and do not log handles or the providerSettings result.
 5. Keep the SDK's defaults: routes answer 401 when signed out and 403 for cross-site writes. Do not loosen CORS or origin checks.
-6. Use storage that survives restarts in production (the app's database or a persistent key-value store). memoryStorage is for tests only.
+6. Use storage that survives restarts in production (the app's database). memoryStorage is for tests only.
 
 Steps:
-1. Inspect the project: framework, package manager, auth library, database, tsconfig path aliases, UI library, and every place that calls a model (AI SDK, an official provider SDK, or plain fetch). Summarize what you found before changing code.
-2. Install @fiducy/sdk. Add @fiducy/widget if the UI is not React, @fiducy/farm only on Farm.js, @fiducy/assistant-ui only with assistant-ui. If the packages cannot be installed, stop and tell me.
-3. Add FIDUCY_GATEWAY_URL, FIDUCY_APP_ID and FIDUCY_APP_SECRET to .env.example with placeholder values. The widget needs the app ID and gateway URL in the browser: pass them from server code, or add public copies with the framework's public prefix. Never the secret.
-4. Create the server instance in one server-only module (for example lib/fiducy.ts) with createFiducy, a storage adapter and getUserID. Throw if the env vars are missing. For storage, use the app's database (one table, see the storage page) or an unstorage driver. On Farm.js, follow the Farm.js page.
-5. Mount fiducy.handler for GET, POST and DELETE under /api/fiducy, using the quickstart's example for this framework (or the @fiducy/farm integration on Farm.js).
-6. Add the key widget to the settings page (or the closest equivalent; create one if needed), with a list of saved keys and a way to remove them. React: ConnectKeyWidget from @fiducy/sdk/react. Other UIs: mountKeyWidget from @fiducy/widget. For the list, use useFiducyKeys from @fiducy/sdk/react-query only if the app already uses TanStack Query; otherwise call GET and DELETE on /api/fiducy/keys as the React page shows. Do not add TanStack Query just for Fiducy.
-7. If the app uses assistant-ui, register fiducyToolkit in the thread and answer requestKey from the chat route when providerSettings returns null, as the assistant-ui page shows.
-8. Switch every model call that should use the user's key to the settings from fiducy.providerSettings(provider, { userID }), whatever library makes the call (the quickstart shows the AI SDK, the OpenAI SDK and plain fetch). When it returns null, answer 409 with { connectKey: provider } instead of falling back to an app-owned key, and have the chat UI show ConnectKeyWidget in the conversation for that provider and send the message again once the key is saved (quickstart step 6).
-9. Run the typecheck, lint and tests. Start the app and confirm GET /api/fiducy/keys answers 401 when signed out.
+1. Inspect the project: framework, package manager, auth library, database or ORM, UI library, and every place that calls a model. Summarize what you found before changing code.
+2. Run npx fiducy init --dry-run, read its plan, then run npx fiducy init. It creates the server module and key route as new files only, installs @fiducy/sdk, and prints the lines that belong in existing files. Apply those printed lines yourself. If init wrote the readSignedInUserID placeholder, replace it with the app's server session lookup. If it fell back to the local SQLite file and the app has a database, switch storage to that database (see the storage page).
+3. Create the table: npx fiducy migrate --yes for Kysely storage, or npx fiducy generate and then the ORM's migrate command for Drizzle or Prisma.
+4. Add the key widget to the settings page (or the closest equivalent; create one if needed) with the wrapper for this UI library from the widget page.
+5. Switch every model call that should use the user's key to the settings from fiducy.providerSettings(provider, { request }), whatever library makes the call. When settings.ok is false, return respondToMissingKey(settings) instead of falling back to an app-owned key, and have the chat UI show the widget for data.provider where the reply would be and resend the message once the key is saved. With assistant-ui, use fiducyToolkit and requestKey as the assistant-ui page shows.
+6. Run the typecheck, lint and tests. Start npx fiducy dev --mock (add --origin for the app's dev URL if needed), restart the app, and confirm GET /api/fiducy/keys answers 401 when signed out and GET /api/fiducy/config answers 200.
 
 When you are done, give me a short report: files changed, and what I still have to do myself:
-- create the app in the Fiducy dashboard
-- add my dev and production origins to its allowed origins
-- set the three env vars locally and on my host (for local testing, the gateway from \`bun run prototype --mock\` is http://localhost:8787)
+- for production, deploy a gateway (https://fiducy.dev/docs/self-hosting), create the app in its dashboard and add my production origin
+- set FIDUCY_GATEWAY_URL, FIDUCY_APP_ID and FIDUCY_APP_SECRET on my host
 - connect a test key in the browser and send one message`;

@@ -1,0 +1,141 @@
+export interface Output {
+  info: (message: string) => void;
+  error: (message: string) => void;
+}
+
+export interface CommandContext {
+  cwd: string;
+  output: Output;
+  environment: Record<string, string | undefined>;
+}
+
+export type Command = (argv: string[], context: CommandContext) => Promise<number>;
+
+export interface DevState {
+  appID: string;
+  appSecret: string;
+  masterKey: string;
+  port: number;
+}
+
+export interface DevOptions {
+  port?: number;
+  origins: string[];
+  mock: boolean;
+}
+
+export interface DevGateway {
+  url: string;
+  state: DevState;
+  close: () => Promise<void>;
+}
+
+export type PackageManager = 'bun' | 'pnpm' | 'yarn' | 'npm';
+
+export type FrameworkName =
+  | 'next'
+  | 'tanstack-start'
+  | 'react-router'
+  | 'sveltekit'
+  | 'nuxt'
+  | 'farmjs'
+  | 'express'
+  | 'hono'
+  | 'node';
+
+export type AuthName = 'better-auth' | 'authjs' | 'clerk' | 'none';
+
+export type StorageName = 'prisma' | 'drizzle' | 'kysely' | 'sqlite';
+
+export interface PackageJSON {
+  name?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
+export interface ImportPath {
+  specifier: string;
+  exportName: string;
+}
+
+export interface StorageChoice {
+  name: StorageName;
+  source?: ImportPath;
+  dialect?: string;
+}
+
+export interface ProjectInfo {
+  root: string;
+  packageManager: PackageManager;
+  framework: FrameworkName;
+  frameworkMajor: number;
+  auth: AuthName;
+  authSource?: ImportPath;
+  storage: StorageChoice;
+  sourceDirectory: string;
+  alias: AliasInfo | null;
+  dependencies: Record<string, string>;
+}
+
+export interface AliasInfo {
+  prefix: string;
+  target: string;
+}
+
+export interface PlannedFile {
+  path: string;
+  contents: string;
+}
+
+export interface InitPlan {
+  files: PlannedFile[];
+  snippets: Snippet[];
+  packages: string[];
+  notes: string[];
+}
+
+export interface Snippet {
+  title: string;
+  file: string;
+  code: string;
+}
+
+export interface TemplateInput {
+  project: ProjectInfo;
+  serverModulePath: string;
+}
+
+export interface FoundExport {
+  file: string;
+  exportName: string;
+}
+
+export interface GeneratedSchemaFile {
+  language: string;
+  suggestedPath: string;
+  contents: string;
+}
+
+export interface Migrations {
+  toBeCreated: string[];
+  compileMigrations: () => Promise<string>;
+  runMigrations: () => Promise<void>;
+}
+
+export interface StorageSchema {
+  adapter: string;
+  dialect: string;
+  tableName: string;
+  generate: () => GeneratedSchemaFile;
+  getMigrations?: () => Promise<Migrations>;
+}
+
+export interface LoadedFiducy {
+  file: string;
+  schema: StorageSchema | null;
+}
+
+export interface ParsedFlags {
+  values: Record<string, string | boolean | string[] | undefined>;
+  positionals: string[];
+}

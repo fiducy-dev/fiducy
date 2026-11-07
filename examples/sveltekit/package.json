@@ -1,0 +1,25 @@
+{
+  "name": "@fiducy/example-sveltekit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "4.0.93",
+    "@fiducy/sdk": "^0.3.0-beta.0",
+    "ai": "7.0.139"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-node": "6.0.1",
+    "@sveltejs/kit": "3.1.1",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "svelte": "5.57.3",
+    "vite": "8.3.4"
+  },
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  }
+}

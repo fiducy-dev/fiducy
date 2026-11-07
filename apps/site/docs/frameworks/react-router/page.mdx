@@ -1,0 +1,108 @@
+---
+title: React Router
+order: 3
+description: Add Fiducy to a React Router (framework mode) app with a resource route.
+---
+
+# React Router
+
+```bash
+npx fiducy init
+```
+
+Or by hand: `npm install @fiducy/sdk`, then the files below. The working version is [`examples/react-router`](https://github.com/fiducy-dev/fiducy/tree/main/examples/react-router).
+
+## Run the example
+
+Copy the example app and run it with a local gateway:
+
+```bash
+npx degit fiducy-dev/fiducy/examples/react-router my-app
+cd my-app
+npm install
+npx fiducy dev --mock
+```
+
+`fiducy dev` writes `.env` and keeps running. In a second terminal, add the example's session secret and start the app:
+
+```bash
+echo "EXAMPLE_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
+npm run dev
+```
+
+Sign in as the test user, paste any string as the key (`--mock` answers with a fake model), and ask a question. The example signs users in with a test cookie and keeps handles in a JSON file (`example-kit`); swap both for your own auth and [storage](/docs/storage).
+
+## Server module
+
+```ts title="app/lib/fiducy.ts"
+import { createFiducy } from '@fiducy/sdk/server';
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+
+import { auth } from '~/lib/auth';
+import { pool } from '~/lib/db';
+
+export const fiducy = createFiducy({
+  storage: kyselyStorage(pool),
+  getUserID: async (request) => {
+    const session = await auth.api.getSession({ headers: request.headers });
+    return session?.user.id ?? null;
+  }
+});
+```
+
+Name it `fiducy.server.ts` if you want React Router to guarantee it never reaches the browser bundle.
+
+## Key route
+
+A resource route (no default export) with a loader for `GET` and an action for `POST` and `DELETE`:
+
+```ts title="app/routes/fiducy.ts"
+import { toReactRouterHandlers } from '@fiducy/sdk/react-router';
+
+import { fiducy } from '~/lib/fiducy';
+
+const handlers = toReactRouterHandlers(fiducy);
+
+export const loader = handlers.loader;
+export const action = handlers.action;
+```
+
+Register it with a splat in `app/routes.ts`:
+
+```ts title="app/routes.ts"
+route('api/fiducy/*', 'routes/fiducy.ts'),
+```
+
+With `flatRoutes()` from `@react-router/fs-routes`, name the file `app/routes/api.fiducy.$.ts` instead and skip the registration.
+
+## Env
+
+Put the three `FIDUCY_` values in `.env`. The dev server loads `.env` into `process.env`. Nothing needs a `VITE_` prefix.
+
+## Widget
+
+```tsx title="app/components/KeySettings.tsx"
+import { FiducyKey } from '@fiducy/sdk/react';
+
+export const KeySettings = () => <FiducyKey provider="openai" />;
+```
+
+## Model route
+
+```ts title="app/routes/chat.ts"
+import { createOpenAI } from '@ai-sdk/openai';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '~/lib/fiducy';
+
+import type { Route } from './+types/chat';
+
+export async function action({ request }: Route.ActionArgs) {
+  const settings = await fiducy.providerSettings('openai', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createOpenAI(settings).chat('gpt-4o-mini');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+}
+```

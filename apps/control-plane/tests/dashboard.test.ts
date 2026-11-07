@@ -7,7 +7,7 @@ import { listAppKeys, noteKeyEvent, revokeAppKey } from '../src/lib/keyService';
 import { readUsageSeries, recordUsageBatch } from '../src/lib/usageService';
 import { usageSeriesQuerySchema } from '../src/lib/validators';
 import { CHAT_SETTINGS, OTHER_OWNER_ID, OWNER_ID } from './fixtures';
-import { createTestStore, createUsageEvent } from './fixtures';
+import { createFakeGateway, createTestStore, createUsageEvent } from './fixtures';
 
 const NOW = new Date();
 const EARLIER_TODAY = new Date(NOW.getTime() - 60 * 1000).toISOString();
@@ -46,6 +46,17 @@ describe('listing an app keys', () => {
     });
   });
 
+  it('tags keys that came in through import', async () => {
+    const store = createTestStore();
+    const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
+    await noteKeyEvent(store, savedKey(app.appID, 'key_widget'));
+    await noteKeyEvent(store, { ...savedKey(app.appID, 'key_imported'), source: 'import' });
+    const keys = await listAppKeys(store, OWNER_ID, app.appID);
+    if (!keys.ok) throw new Error('listing failed');
+    const sources = Object.fromEntries(keys.value.map((key) => [key.keyID, key.source]));
+    expect(sources).toEqual({ key_widget: 'widget', key_imported: 'import' });
+  });
+
   it('hides another owner app', async () => {
     const store = createTestStore();
     const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
@@ -55,16 +66,42 @@ describe('listing an app keys', () => {
 });
 
 describe('revoking a key from the dashboard', () => {
-  it('marks it revoked and tells the gateway', async () => {
+  it('deletes the sealed record at the gateway and marks the key revoked', async () => {
     const store = createTestStore();
+    const gateway = createFakeGateway();
     const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
     await noteKeyEvent(store, savedKey(app.appID, 'key_a'));
-    expect(await revokeAppKey(store, OWNER_ID, app.appID, 'key_a')).toEqual({
+    expect(await revokeAppKey(store, gateway.client, OWNER_ID, app.appID, 'key_a')).toEqual({
       ok: true,
       value: 'key_a'
     });
+    expect(gateway.deletedRecords).toEqual([{ appID: app.appID, keyID: 'key_a' }]);
     const keys = await listAppKeys(store, OWNER_ID, app.appID);
     expect(keys).toMatchObject({ ok: true, value: [{ keyID: 'key_a', status: 'revoked' }] });
+    const [gatewayApp] = await listGatewayApps(store);
+    expect(gatewayApp?.revokedKeyIDs).toEqual([]);
+  });
+
+  it('keeps the key active when the gateway cannot delete the record', async () => {
+    const store = createTestStore();
+    const gateway = createFakeGateway(false);
+    const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
+    await noteKeyEvent(store, savedKey(app.appID, 'key_a'));
+    expect(await revokeAppKey(store, gateway.client, OWNER_ID, app.appID, 'key_a')).toMatchObject({
+      ok: false,
+      error: { status: 502 }
+    });
+    const keys = await listAppKeys(store, OWNER_ID, app.appID);
+    expect(keys).toMatchObject({ ok: true, value: [{ keyID: 'key_a', status: 'active' }] });
+  });
+
+  it('only blocks through the gateway feed for apps that keep their own records', async () => {
+    const store = createTestStore();
+    const gateway = createFakeGateway();
+    const { app } = await createApp(store, OWNER_ID, { ...CHAT_SETTINGS, recordStorage: 'app' });
+    await noteKeyEvent(store, savedKey(app.appID, 'key_a'));
+    await revokeAppKey(store, gateway.client, OWNER_ID, app.appID, 'key_a');
+    expect(gateway.deletedRecords).toEqual([]);
     const [gatewayApp] = await listGatewayApps(store);
     expect(gatewayApp?.revokedKeyIDs).toEqual(['key_a']);
   });
@@ -72,12 +109,13 @@ describe('revoking a key from the dashboard', () => {
   it('feeds the gateway from the revoked index without reading every key entry', async () => {
     const keyValueStore = createMemoryKeyValueStore();
     const store = createControlStore(keyValueStore);
-    const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
+    const gateway = createFakeGateway();
+    const { app } = await createApp(store, OWNER_ID, { ...CHAT_SETTINGS, recordStorage: 'app' });
     for (const keyID of ['key_a', 'key_b', 'key_c']) {
       await noteKeyEvent(store, savedKey(app.appID, keyID));
     }
-    await revokeAppKey(store, OWNER_ID, app.appID, 'key_b');
-    await revokeAppKey(store, OWNER_ID, app.appID, 'key_b');
+    await revokeAppKey(store, gateway.client, OWNER_ID, app.appID, 'key_b');
+    await revokeAppKey(store, gateway.client, OWNER_ID, app.appID, 'key_b');
     const listedPrefixes: string[] = [];
     const countingStore = createControlStore({
       ...keyValueStore,
@@ -95,11 +133,16 @@ describe('revoking a key from the dashboard', () => {
     const store = createTestStore();
     const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
     await noteKeyEvent(store, savedKey(app.appID, 'key_a'));
-    expect(await revokeAppKey(store, OWNER_ID, app.appID, 'key_missing')).toMatchObject({
+    const gateway = createFakeGateway();
+    expect(
+      await revokeAppKey(store, gateway.client, OWNER_ID, app.appID, 'key_missing')
+    ).toMatchObject({
       ok: false,
       error: { status: 404 }
     });
-    expect(await revokeAppKey(store, OTHER_OWNER_ID, app.appID, 'key_a')).toMatchObject({
+    expect(
+      await revokeAppKey(store, gateway.client, OTHER_OWNER_ID, app.appID, 'key_a')
+    ).toMatchObject({
       ok: false,
       error: { status: 404 }
     });

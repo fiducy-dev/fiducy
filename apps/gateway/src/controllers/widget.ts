@@ -1,13 +1,19 @@
 import { WIDGET_FONT } from '../widget/font';
 import { buildWidgetSecurityHeaders, renderWidgetPage } from '../widget/page';
 
-import type { GatewayDependencies } from '../types';
+import type { GatewayDependencies, WidgetProtection } from '../types';
 
 function createNonce(): string {
   return Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('base64');
 }
 
-export async function serveWidget(request: Request, { appDirectory }: GatewayDependencies) {
+function readProtection({ attest, mockProviders }: GatewayDependencies): WidgetProtection {
+  if (attest) return 'enclave';
+  return mockProviders ? 'test' : 'unattested';
+}
+
+export async function serveWidget(request: Request, dependencies: GatewayDependencies) {
+  const { appDirectory } = dependencies;
   const searchParams = new URL(request.url).searchParams;
   const app = await appDirectory.findApp(searchParams.get('app') ?? '');
   if (!app) return new Response('This app is not registered', { status: 404 });
@@ -16,7 +22,9 @@ export async function serveWidget(request: Request, { appDirectory }: GatewayDep
     return new Response('This site is not allowed to embed the key widget', { status: 403 });
   }
   const nonce = createNonce();
-  const page = renderWidgetPage({ appID: app.appID, appName: app.name, parentOrigin, nonce });
+  const protection = readProtection(dependencies);
+  const { appID, name: appName } = app;
+  const page = renderWidgetPage({ appID, appName, parentOrigin, nonce, protection });
   return new Response(page, { headers: buildWidgetSecurityHeaders(nonce, parentOrigin) });
 }
 

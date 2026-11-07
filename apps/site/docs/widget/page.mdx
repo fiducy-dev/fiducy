@@ -1,0 +1,91 @@
+---
+title: Key widget
+order: 5
+description: The fiducy-key element and its React, Vue, Svelte and Solid wrappers.
+---
+
+# Key widget
+
+`<fiducy-key>` is a web component that handles the whole key flow for one provider:
+
+| State (`state` attribute) | Shows |
+| --- | --- |
+| `loading` | Nothing yet |
+| `signed-out` | "Sign in to connect your OpenAI key." |
+| `connect` | The gateway iframe with the key box |
+| `connected` | "OpenAI key connected" with **Replace** and **Remove** |
+| `error` | What went wrong, in plain words |
+
+It reads the gateway URL and app ID from your key route (`GET /api/fiducy/config`), so it needs no config props and no public env vars. The key goes from the user's browser straight into the gateway iframe; your page only gets a handle, which the element saves through `POST /api/fiducy/keys`.
+
+| Use | Import |
+| --- | --- |
+| [React](/docs/widget/react) | `FiducyKey` from `@fiducy/sdk/react` |
+| [Vue](/docs/widget/vue) | `FiducyKey` from `@fiducy/sdk/vue` |
+| [Svelte](/docs/widget/svelte) | `use:fiducyKey` from `@fiducy/sdk/svelte` |
+| [Solid](/docs/widget/solid) | `FiducyKey` from `@fiducy/sdk/solid` |
+| Plain HTML, Angular, Lit, anything else | `import '@fiducy/sdk/element'` |
+
+## The element
+
+```html
+<script type="module">
+  import '@fiducy/sdk/element';
+</script>
+
+<fiducy-key provider="openai"></fiducy-key>
+```
+
+Importing `@fiducy/sdk/element` defines the tag once. The wrappers do this for you.
+
+| Attribute | Default | |
+| --- | --- | --- |
+| `provider` | required | `openai`, `anthropic`, `gemini` or `openrouter` |
+| `base-path` | `/api/fiducy` | Where your key route is mounted |
+| `gateway-url`, `app-id` | from `/config` | Only to skip the config request |
+
+## Events
+
+All bubble and cross the shadow root.
+
+| Event | `detail` |
+| --- | --- |
+| `fiducy:connected` | `{ keyID, provider, createdAt }`, after your server saved the handle |
+| `fiducy:removed` | `{ keyID }`, after the key was revoked |
+| `fiducy:error` | `{ message }` |
+
+```js
+document.querySelector('fiducy-key').addEventListener('fiducy:connected', (event) => {
+  console.log('saved', event.detail.keyID);
+});
+```
+
+Saving or removing a key also fires `fiducy:keys-changed` on `window` (exported as `FIDUCY_KEYS_CHANGED`), so every `<fiducy-key>` and key list on the page refreshes.
+
+## Styling
+
+The element inherits your font and text color. Its parts are styleable from outside with `::part()`:
+
+| Part | |
+| --- | --- |
+| `status` | The row with the message and buttons |
+| `message` | The text |
+| `actions` | Replace, Remove, Keep current key |
+| `error` | Error text |
+| `frame` | The iframe container |
+
+```css
+fiducy-key::part(actions) { gap: 24px; }
+fiducy-key::part(message) { font-weight: 600; }
+```
+
+Buttons are at least 44px tall for touch. The iframe's own look follows the gateway's theme.
+
+## Where to put it
+
+- **In settings**, so users can connect, replace and remove keys ahead of time.
+- **In the chat, when a key is missing.** Your model route answers `409` with `{ data: { reason: 'no-key', provider } }` (from `respondToMissingKey`). Render `<fiducy-key provider={provider}>` where the reply would go, and send the message again on `fiducy:connected`. With assistant-ui, [`@fiducy/assistant-ui`](/docs/assistant-ui) does this for you.
+
+## Listing keys yourself
+
+`GET /api/fiducy/keys` answers `{ data: { keys: [{ keyID, provider, createdAt }] } }` and `DELETE /api/fiducy/keys/:keyID` removes one. Refresh your list on `fiducy:keys-changed`. In React with TanStack Query, [`useFiducyKeys`](/docs/widget/react#usefiducykeys) does this.

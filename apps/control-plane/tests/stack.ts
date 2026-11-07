@@ -35,7 +35,8 @@ function startGateway(controlPlaneURL: string, providerURL: string) {
     keyEvents: createRemoteKeyEvents(connection),
     appDirectory: createRemoteAppDirectory({ ...connection, refreshIntervalMilliseconds: 60000 }),
     usageLedger,
-    providerRegistry: createProviderRegistry({ openai: providerURL })
+    providerRegistry: createProviderRegistry({ openai: providerURL }),
+    controlPlaneToken: GATEWAY_TOKEN
   });
   const server = Bun.serve({ port: 0, fetch: gateway });
   return { server, usageLedger, gatewayURL: `http://localhost:${server.port}` };

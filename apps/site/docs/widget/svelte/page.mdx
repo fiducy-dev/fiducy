@@ -1,0 +1,27 @@
+---
+title: Svelte
+order: 3
+description: The fiducyKey action for Svelte and SvelteKit.
+---
+
+# Svelte
+
+```svelte
+<script>
+  import { fiducyKey } from '@fiducy/sdk/svelte';
+
+  const onConnected = (key) => console.log('saved', key.keyID);
+</script>
+
+<div use:fiducyKey={{ provider: 'openai', onConnected }}></div>
+```
+
+The action puts a `<fiducy-key>` inside the element and updates it when the options change.
+
+| Option | |
+| --- | --- |
+| `provider` | Required |
+| `basePath` | Default `/api/fiducy` |
+| `onConnected(key)`, `onRemoved(keyID)`, `onError(message)` | Callbacks |
+
+Actions only run in the browser, so it is safe in server-rendered SvelteKit pages.

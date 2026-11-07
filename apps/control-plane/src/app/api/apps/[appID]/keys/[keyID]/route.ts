@@ -1,5 +1,6 @@
 import { createEndpoint } from '@farm.js/core/api';
 
+import { getGatewayClient } from '@/lib/gatewayClient';
 import { revokeAppKey } from '@/lib/keyService';
 import { requireOwner } from '@/lib/middleware';
 import { respondWith, respondWithFailure } from '@/lib/responses';
@@ -10,6 +11,7 @@ export const DELETE = createEndpoint(
   async ({ context, params }) => {
     const revoked = await revokeAppKey(
       getControlStore(),
+      getGatewayClient(),
       context.ownerID,
       String(params.appID),
       String(params.keyID)
@@ -18,7 +20,7 @@ export const DELETE = createEndpoint(
     return respondWith(
       200,
       { keyID: revoked.value },
-      'Key revoked. The gateway stops using it within 30 seconds'
+      'Key revoked. Its sealed record is deleted and the handle no longer opens anything'
     );
   }
 );

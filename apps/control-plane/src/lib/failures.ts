@@ -7,3 +7,8 @@ export function describeFailure(status: number, message: string): ControlFailure
 export const APP_NOT_FOUND = describeFailure(404, 'No app with this ID belongs to your account');
 
 export const KEY_NOT_FOUND = describeFailure(404, 'No key with this ID belongs to this app');
+
+export const GATEWAY_UNAVAILABLE = describeFailure(
+  502,
+  'The gateway could not delete the sealed key, so it stays active. Try again in a moment'
+);

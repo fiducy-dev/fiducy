@@ -1,7 +1,7 @@
 ---
 title: Self-hosting
-order: 9
-description: Run the gateway enclave, KMS key and dashboard in your own AWS account.
+order: 10
+description: Run the gateway enclave and KMS key in your own AWS account.
 ---
 
 # Self-hosting
@@ -16,34 +16,48 @@ Self-hosting is free. You pay AWS for one Graviton instance with enclaves (about
 - a KMS key whose policy only allows `kms:Decrypt` from the enclave image you built
 - a `c6g.large` instance with Nitro enclaves on, an Elastic IP, and ports 80 and 443 open
 - a DynamoDB table (`KeysTable`) for sealed key records, on demand billing, with deletion protection and point-in-time recovery
-- an IAM role limited to the bucket, the key and the table
+- an IAM role limited to the bucket, the key, the table and the `/fiducy/*` parameters
 
-The host runs Postgres, the dashboard, the demo and Caddy for TLS. The gateway runs in the enclave and reads and writes sealed records in `KeysTable` directly.
+The host runs only the gateway enclave. TLS ends inside the enclave: Caddy runs next to the gateway and keeps its certificate sealed with the KMS key, so the parent host never sees plaintext traffic or a private key. The gateway reads and writes sealed records in `KeysTable` directly and talks to the dashboard over HTTPS with a token kept in Parameter Store (`/fiducy/gateway-token`).
 
-The landing page and these docs are not part of the stack. They deploy to Vercel from `apps/site`.
+## Host the dashboard
+
+The dashboard (`apps/control-plane`) is a Node app that needs Postgres. Host it wherever you run Node apps. It needs these environment variables:
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | Your Postgres connection string |
+| `FARM_AUTH_SECRET` | 32 random bytes |
+| `FARM_AUTH_URL` | The dashboard's public URL |
+| `FIDUCY_GATEWAY_URL` | `https://gw.<your-ip>.sslip.io`, from the deploy below |
+| `FIDUCY_GATEWAY_TOKEN` | The value of `/fiducy/gateway-token` in Parameter Store, created by the first deploy |
+
+Run `bunx farm auth migrate` in `apps/control-plane` once, with `DATABASE_URL` set, before the first start.
 
 ## Deploy with GitHub Actions
 
 1. Create an IAM user with admin rights for the first deploy.
 2. Add repository secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and optionally `AWS_REGION` (default `us-east-1`).
-3. Run the **AWS deploy** workflow.
+3. Add the repository variable `FIDUCY_CONTROL_PLANE_URL`: the dashboard's URL.
+4. Run the **AWS deploy** workflow.
 
-The workflow builds the enclave on the host, reads its `PCR0`, locks the KMS key to it, starts everything, and checks the endpoints. The run summary lists your URLs:
+The workflow creates the gateway token on the first run, builds the enclave on the host, locks the KMS key to its `PCR0`, starts it, and prints the gateway URL. Then copy the token into the dashboard's `FIDUCY_GATEWAY_TOKEN` and restart it:
 
+```bash
+aws ssm get-parameter --name /fiducy/gateway-token --with-decryption --query Parameter.Value --output text
 ```
-Gateway (in the enclave): https://gw.<your-ip>.sslip.io
-Dashboard:                https://app.<your-ip>.sslip.io
-Demo chat:                https://demo.<your-ip>.sslip.io
-```
+
+To replace the token, run the workflow by hand with **rotate_token** ticked, then put the new value in the dashboard's `FIDUCY_GATEWAY_TOKEN` and restart it. The old token stops working, and the gateway can't load app settings until the dashboard has the new one.
 
 ## Deploy from your machine
 
 ```bash
 export AWS_REGION=us-east-1
+export FIDUCY_CONTROL_PLANE_URL=https://<your-dashboard>
 bash infra/aws/deploy.sh
 ```
 
-Needs the AWS CLI, `jq` and admin credentials.
+Needs the AWS CLI, `jq`, `openssl` and admin credentials. Add `--rotate-token` to replace the gateway token.
 
 ## Tear down
 
@@ -51,7 +65,9 @@ Run the **AWS teardown** workflow, or `bash infra/aws/teardown.sh`. The KMS key 
 
 ## Run locally
 
-No AWS needed. A local master key stands in for KMS:
+To build an app against Fiducy, you only need `npx fiducy dev`: a single local gateway with a dev app, no dashboard and no clone. See [CLI](/docs/cli#dev).
+
+To work on Fiducy itself, run the whole stack from this repo. No AWS needed; a local master key stands in for KMS:
 
 ```bash
 bun install
@@ -66,7 +82,7 @@ This starts:
 | `3001` | Demo chat | Starts once you add `demoAppID` and `demoAppSecret` for an app with origin `http://localhost:3001` to `.prototype/secrets.json` |
 | `8787` | Gateway | `FIDUCY_GATEWAY_URL=http://localhost:8787` in the app you are testing |
 
-Run the app you are testing on another port (for example 5173) and add that origin, such as `http://localhost:5173`, to its allowed origins in the dashboard. `--mock` uses a fake OpenAI that logs the last four characters of the key it received, so you can see decryption happen.
+Run the app you are testing on another port (for example 5173) and add that origin, such as `http://localhost:5173`, to its allowed origins in the dashboard. `--mock` uses a fake OpenAI that logs the last four characters of the key it received, so you can see decryption happen. Sealed records are saved to `.prototype/key-records.json`, so keys survive a restart. Delete `.prototype/` to start fresh.
 
 ## Gateway environment
 
@@ -79,6 +95,9 @@ Run the app you are testing on another port (for example 5173) and add that orig
 | `FIDUCY_KEYS_TABLE` | DynamoDB table for sealed key records. When unset, records stay in memory (local only) |
 | `AWS_REGION` | Region for KMS and DynamoDB. Default `us-east-1` |
 | `FIDUCY_GATEWAY_TOKEN_CIPHERTEXT` | Control plane token, KMS-encrypted |
-| `FIDUCY_ENCLAVE_API_URL` | Enclaver API, for `/attestation` |
+| `FIDUCY_ENCLAVE_API_URL` | Enclaver API, for `/attestation`. The key widget says "Sealed in an enclave" only when this is set. Without it, the widget says "No enclave", or "Test gateway" with `FIDUCY_MOCK_PROVIDERS=true` |
+| `FIDUCY_CADDY_CONFIG` | Caddyfile for the TLS front inside the enclave. When unset, the gateway serves plain HTTP on `PORT` |
+| `FIDUCY_TLS_STATE_DIR` | Caddy's data directory, sealed into `KeysTable` within 10 seconds of a change and restored on start. If the gateway keeps stopping with "The stored TLS state could not be opened", delete the `blob:tls-state` item from the table; the next start requests a new certificate |
+| `FIDUCY_PUBLIC_HOST` | The hostname Caddy serves and requests a certificate for |
 | `FIDUCY_APPS_JSON` | Static app list when there is no control plane |
 | `PORT` | Default `8787` |

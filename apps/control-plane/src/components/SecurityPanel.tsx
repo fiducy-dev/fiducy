@@ -24,6 +24,16 @@ function describeStorage(app: AppView): SecurityRow {
   };
 }
 
+function describeKeyImport(app: AppView): SecurityRow {
+  return {
+    label: 'Key import',
+    value: app.allowKeyImport ? 'On' : 'Off',
+    detail: app.allowKeyImport
+      ? 'Your server can send plain keys in. Turn it off once existing keys are moved.'
+      : 'Keys only come in through the widget.'
+  };
+}
+
 function describeAttestation(status: GatewayStatus | undefined): SecurityRow {
   if (!status?.pcr0) {
     return {
@@ -62,6 +72,7 @@ export function SecurityPanel({ app }: AppProps) {
   const rows = [
     KEY_ACCESS_ROW,
     describeStorage(app),
+    describeKeyImport(app),
     describeAttestation(gatewayStatus.data),
     describeGateway(gatewayStatus.data)
   ];

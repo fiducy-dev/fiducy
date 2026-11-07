@@ -1,0 +1,153 @@
+---
+title: SvelteKit
+order: 4
+description: Add Fiducy to a SvelteKit 2 or 3 app with a server hook.
+---
+
+# SvelteKit
+
+```bash
+npx fiducy init
+```
+
+Or by hand: `npm install @fiducy/sdk`, then the files below. The working version (SvelteKit 3) is [`examples/sveltekit`](https://github.com/fiducy-dev/fiducy/tree/main/examples/sveltekit).
+
+## Run the example
+
+Copy the example app and run it with a local gateway:
+
+```bash
+npx degit fiducy-dev/fiducy/examples/sveltekit my-app
+cd my-app
+npm install
+npx fiducy dev --mock
+```
+
+`fiducy dev` writes `.env` and keeps running. In a second terminal, add the example's session secret and start the app:
+
+```bash
+echo "EXAMPLE_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
+npm run dev
+```
+
+Sign in as the test user, paste any string as the key (`--mock` answers with a fake model), and ask a question. The example signs users in with a test cookie and keeps handles in a JSON file (`example-kit`); swap both for your own auth and [storage](/docs/storage).
+
+## Env: pass it in
+
+SvelteKit loads `.env` into its own env modules, **not** into `process.env`. Pass the env module to `createFiducy` as `env`, or Fiducy cannot see your values.
+
+<CodeGroup>
+
+```ts title="SvelteKit 3"
+// src/lib/server/fiducy.ts
+import * as env from '$app/env/private';
+import { createFiducy } from '@fiducy/sdk/server';
+
+export const fiducy = createFiducy({ env, storage, getUserID });
+```
+
+```ts title="SvelteKit 2"
+// src/lib/server/fiducy.ts
+import { env } from '$env/dynamic/private';
+import { createFiducy } from '@fiducy/sdk/server';
+
+export const fiducy = createFiducy({ env, storage, getUserID });
+```
+
+</CodeGroup>
+
+SvelteKit 3 only exposes variables you declare in `src/env.ts`:
+
+```ts title="src/env.ts"
+import { defineEnvVars } from '@sveltejs/kit/env';
+
+export const variables = defineEnvVars({
+  FIDUCY_GATEWAY_URL: {},
+  FIDUCY_APP_ID: {},
+  FIDUCY_APP_SECRET: {}
+});
+```
+
+Never put the app secret in a `PUBLIC_` variable; Fiducy refuses to run if you do.
+
+## Server module
+
+```ts title="src/lib/server/fiducy.ts"
+import * as env from '$app/env/private';
+import { createFiducy } from '@fiducy/sdk/server';
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+
+import { auth } from './auth';
+import { pool } from './db';
+
+export const fiducy = createFiducy({
+  env,
+  storage: kyselyStorage(pool),
+  getUserID: async (request) => {
+    const session = await auth.api.getSession({ headers: request.headers });
+    return session?.user.id ?? null;
+  }
+});
+```
+
+Keeping it under `src/lib/server/` means SvelteKit refuses to bundle it for the browser.
+
+## Key route: a hook
+
+Like Better Auth, Fiducy mounts through `handle` in `hooks.server.ts`, so you don't need a route file:
+
+```ts title="src/hooks.server.ts"
+import { svelteKitHandler } from '@fiducy/sdk/sveltekit';
+
+import { fiducy } from './lib/server/fiducy';
+
+import type { Handle } from '@sveltejs/kit';
+
+export const handle: Handle = ({ event, resolve }) => svelteKitHandler({ event, resolve, fiducy });
+```
+
+Already have a `handle`? Combine them:
+
+```ts title="src/hooks.server.ts"
+import { sequence } from '@sveltejs/kit/hooks';
+
+const fiducyHandle: Handle = ({ event, resolve }) => svelteKitHandler({ event, resolve, fiducy });
+
+export const handle = sequence(fiducyHandle, yourHandle);
+```
+
+`svelteKitHandler` answers requests under `/api/fiducy` and passes everything else to `resolve`.
+
+## Widget
+
+```svelte title="src/routes/+page.svelte"
+<script>
+  import { fiducyKey } from '@fiducy/sdk/svelte';
+</script>
+
+<div use:fiducyKey={{ provider: 'openai' }}></div>
+```
+
+See [Svelte](/docs/widget/svelte) for events.
+
+## Model route
+
+```ts title="src/routes/api/chat/+server.ts"
+import { createOpenAI } from '@ai-sdk/openai';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '#lib/server/fiducy';
+
+import type { RequestHandler } from './$types';
+
+export const POST: RequestHandler = async ({ request }) => {
+  const settings = await fiducy.providerSettings('openai', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createOpenAI(settings).chat('gpt-4o-mini');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+};
+```
+
+SvelteKit 3 replaced `$lib` with `#lib` (a `package.json` `imports` entry, `"#lib/*": "./src/lib/*"`). On SvelteKit 2, import from `$lib/server/fiducy`.

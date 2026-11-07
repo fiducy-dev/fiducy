@@ -1,0 +1,28 @@
+{
+  "name": "@fiducy/example-react-router",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "react-router dev",
+    "build": "react-router build",
+    "typecheck": "react-router typegen && tsc"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "4.0.93",
+    "@fiducy/sdk": "^0.3.0-beta.0",
+    "@react-router/node": "8.5.1",
+    "ai": "7.0.139",
+    "isbot": "5.1.36",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-router": "8.5.1"
+  },
+  "devDependencies": {
+    "@react-router/dev": "8.5.1",
+    "@types/node": "26.6.6",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "vite": "8.3.4"
+  }
+}

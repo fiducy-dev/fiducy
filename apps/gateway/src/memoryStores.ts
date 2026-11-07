@@ -1,7 +1,7 @@
 import { hashSecret } from './hashing';
 
-import type { SealedRecord } from '@fiducy/core';
-import type { AppDirectory, AppRegistration, KeyStore } from './types';
+import type { Bytes, SealedRecord } from '@fiducy/core';
+import type { AppDirectory, AppRegistration, BlobStore, KeyStore } from './types';
 import type { RegisteredApp, UsageEvent, UsageLedger } from './types';
 
 export function createMemoryKeyStore(): KeyStore {
@@ -12,6 +12,16 @@ export function createMemoryKeyStore(): KeyStore {
     },
     findRecord: async (keyID) => records.get(keyID) ?? null,
     deleteRecord: async (keyID) => records.delete(keyID)
+  };
+}
+
+export function createMemoryBlobStore(): BlobStore {
+  const blobs = new Map<string, Bytes>();
+  return {
+    readBlob: async (name) => blobs.get(name) ?? null,
+    writeBlob: async (name, bytes) => {
+      blobs.set(name, bytes);
+    }
   };
 }
 

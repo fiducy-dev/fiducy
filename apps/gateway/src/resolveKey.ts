@@ -1,4 +1,4 @@
-import { fail, openSecret, parseHandle, succeed } from '@fiducy/core';
+import { KEY_UNAVAILABLE_ERROR, fail, openSecret, parseHandle, succeed } from '@fiducy/core';
 
 import { KEY_HANDLE_HEADER, KEY_RECORD_HEADER } from './constants';
 import { describeFailure } from './responses';
@@ -28,7 +28,13 @@ async function findRecord(
   }
   const record = await keyStore.findRecord(keyID);
   if (!record)
-    return fail(describeFailure(404, 'No key found for this handle. It may have been revoked'));
+    return fail(
+      describeFailure(
+        404,
+        'No key found for this handle. It may have been revoked',
+        KEY_UNAVAILABLE_ERROR
+      )
+    );
   return succeed(record);
 }
 
@@ -43,7 +49,7 @@ export async function resolveApiKey(
   const parsedHandle = parseHandle(handle);
   if (!parsedHandle.ok) return fail(describeOpenFailure(parsedHandle.error));
   if (app.revokedKeyIDs?.includes(parsedHandle.value.keyID)) {
-    return fail(describeFailure(403, 'This key was revoked by the app'));
+    return fail(describeFailure(403, 'This key was revoked by the app', KEY_UNAVAILABLE_ERROR));
   }
 
   const found = await findRecord(app, headers, parsedHandle.value.keyID, keyStore);

@@ -7,12 +7,15 @@ import type { ProviderName, ProviderRegistry, TokenUsage } from '@fiducy/provide
 
 export type RecordStorage = 'fiducy' | 'app';
 
+export type KeySource = 'widget' | 'import';
+
 export interface RegisteredApp {
   appID: string;
   name: string;
   monthlyRequestLimitPerKey: number;
   allowedOrigins: string[];
   recordStorage?: RecordStorage;
+  allowKeyImport?: boolean;
   revokedKeyIDs?: string[];
 }
 
@@ -53,7 +56,10 @@ export interface GatewayDependencies {
   usageLedger: UsageLedger;
   providerRegistry: ProviderRegistry;
   attest?: AttestationSource;
+  mockProviders?: boolean;
   keyEvents?: KeyEventReporter;
+  controlPlaneToken?: string;
+  rateLimiter?: RateLimiter;
 }
 
 export interface StoreKeyBody {
@@ -61,9 +67,19 @@ export interface StoreKeyBody {
   apiKey: string;
 }
 
+export interface ImportKeysBody {
+  apiKeys: string[];
+}
+
+export interface SealedKey {
+  handle: string;
+  record?: SealedRecord;
+}
+
 export interface GatewayFailure {
   status: number;
   message: string;
+  code?: string;
 }
 
 export interface ResolvedKey {
@@ -73,11 +89,14 @@ export interface ResolvedKey {
 
 export type GatewayResult<Value> = Result<Value, GatewayFailure>;
 
+export type WidgetProtection = 'enclave' | 'test' | 'unattested';
+
 export interface WidgetPageInput {
   appID: string;
   appName: string;
   parentOrigin: string;
   nonce: string;
+  protection: WidgetProtection;
 }
 
 export type RequestHandler = (request: Request) => Promise<Response>;
@@ -132,6 +151,7 @@ export interface KmsSettings {
 export interface GatewayRuntime {
   handleRequest: RequestHandler;
   usageLedger: FlushableUsageLedger | null;
+  keyWrapper: KeyWrapper;
   keyWrapperName: string;
 }
 
@@ -156,6 +176,29 @@ export interface DynamoKeyStoreOptions {
   tableName: string;
 }
 
+export interface BlobStore {
+  readBlob: (name: string) => Promise<Bytes | null>;
+  writeBlob: (name: string, bytes: Bytes) => Promise<void>;
+}
+
+export type DirectorySnapshot = Record<string, string>;
+
+export interface TlsStateOptions {
+  directory: string;
+  blobStore: BlobStore;
+  keyWrapper: KeyWrapper;
+}
+
+export interface TlsStateKeeper {
+  restore: () => Promise<boolean>;
+  persist: () => Promise<boolean>;
+  start: (intervalMilliseconds: number) => () => void;
+}
+
+export interface TlsFrontOptions extends TlsStateOptions {
+  caddyConfigPath: string;
+}
+
 export interface InstanceRoleCredentials {
   accessKeyId: string;
   secretAccessKey: string;
@@ -167,10 +210,37 @@ export interface KeyEvent {
   type: 'saved' | 'revoked';
   appID: string;
   keyID: string;
+  source?: KeySource;
+}
+
+export interface RevokeCaller {
+  appID: string;
+  isControlPlane: boolean;
 }
 
 export interface KeyEventReporter {
   report: (event: KeyEvent) => Promise<void>;
+}
+
+export interface RateLimitDecision {
+  isAllowed: boolean;
+  retryAfterSeconds: number;
+}
+
+export interface RateLimiter {
+  consumeToken: (clientID: string) => RateLimitDecision;
+}
+
+export interface TokenBucketOptions {
+  capacity: number;
+  refillPerSecond: number;
+  maximumTrackedClients: number;
+  readCurrentTime?: () => number;
+}
+
+export interface TokenBucket {
+  tokens: number;
+  refilledAt: number;
 }
 
 export interface CachingKeyWrapperOptions {

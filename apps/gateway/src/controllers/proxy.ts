@@ -2,7 +2,7 @@ import { buildUpstreamRequest, isPathAllowed, relayResponse } from '@fiducy/prov
 
 import { authenticateApp } from '../authentication';
 import { enforceRequestLimit, resolveApiKey } from '../resolveKey';
-import { respondWith, respondWithFailure } from '../responses';
+import { describeFailure, respondWithFailure } from '../responses';
 
 import type { ProviderName, TokenUsage } from '@fiducy/providers';
 import type { GatewayDependencies, UsageEvent } from '../types';
@@ -34,7 +34,7 @@ export async function proxyProviderRequest(
 ) {
   const provider = dependencies.providerRegistry[providerName];
   if (!isPathAllowed(provider, path))
-    return respondWith(400, null, 'This provider path is not allowed');
+    return respondWithFailure(describeFailure(400, 'This provider path is not allowed'));
   const app = await authenticateApp(dependencies.appDirectory, request.headers);
   if (!app.ok) return respondWithFailure(app.error);
   const resolved = await resolveApiKey(app.value, request.headers, dependencies);
@@ -51,10 +51,12 @@ export async function proxyProviderRequest(
     body: request.body,
     apiKey
   });
-  if (!upstreamRequest.ok) return respondWith(400, null, 'This provider path is not allowed');
+  if (!upstreamRequest.ok)
+    return respondWithFailure(describeFailure(400, 'This provider path is not allowed'));
 
   const upstreamResponse = await fetchUpstream(upstreamRequest.value);
-  if (!upstreamResponse) return respondWith(502, null, 'The provider could not be reached');
+  if (!upstreamResponse)
+    return respondWithFailure(describeFailure(502, 'The provider could not be reached'));
 
   const onUsage = (usage: TokenUsage) =>
     recordUsageInBackground(dependencies, {

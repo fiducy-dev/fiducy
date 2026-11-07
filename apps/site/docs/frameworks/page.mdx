@@ -1,0 +1,66 @@
+---
+title: Frameworks
+order: 4
+description: Mount the Fiducy key route in any framework, with a helper for each big one.
+---
+
+# Frameworks
+
+Fiducy's server is one standard `Request => Response` handler, `fiducy.handler`. Every framework page below mounts it at `/api/fiducy/*` with a small helper named like Better Auth's (`toNextJsHandler`, `toNodeHandler`, `svelteKitHandler`), and each one has a working example app in [`examples/`](https://github.com/fiducy-dev/fiducy/tree/main/examples) that the test suite runs in a browser.
+
+| Framework | Helper | Example |
+| --- | --- | --- |
+| [Next.js](/docs/frameworks/next) | `toNextJsHandler` from `@fiducy/sdk/next` | [`examples/next`](https://github.com/fiducy-dev/fiducy/tree/main/examples/next) |
+| [TanStack Start](/docs/frameworks/tanstack-start) | `toTanStackHandlers` from `@fiducy/sdk/tanstack` | [`examples/tanstack-start`](https://github.com/fiducy-dev/fiducy/tree/main/examples/tanstack-start) |
+| [React Router](/docs/frameworks/react-router) | `toReactRouterHandlers` from `@fiducy/sdk/react-router` | [`examples/react-router`](https://github.com/fiducy-dev/fiducy/tree/main/examples/react-router) |
+| [SvelteKit](/docs/frameworks/sveltekit) | `svelteKitHandler` from `@fiducy/sdk/sveltekit` | [`examples/sveltekit`](https://github.com/fiducy-dev/fiducy/tree/main/examples/sveltekit) |
+| [Nuxt](/docs/frameworks/nuxt) | `toNuxtHandler` from `@fiducy/sdk/nuxt` | [`examples/nuxt`](https://github.com/fiducy-dev/fiducy/tree/main/examples/nuxt) |
+| [Express, Fastify, Node](/docs/frameworks/express) | `toNodeHandler` from `@fiducy/sdk/node` | [`examples/express`](https://github.com/fiducy-dev/fiducy/tree/main/examples/express) |
+| [Farm.js](/docs/frameworks/farm) | `fiducy()` from `@fiducy/farm` | [`examples/farm`](https://github.com/fiducy-dev/fiducy/tree/main/examples/farm) |
+
+`npx fiducy init` writes these files for you; the pages show them so you know what each one does.
+
+## What every framework needs
+
+1. **A server module** that only server code imports, exporting `createFiducy({ storage, getUserID })`. The gateway URL, app ID and app secret come from `FIDUCY_GATEWAY_URL`, `FIDUCY_APP_ID` and `FIDUCY_APP_SECRET` in your server environment.
+2. **The key route** at `/api/fiducy/*` for `GET`, `POST` and `DELETE`. It serves:
+
+| Route | |
+| --- | --- |
+| `GET /api/fiducy/config` | Gateway URL, app ID and base path for the widget. Public values, no sign-in needed |
+| `GET /api/fiducy/keys` | The signed-in user's keys |
+| `POST /api/fiducy/keys` | Save a handle from the widget |
+| `DELETE /api/fiducy/keys/:keyID` | Revoke on the gateway, then delete the row |
+
+3. **The widget** on a page: [React, Vue, Svelte, Solid or plain HTML](/docs/widget).
+4. **A model call** with `fiducy.providerSettings(provider, { request })`; see [Quickstart, step 5](/docs/quickstart#5-call-the-model-with-the-users-key).
+
+## Any other server
+
+Anything that speaks Web `Request` and `Response` (Hono, Elysia, Bun, Deno, Cloudflare Workers, Astro endpoints) passes requests straight through:
+
+<CodeGroup>
+
+```ts title="Hono"
+app.on(['GET', 'POST', 'DELETE'], '/api/fiducy/*', (context) => fiducy.handler(context.req.raw));
+```
+
+```ts title="Bun"
+Bun.serve({
+  fetch: (request) => {
+    if (new URL(request.url).pathname.startsWith('/api/fiducy/')) return fiducy.handler(request);
+    return yourApp(request);
+  }
+});
+```
+
+```ts title="Astro"
+// src/pages/api/fiducy/[...path].ts
+import { fiducy } from '../../../lib/fiducy';
+
+export const ALL = ({ request }: { request: Request }) => fiducy.handler(request);
+```
+
+</CodeGroup>
+
+Mounted somewhere other than `/api/fiducy`? Pass `basePath` to `createFiducy` and `base-path` (or `basePath`) to the widget.

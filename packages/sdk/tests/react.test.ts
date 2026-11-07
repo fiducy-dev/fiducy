@@ -38,7 +38,7 @@ describe('saveConnectedKey', () => {
       const key = await saveConnectedKey({ provider: 'openai', handle: 'kh_test' }, basePath);
       expect(key).toEqual(savedKey);
       expect(lastBody).toEqual({ provider: 'openai', handle: 'kh_test' });
-      expect(events).toEqual([{ basePath }]);
+      expect(events).toEqual([{ basePath, source: null }]);
     } finally {
       Object.assign(globalThis, { window: previousWindow });
     }

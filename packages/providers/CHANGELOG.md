@@ -1,5 +1,12 @@
 # @fiducy/providers
 
+## 0.3.0-beta.0
+
+### Patch Changes
+
+- Updated dependencies [[`0386aca`](https://github.com/fiducy-dev/fiducy/commit/0386aca24899ad04a1a3df3d5135a25c8799aa02)]:
+  - @fiducy/core@0.3.0-beta.0
+
 ## 0.2.0
 
 ### Patch Changes

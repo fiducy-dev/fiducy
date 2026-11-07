@@ -9,7 +9,7 @@ import type { FiducyToolkitOptions } from './types.ts';
  * model (or your server, through `requestKey`) calls it, the thread shows the key box, and
  * the run continues once the user saves a key.
  */
-export function fiducyToolkit(options: FiducyToolkitOptions): Toolkit {
+export function fiducyToolkit(options: FiducyToolkitOptions = {}): Toolkit {
   return {
     [CONNECT_KEY_TOOL]: {
       type: 'human',

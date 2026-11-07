@@ -59,6 +59,8 @@ async function startGateway(demoURL: string, providerURL: string) {
 
 export async function startDemoStack() {
   const demoURL = `http://localhost:${DEMO_PORT}`;
+  buildPackage('core');
+  buildPackage('widget');
   buildPackage('sdk');
   buildPackage('farm');
   buildPackage('assistant-ui');

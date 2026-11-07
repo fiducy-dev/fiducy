@@ -16,7 +16,7 @@ export function AppKeys({ app }: AppProps) {
   return (
     <Panel
       title="User keys"
-      description="Every key your users stored through the widget. Fiducy shows handles and counts, never the key."
+      description="Every key your users stored, through the widget or an import. Fiducy shows handles and counts, never the key."
     >
       {keys.isPending ? <Skeleton className="h-32 w-full" /> : null}
       {keys.isError ? (

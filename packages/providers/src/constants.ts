@@ -1,3 +1,5 @@
+import { GATEWAY_ERROR_HEADER } from '@fiducy/core';
+
 export const STRIPPED_REQUEST_HEADERS = [
   'authorization',
   'x-api-key',
@@ -23,6 +25,7 @@ export const STRIPPED_REQUEST_HEADERS = [
 ];
 
 export const STRIPPED_RESPONSE_HEADERS = [
+  GATEWAY_ERROR_HEADER,
   'set-cookie',
   'connection',
   'keep-alive',

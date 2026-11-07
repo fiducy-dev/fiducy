@@ -14,7 +14,8 @@
       "@fiducy/widget",
       "@fiducy/sdk",
       "@fiducy/farm",
-      "@fiducy/assistant-ui"
+      "@fiducy/assistant-ui",
+      "fiducy"
     ]
   ],
   "linked": [],

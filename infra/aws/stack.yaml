@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Fiducy prototype - one Graviton host running the gateway inside a Nitro enclave
+Description: Fiducy gateway - one Graviton host running the gateway inside a Nitro enclave
 
 Parameters:
   AmiId:
@@ -94,6 +94,14 @@ Resources:
             Condition:
               StringNotEqualsIgnoreCase:
                 kms:RecipientAttestation:ImageSha384: !Ref EnclaveImageSha384
+          # ReEncrypt decrypts under this key and re-encrypts under another one, without a Decrypt
+          # call. The gateway never uses it, so it is refused for everyone, or a stored share could
+          # be moved under a key the caller controls and opened there.
+          - Sid: NoReEncrypt
+            Effect: Deny
+            Principal: '*'
+            Action: kms:ReEncrypt*
+            Resource: '*'
 
   KeysTable:
     Type: AWS::DynamoDB::Table
@@ -114,7 +122,7 @@ Resources:
   HostSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Public HTTPS for the gateway, dashboard and demo
+      GroupDescription: Public HTTPS for the gateway
       SecurityGroupIngress:
         - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0 }
         - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0 }

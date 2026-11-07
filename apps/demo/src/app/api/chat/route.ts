@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const model = findDemoModel(body.model);
   const settings = await fiducyServer.providerSettings(model.provider, { userID });
   // No key yet: the reply asks for one, and the key box opens inside the thread.
-  if (!settings) return requestKey({ provider: model.provider });
+  if (!settings.ok) return requestKey({ provider: model.provider });
 
   const tools = frontendTools(body.tools ?? {});
   const result = streamText({

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 
 import { SAMPLE_API_KEY } from '@fiducy/testing';
-import { CHAT_APP, DESK_APP, startGatewayHarness } from './harness';
+import { CHAT_APP, CONTROL_PLANE_TOKEN, DESK_APP, startGatewayHarness } from './harness';
 
 let harness: Awaited<ReturnType<typeof startGatewayHarness>>;
 
@@ -77,6 +77,40 @@ describe('revoking a key', () => {
       'DELETE'
     );
     expect(response.status).toBe(404);
+  });
+});
+
+describe('revoking a key from the control plane', () => {
+  const revokeAsControlPlane = (keyID: string, query = '') =>
+    fetch(`${harness.gatewayURL}/keys/${keyID}${query}`, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${CONTROL_PLANE_TOKEN}` }
+    });
+
+  it('deletes the sealed record when the gateway token names the right app', async () => {
+    const { body } = await harness.storeKey(CHAT_APP.appID, SAMPLE_API_KEY);
+    const keyID = body.data.handle.slice(3, 25);
+    const revoked = await revokeAsControlPlane(keyID, `?appID=${CHAT_APP.appID}`);
+    expect(revoked.status).toBe(200);
+    expect(await harness.keyStore.findRecord(keyID)).toBeNull();
+  });
+
+  it('refuses the wrong app and a missing app ID', async () => {
+    const { body } = await harness.storeKey(CHAT_APP.appID, SAMPLE_API_KEY);
+    const keyID = body.data.handle.slice(3, 25);
+    expect((await revokeAsControlPlane(keyID, `?appID=${DESK_APP.appID}`)).status).toBe(404);
+    expect((await revokeAsControlPlane(keyID)).status).toBe(400);
+    expect(await harness.keyStore.findRecord(keyID)).not.toBeNull();
+  });
+
+  it('treats an unknown token as an app secret and rejects it', async () => {
+    const { body } = await harness.storeKey(CHAT_APP.appID, SAMPLE_API_KEY);
+    const keyID = body.data.handle.slice(3, 25);
+    const response = await fetch(`${harness.gatewayURL}/keys/${keyID}?appID=${CHAT_APP.appID}`, {
+      method: 'DELETE',
+      headers: { authorization: 'Bearer gateway_token_wrong_0000000000' }
+    });
+    expect(response.status).toBe(401);
   });
 });
 

@@ -1,0 +1,172 @@
+---
+title: SQL databases
+order: 1
+description: Store handles in Postgres, MySQL or SQLite with kyselyStorage, and create the table with getMigrations.
+---
+
+# SQL databases
+
+`kyselyStorage` keeps handles in one table of the database you already have. It takes your existing connection (a `pg` pool, a `mysql2` pool, a SQLite database or a Kysely instance), works out which database it is, and runs every query through [Kysely](https://kysely.dev) with bound parameters.
+
+```bash
+npm install kysely
+```
+
+Kysely is the only extra package. You keep the database driver you already use.
+
+## Connect
+
+Pass the connection your app already has. Fiducy only reads and writes its own table.
+
+<CodeGroup>
+
+```ts title="Postgres"
+// lib/fiducy.ts
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+import { Pool } from 'pg';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+export const storage = kyselyStorage(pool);
+```
+
+```ts title="MySQL"
+// lib/fiducy.ts
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+import { createPool } from 'mysql2/promise';
+
+export const storage = kyselyStorage(createPool(process.env.DATABASE_URL!));
+```
+
+```ts title="SQLite (Node)"
+// lib/fiducy.ts
+import { DatabaseSync } from 'node:sqlite';
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+
+export const storage = kyselyStorage(new DatabaseSync('fiducy.db'));
+```
+
+```ts title="SQLite (Bun)"
+// lib/fiducy.ts
+import { Database } from 'bun:sqlite';
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+
+export const storage = kyselyStorage(new Database('fiducy.db'));
+```
+
+```ts title="Kysely"
+// lib/fiducy.ts
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+
+import { db } from './db'; // your Kysely instance
+
+export const storage = kyselyStorage({ db, type: 'postgres' });
+```
+
+</CodeGroup>
+
+Then pass it to `createFiducy`:
+
+```ts
+export const fiducy = createFiducy({ gatewayURL, appSecret, storage, getUserID });
+```
+
+### What it accepts
+
+| Connection | Detected as |
+| --- | --- |
+| `pg` `Pool`, or a pool that extends it (`@neondatabase/serverless` `Pool`) | `postgres` |
+| `mysql2` pool, from `mysql2` or `mysql2/promise` | `mysql` |
+| `better-sqlite3`, `bun:sqlite` or `node:sqlite` database | `sqlite` |
+| A Kysely `PostgresDialect`, `MysqlDialect` or `SqliteDialect` | from the dialect |
+| `{ db, type }`: an existing Kysely instance | the `type` you pass |
+| `{ dialect, type }`: any other Kysely dialect (Cloudflare D1, Turso/libSQL, postgres.js, PlanetScale) | the `type` you pass |
+
+`type` is `'postgres'`, `'mysql'` or `'sqlite'`. This mirrors how [Better Auth](https://www.better-auth.com/docs/adapters/other-relational-databases) takes a database, so if your Better Auth config has `database: pool`, pass Fiducy the same `pool`.
+
+## Create the table
+
+Fiducy needs one table, `fiducy_user_key` (see [the table](/docs/storage#the-table)). Create it once, before the first request, the same way you run your other migrations.
+
+**The CLI:** `npx fiducy migrate` loads your server module, shows the SQL and creates what is missing. `npx fiducy generate` writes the same SQL to `fiducy_migrations/` for your own migration tool. See [CLI](/docs/cli#migrate).
+
+```bash
+npx fiducy migrate
+```
+
+**Option 1: run it from a script.** `getMigrations` looks at the database and only creates what is missing:
+
+```ts title="scripts/fiducy-migrate.ts"
+import { getMigrations } from '@fiducy/sdk/storage/kysely';
+import { Pool } from 'pg';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const migrations = await getMigrations(pool);
+console.log((await migrations.compileMigrations()) || 'Fiducy table is up to date');
+await migrations.runMigrations();
+await pool.end();
+```
+
+```bash
+bun scripts/fiducy-migrate.ts   # or: npx tsx scripts/fiducy-migrate.ts
+```
+
+**Option 2: add the SQL to your own migrations.** `generateSchema` returns the exact SQL `getMigrations` runs:
+
+```ts
+import { generateSchema } from '@fiducy/sdk/storage';
+
+const { contents } = generateSchema({ adapter: 'kysely', dialect: 'postgres' });
+```
+
+For Postgres it is:
+
+```sql
+create table if not exists "fiducy_user_key" (
+  "user_id" text not null,
+  "key_id" text not null,
+  "provider" text not null,
+  "handle" text not null,
+  "record" text,
+  "source" text,
+  "created_at" text not null,
+  primary key ("user_id", "key_id")
+);
+
+create index if not exists "fiducy_user_key_user_provider_idx" on "fiducy_user_key" ("user_id", "provider");
+```
+
+Migrations only ever create the table and its index. They never alter or drop anything. If a table with that name exists but is missing a column, `getMigrations` stops with an error that names the missing columns.
+
+## Options
+
+```ts
+kyselyStorage(connection, { tableName: 'ai_key_handles' });
+getMigrations(connection, { tableName: 'ai_key_handles' });
+```
+
+| Option | Default | Notes |
+| --- | --- | --- |
+| `tableName` | `fiducy_user_key` | Letters, digits and underscores, up to 48 characters. Pass the same name to `getMigrations` |
+
+## No database yet?
+
+Use SQLite while you build. Node 22.5+ and Bun have it built in, so there is nothing to install apart from `kysely`:
+
+```ts title="lib/fiducy.ts"
+import { DatabaseSync } from 'node:sqlite';
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+
+export const storage = kyselyStorage(new DatabaseSync('fiducy.db'));
+```
+
+Add `fiducy.db` to `.gitignore` and create the table with `npx fiducy migrate`. (`npx fiducy init` sets this up for you at `.fiducy/keys.sqlite` when it finds no database.) This works locally and on any long-running server with a disk. On serverless hosts (Vercel, Netlify), the disk is wiped, so switch to hosted Postgres such as [Neon](https://neon.tech) or [Supabase](https://supabase.com) and change only this line.
+
+## Gotchas
+
+- **"The Fiducy table does not exist yet."** The table hasn't been created in this database. Run `npx fiducy migrate` (or the migration script) against the same `DATABASE_URL` your app uses.
+- **Don't migrate on every request.** Run `getMigrations` from a script or your deploy step, not inside a route, so a serverless cold start never runs DDL.
+- **Neon's HTTP driver.** `neon()` from `@neondatabase/serverless` is not a pool. Pass `new Pool({ connectionString })` from the same package instead.
+- **Postgres schemas.** The table is created in the connection's default schema (usually `public`). To use another schema, set it on the pool, for example `new Pool({ connectionString, options: '-c search_path=app' })`.
+- **SQLite paths are relative to where the server starts**, not to the file that opens the database. Use an absolute path if your dev server and scripts start in different folders.
+- **Edge runtimes** (Cloudflare Workers, Vercel Edge) can't use `pg` or `mysql2` pools. Use a Kysely dialect made for the edge, such as Cloudflare D1, with `{ dialect, type }`.

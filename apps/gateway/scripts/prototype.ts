@@ -5,11 +5,13 @@ import { createLocalKeyWrapper } from '@fiducy/core';
 import { createProviderRegistry } from '@fiducy/providers';
 import { startMockProvider } from '@fiducy/testing';
 
-import { createMemoryKeyStore } from '../src/memoryStores';
 import { createRemoteAppDirectory } from '../src/remoteAppDirectory';
 import { createRemoteKeyEvents } from '../src/remoteKeyEvents';
 import { createRemoteUsageLedger } from '../src/remoteUsageLedger';
 import { createGateway } from '../src/router';
+
+import type { SealedRecord } from '@fiducy/core';
+import type { KeyStore } from '../src/types';
 
 interface PrototypeSecrets {
   gatewayToken: string;
@@ -21,6 +23,7 @@ interface PrototypeSecrets {
 const ROOT = join(import.meta.dir, '../../..');
 const STATE_DIR = join(ROOT, '.prototype');
 const SECRETS_PATH = join(STATE_DIR, 'secrets.json');
+const KEY_RECORDS_PATH = join(STATE_DIR, 'key-records.json');
 const CONTROL_PORT = 3000;
 const DEMO_PORT = 3001;
 const GATEWAY_PORT = 8787;
@@ -41,6 +44,26 @@ function loadSecrets(): PrototypeSecrets {
   const secrets = { gatewayToken: randomToken(32), masterKey: randomToken(32) };
   writeFileSync(SECRETS_PATH, JSON.stringify(secrets, null, 2), { mode: 0o600 });
   return secrets;
+}
+
+function createFileKeyStore(path: string): KeyStore {
+  const records = new Map<string, SealedRecord>(
+    existsSync(path) ? Object.entries(JSON.parse(readFileSync(path, 'utf8'))) : []
+  );
+  const save = () =>
+    writeFileSync(path, JSON.stringify(Object.fromEntries(records), null, 2), { mode: 0o600 });
+  return {
+    saveRecord: async (record) => {
+      records.set(record.keyID, record);
+      save();
+    },
+    findRecord: async (keyID) => records.get(keyID) ?? null,
+    deleteRecord: async (keyID) => {
+      const deleted = records.delete(keyID);
+      if (deleted) save();
+      return deleted;
+    }
+  };
 }
 
 async function waitFor(url: string, name: string, process: Bun.Subprocess) {
@@ -114,13 +137,14 @@ const gateway = Bun.serve({
   idleTimeout: 255,
   fetch: createGateway({
     keyWrapper: createLocalKeyWrapper(new Uint8Array(Buffer.from(secrets.masterKey, 'base64url'))),
-    keyStore: createMemoryKeyStore(),
+    keyStore: createFileKeyStore(KEY_RECORDS_PATH),
     keyEvents: createRemoteKeyEvents(connection),
     appDirectory: createRemoteAppDirectory({ ...connection, refreshIntervalMilliseconds: 30000 }),
     usageLedger,
     providerRegistry: createProviderRegistry(
       mockProvider ? { openai: mockProvider.baseURL } : undefined
-    )
+    ),
+    mockProviders: mockProvider !== null
   })
 });
 

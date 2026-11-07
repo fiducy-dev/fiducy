@@ -8,123 +8,102 @@ description: Add bring-your-own-key to an assistant-ui chat, with the key box op
 
 `@fiducy/assistant-ui` adds a `connect_api_key` tool to an [assistant-ui](https://www.assistant-ui.com) thread. When a user has no key for the model, your chat route answers with that tool call, the thread shows the Fiducy key box, and the run continues once the user saves a key. Your app only ever stores a handle.
 
-This page assumes an assistant-ui app on the AI SDK runtime (`useChatRuntime`), which is what `npx assistant-ui create` gives you. New templates import it from `@assistant-ui/ai-sdk`; older apps use `@assistant-ui/react-ai-sdk`. The examples use the older name; the imports are the same in both.
+This page edits an app made with `npx assistant-ui create` (Next.js, AI SDK runtime). Older apps import from `@assistant-ui/react-ai-sdk` instead of `@assistant-ui/ai-sdk`; the names are the same in both.
 
-## 1. Install
+## 1. Add Fiducy
 
 ```bash
-npm install @fiducy/sdk @fiducy/assistant-ui
+npx fiducy init
+npm install @fiducy/assistant-ui
 ```
 
-You also need a gateway and an app in the dashboard. See [Quickstart, step 0 and 1](/docs/quickstart#0-have-a-gateway-to-talk-to) for both and for the env vars.
+`init` creates `lib/fiducy.ts` and the key route `app/api/fiducy/[...path]/route.ts` (see [Next.js](/docs/frameworks/next) for what they contain), and `npx fiducy dev --mock` gives you a local gateway. Follow [Quickstart](/docs/quickstart) steps 2 and 3 for the table and the gateway.
 
-## 2. Server instance and key routes
+The `npx assistant-ui create` template has no sign-in. Add auth first; `getUserID` must return the signed-in user's ID.
 
-Create the server instance once. In Next.js:
+You don't place the key box yourself. When a user has no key, the chat route asks for one, and the thread shows the key box as a message. That takes two edits to files the template already has.
 
-```ts title="lib/fiducy.ts"
-import { createFiducy, keyValueStorage } from '@fiducy/sdk/server';
+## 2. Ask for a key in the chat route
 
-import { getSessionUserID } from '@/lib/auth'; // placeholder: your own auth's session lookup
-
-const { FIDUCY_GATEWAY_URL, FIDUCY_APP_SECRET } = process.env;
-if (!FIDUCY_GATEWAY_URL || !FIDUCY_APP_SECRET) throw new Error('Set the Fiducy env vars');
-
-// Write getSessionUserID with your auth provider; see the Quickstart table. Return null when signed out.
-export const getUserID = (request: Request) => getSessionUserID(request);
-
-export const fiducy = createFiducy({
-  gatewayURL: FIDUCY_GATEWAY_URL,
-  appSecret: FIDUCY_APP_SECRET,
-  storage: keyValueStorage(yourUnstorageInstance), // see Storage
-  getUserID
-});
-```
-
-```ts title="app/api/fiducy/[...path]/route.ts"
-import { fiducy } from '@/lib/fiducy';
-
-export const GET = fiducy.handler;
-export const POST = fiducy.handler;
-export const DELETE = fiducy.handler;
-```
-
-`memoryStorage()` works for a first try, but loses every handle on restart. See [Storage](/docs/storage) for persistent options.
-
-## 3. Ask for a key from the chat route
+In `app/api/chat/route.ts`, look up the user's key before calling the model. Lines marked `// Fiducy` are new or changed; the rest is the template:
 
 ```ts title="app/api/chat/route.ts"
-import { createOpenAI } from '@ai-sdk/openai';
-import { frontendTools } from '@assistant-ui/react-ai-sdk';
-import { requestKey, withoutKeyRequests } from '@fiducy/assistant-ui/server';
+import { createOpenAI } from '@ai-sdk/openai'; // Fiducy
+import { frontendTools } from '@assistant-ui/ai-sdk';
+import { requestKey, withoutKeyRequests } from '@fiducy/assistant-ui/server'; // Fiducy
+import { respondToMissingKey } from '@fiducy/sdk/server'; // Fiducy
 import { convertToModelMessages, streamText } from 'ai';
 
-import { fiducy, getUserID } from '@/lib/fiducy';
+import { fiducy } from '@/lib/fiducy'; // Fiducy
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  const userID = await getUserID(request);
-  if (!userID) return new Response('Sign in first', { status: 401 });
+export async function POST(req: Request) {
+  // Fiducy: signed out answers 401; no key yet shows the key box instead of an answer.
+  const settings = await fiducy.providerSettings('openai', { request: req });
+  if (!settings.ok && settings.reason === 'signed-out') return respondToMissingKey(settings);
+  if (!settings.ok) return requestKey({ provider: 'openai' });
 
-  const settings = await fiducy.providerSettings('openai', { userID });
-  if (!settings) return requestKey({ provider: 'openai' }); // the key box opens in the thread
-
-  const tools = frontendTools(body.tools);
+  const { messages, system, tools } = await req.json();
+  const aiSDKTools = frontendTools(tools ?? {});
   const result = streamText({
-    model: createOpenAI(settings).chat('gpt-4o-mini'),
-    messages: await convertToModelMessages(withoutKeyRequests(body.messages), { tools }),
-    tools
+    model: createOpenAI(settings).responses('gpt-4o-mini'), // Fiducy
+    // Fiducy: withoutKeyRequests(...) around messages
+    messages: await convertToModelMessages(withoutKeyRequests(messages), { tools: aiSDKTools }),
+    system,
+    tools: aiSDKTools
   });
   return result.toUIMessageStreamResponse();
 }
 ```
 
+- `createOpenAI(settings)` replaces the template's `openai` import, so the call goes through your gateway with the user's key.
 - `requestKey` answers with a short message and a `connect_api_key` call, without calling a model.
 - `withoutKeyRequests` drops those turns before the next model call, so the model answers the user's original question.
 - If you switch models per request, pass the provider of the chosen model, for example `'anthropic'` for Claude.
 
-## 4. Register the tool in the thread
+## 3. Register the key tool in the thread
+
+In `app/assistant.tsx`, give the runtime provider a config with `fiducyToolkit`. Again, lines marked `// Fiducy` are the change:
 
 ```tsx title="app/assistant.tsx"
 'use client';
 
-import { AssistantRuntimeProvider, AuiConfig, Tools } from '@assistant-ui/react';
-import { AssistantChatTransport, useChatRuntime } from '@assistant-ui/react-ai-sdk';
-import { fiducyToolkit } from '@fiducy/assistant-ui';
+import { AssistantRuntimeProvider, AuiConfig, Tools } from '@assistant-ui/react'; // Fiducy
+import { AssistantChatTransport, useChatRuntime } from '@assistant-ui/ai-sdk';
+import { fiducyToolkit } from '@fiducy/assistant-ui'; // Fiducy
 import { lastAssistantMessageIsCompleteWithToolCalls } from 'ai';
 
 import { Thread } from '@/components/assistant-ui/thread';
 
-const gatewayURL = process.env.NEXT_PUBLIC_FIDUCY_GATEWAY_URL!;
-const appID = process.env.NEXT_PUBLIC_FIDUCY_APP_ID!;
+const config = AuiConfig({ tools: Tools({ toolkit: fiducyToolkit() }) }); // Fiducy
 
-export function Assistant() {
+export const Assistant = () => {
   const runtime = useChatRuntime({
-    transport: new AssistantChatTransport({ api: '/api/chat' }),
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls
-  });
-  const config = AuiConfig({
-    tools: Tools({ toolkit: { ...fiducyToolkit({ gatewayURL, appID }) } })
+    // Already in the template: resends the message once the key is saved.
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    transport: new AssistantChatTransport({ api: '/api/chat' })
   });
 
   return (
-    <AssistantRuntimeProvider runtime={runtime} config={config}>
+    <AssistantRuntimeProvider runtime={runtime} config={config}> {/* Fiducy */}
+      {/* the template's layout, unchanged */}
       <Thread />
     </AssistantRuntimeProvider>
   );
-}
+};
 ```
 
-- `sendAutomaticallyWhen` resends the user's message once the key is saved.
 - The key box saves the handle through your `/api/fiducy` route.
-- The app ID and gateway URL are public. Expose them with your framework's public prefix (`NEXT_PUBLIC_` here); the app secret never gets one.
-- Spread your own tools next to `fiducyToolkit(...)` in the same `toolkit` object.
+- The key box reads the gateway URL and app ID from your key route, so there are no public env vars. Pass `fiducyToolkit({ basePath })` if the route is not at `/api/fiducy`.
+- Your own tools go in the same `toolkit` object: `{ ...fiducyToolkit(), ...yourTools }`.
+- Template paths vary by version (`thread.tsx` or `elements/thread.aui.tsx`); keep whatever import the template has.
 
 `connect_api_key` is a human tool, so the model can call it too, for example when the user asks to add a Claude key.
 
-## 5. Try it
+## 4. Try it
 
-Sign in, send a message. The thread answers "Connect your OpenAI key to keep going" with the key box. Save a key, and the original message is answered. With the local prototype and `--mock`, any string works as a key. The fake OpenAI answers both the Chat Completions API (`.chat(...)`) and the Responses API (`openai(...)` or `.responses(...)`, the template's default).
+Sign in, send a message. The thread answers "Connect your OpenAI key to keep going" with the key box. Save a key, and the original message is answered. With `npx fiducy dev --mock`, any string works as a key. The fake OpenAI answers both the Chat Completions API (`.chat(...)`) and the Responses API (`openai(...)` or `.responses(...)`, the template's default).
+
+If the thread shows "Waiting on tool: connect_api_key" with Allow and Deny buttons instead of the key box, the tool isn't registered: check that `<AssistantRuntimeProvider>` has `config={config}`. Start a new chat after fixing it.
 
 ## Styling
 

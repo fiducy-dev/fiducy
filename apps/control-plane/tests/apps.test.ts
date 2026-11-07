@@ -4,7 +4,7 @@ import { hashSecret as hashSecretInGateway } from '../../gateway/src/hashing';
 import { createApp, deleteApp, listApps, listGatewayApps } from '../src/lib/appService';
 import { rotateAppSecret, updateApp } from '../src/lib/appService';
 import { hashSecret } from '../src/lib/secrets';
-import { appSettingsUpdateSchema } from '../src/lib/validators';
+import { appSettingsSchema, appSettingsUpdateSchema } from '../src/lib/validators';
 import { CHAT_SETTINGS, OTHER_OWNER_ID, OWNER_ID, createTestStore } from './fixtures';
 
 describe('creating an app', () => {
@@ -62,6 +62,22 @@ describe('changing an app', () => {
     const updated = await updateApp(store, OWNER_ID, app.appID, { monthlyRequestLimitPerKey: 5 });
     expect(updated).toMatchObject({ ok: true, value: { monthlyRequestLimitPerKey: 5 } });
     expect((await store.findApp(app.appID))?.appSecretHash).toBe(before?.appSecretHash ?? '');
+  });
+
+  it('keeps key import off until the owner turns it on, and tells the gateway', async () => {
+    const store = createTestStore();
+    const created = appSettingsSchema.parse({
+      name: 'Chat',
+      monthlyRequestLimitPerKey: 10,
+      allowedOrigins: []
+    });
+    expect(created.allowKeyImport).toBe(false);
+    const { app } = await createApp(store, OWNER_ID, created);
+    const changes = appSettingsUpdateSchema.parse({ allowKeyImport: true });
+    expect(changes).toEqual({ allowKeyImport: true });
+    await updateApp(store, OWNER_ID, app.appID, changes);
+    const [gatewayApp] = await listGatewayApps(store);
+    expect(gatewayApp?.allowKeyImport).toBe(true);
   });
 
   it('keeps where sealed keys live fixed after creation', () => {

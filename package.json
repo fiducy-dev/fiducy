@@ -1,17 +1,18 @@
 {
-  "name": "fiducy",
+  "name": "fiducy-monorepo",
   "private": true,
   "license": "Apache-2.0",
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": ["packages/*", "apps/*", "examples/*"],
   "scripts": {
     "test": "bun test",
     "lint": "biome check .",
-    "typecheck": "for project in packages/core packages/providers packages/testing packages/widget packages/sdk packages/farm packages/assistant-ui apps/gateway apps/control-plane apps/demo apps/site; do bunx tsc --noEmit -p $project || exit 1; done",
+    "typecheck": "for project in packages/core packages/providers packages/testing packages/widget packages/sdk packages/farm packages/assistant-ui packages/cli apps/gateway apps/control-plane apps/demo apps/site; do bunx tsc --noEmit -p $project || exit 1; done",
     "build": "bun run --filter './packages/*' build",
-    "check:packages": "for package in packages/core packages/providers packages/widget packages/sdk packages/farm packages/assistant-ui; do publint $package --strict && attw --pack $package --profile esm-only || exit 1; done",
+    "check:packages": "for package in packages/core packages/providers packages/widget packages/sdk packages/farm packages/assistant-ui; do publint $package --strict && attw --pack $package --profile esm-only || exit 1; done && publint packages/cli --strict",
     "prototype": "bun apps/gateway/scripts/prototype.ts",
     "version-packages": "changeset version && bun install --lockfile-only",
-    "release": "bun run build && changeset publish"
+    "release": "bun run build && changeset publish",
+    "test:examples": "bun test ./examples/e2e/frameworks.e2e.ts ./examples/e2e/cliDev.e2e.ts ./examples/e2e/cliInit.e2e.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
@@ -22,5 +23,8 @@
     "@types/node": "26.6.6",
     "publint": "0.3.25",
     "typescript": "7.0.2"
+  },
+  "overrides": {
+    "better-auth": "1.7.16"
   }
 }

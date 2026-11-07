@@ -1,0 +1,102 @@
+---
+title: Nuxt
+order: 5
+description: Add Fiducy to a Nuxt app with a server route.
+---
+
+# Nuxt
+
+```bash
+npx fiducy init
+```
+
+Or by hand: `npm install @fiducy/sdk`, then the files below. The working version is [`examples/nuxt`](https://github.com/fiducy-dev/fiducy/tree/main/examples/nuxt).
+
+## Run the example
+
+Copy the example app and run it with a local gateway:
+
+```bash
+npx degit fiducy-dev/fiducy/examples/nuxt my-app
+cd my-app
+npm install
+npx fiducy dev --mock
+```
+
+`fiducy dev` writes `.env` and keeps running. In a second terminal, add the example's session secret and start the app:
+
+```bash
+echo "EXAMPLE_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
+npm run dev
+```
+
+Sign in as the test user, paste any string as the key (`--mock` answers with a fake model), and ask a question. The example signs users in with a test cookie and keeps handles in a JSON file (`example-kit`); swap both for your own auth and [storage](/docs/storage).
+
+## Server module
+
+```ts title="server/utils/fiducy.ts"
+import { createFiducy } from '@fiducy/sdk/server';
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
+
+import { auth } from './auth';
+import { pool } from './db';
+
+export const fiducy = createFiducy({
+  storage: kyselyStorage(pool),
+  getUserID: async (request) => {
+    const session = await auth.api.getSession({ headers: request.headers });
+    return session?.user.id ?? null;
+  }
+});
+```
+
+Files in `server/utils/` are auto-imported in server code and never reach the browser.
+
+## Key route
+
+```ts title="server/api/fiducy/[...path].ts"
+import { toNuxtHandler } from '@fiducy/sdk/nuxt';
+
+import { fiducy } from '../../utils/fiducy';
+
+export default defineEventHandler(toNuxtHandler(fiducy));
+```
+
+`toNuxtHandler` works with h3 v1 (Nuxt 3) and v2 (Nuxt 4).
+
+## Env
+
+Put the three `FIDUCY_` values in `.env`; Nuxt loads it into `process.env` in development. In production, set real environment variables. You don't need `runtimeConfig` entries, and never put the app secret in `NUXT_PUBLIC_` (Fiducy refuses to run).
+
+## Widget
+
+```vue title="components/KeySettings.vue"
+<script setup lang="ts">
+import { FiducyKey } from '@fiducy/sdk/vue';
+</script>
+
+<template>
+  <FiducyKey provider="openai" />
+</template>
+```
+
+No `isCustomElement` config is needed: the Vue component registers the element itself. See [Vue](/docs/widget/vue).
+
+## Model route
+
+```ts title="server/api/chat.post.ts"
+import { createOpenAI } from '@ai-sdk/openai';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '../utils/fiducy';
+
+export default defineEventHandler(async (event) => {
+  const request = toWebRequest(event);
+  const settings = await fiducy.providerSettings('openai', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createOpenAI(settings).chat('gpt-4o-mini');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+});
+```

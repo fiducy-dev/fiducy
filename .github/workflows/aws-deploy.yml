@@ -2,8 +2,13 @@ name: AWS prototype
 
 on:
   push:
-    branches: [main]
+    branches: [phase-7-enclave]
   workflow_dispatch:
+    inputs:
+      rotate_token:
+        description: Replace the gateway token before building the enclave image
+        type: boolean
+        default: false
 
 concurrency:
   group: aws-prototype
@@ -17,17 +22,19 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      FIDUCY_CONTROL_PLANE_URL: ${{ vars.FIDUCY_CONTROL_PLANE_URL }}
+      FIDUCY_DEMO_URL: ${{ vars.FIDUCY_DEMO_URL }}
     steps:
       - uses: actions/checkout@v4
       - name: Check AWS credentials
         id: credentials
         run: |
-          if [ -z "$AWS_ACCESS_KEY_ID" ]; then
-            echo "AWS secrets are not set yet. Skipping the deploy." >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$FIDUCY_CONTROL_PLANE_URL" ]; then
+            echo "AWS secrets or FIDUCY_CONTROL_PLANE_URL are not set yet. Skipping the deploy." >> "$GITHUB_STEP_SUMMARY"
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Deploy
         if: steps.credentials.outputs.ready == 'true'
-        run: bash infra/aws/deploy.sh
+        run: bash infra/aws/deploy.sh ${{ inputs.rotate_token == true && '--rotate-token' || '' }}

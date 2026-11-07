@@ -1,0 +1,94 @@
+---
+title: React
+order: 1
+description: FiducyKey for React, plus the optional useFiducyKeys hook.
+---
+
+# React
+
+```tsx
+import { FiducyKey } from '@fiducy/sdk/react';
+
+export const KeySettings = () => <FiducyKey provider="openai" />;
+```
+
+`FiducyKey` renders the [`<fiducy-key>` element](/docs/widget) and turns its events into props. It needs only React. In Next.js, use it from a `'use client'` file.
+
+| Prop | Type | |
+| --- | --- | --- |
+| `provider` | `'openai' \| 'anthropic' \| 'gemini' \| 'openrouter'` | Required |
+| `basePath` | `string` | Your key route. Default `/api/fiducy` |
+| `onConnected` | `(key) => void` | After your server saved the handle |
+| `onRemoved` | `(keyID) => void` | After the key was revoked |
+| `onError` | `(message) => void` | |
+| `className` | `string` | |
+
+## In the chat, when a key is missing
+
+```tsx title="components/Chat.tsx"
+'use client';
+
+import { useChat } from '@ai-sdk/react';
+import { FiducyKey, type GatewayProvider } from '@fiducy/sdk/react';
+
+function readMissingProvider(error: Error | undefined): GatewayProvider | null {
+  try {
+    return JSON.parse(error?.message ?? '').data?.provider ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function Chat() {
+  const { messages, sendMessage, error, clearError, regenerate } = useChat();
+  const provider = readMissingProvider(error);
+
+  return (
+    <div>
+      {/* your messages */}
+      {provider && (
+        <FiducyKey
+          provider={provider}
+          onConnected={() => {
+            clearError();
+            regenerate();
+          }}
+        />
+      )}
+      {/* your input */}
+    </div>
+  );
+}
+```
+
+`useChat` puts the failed response body in `error.message`; `respondToMissingKey` put the provider in `data.provider`.
+
+## useFiducyKeys
+
+Optional, from `@fiducy/sdk/react-query`, for apps that already use TanStack Query (it needs a `QueryClientProvider`). It refreshes when any widget saves or removes a key.
+
+```tsx
+import { useFiducyKeys } from '@fiducy/sdk/react-query';
+
+const { keys, isLoading, error, refresh, revoke } = useFiducyKeys();
+```
+
+| Field | Type |
+| --- | --- |
+| `keys` | `{ keyID, provider, createdAt }[]` |
+| `isLoading` | `boolean` |
+| `error` | `string \| null` |
+| `refresh` | `() => Promise<void>` |
+| `revoke` | `(keyID) => Promise<void>` |
+
+Invalidate it from your own mutations with `fiducyKeysQueryKey(basePath)`.
+
+## Lower level
+
+`KeyWidget` renders the bare gateway iframe and hands you the handle, for apps that store handles their own way:
+
+```tsx
+<KeyWidget gatewayURL="..." appID="..." onHandle={(handle, record) => save(handle, record)} />
+```
+
+`ConnectKeyWidget` (iframe plus save, with `gatewayURL` and `appID` props) is still exported for existing apps; `FiducyKey` replaces it.

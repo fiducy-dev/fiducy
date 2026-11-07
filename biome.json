@@ -8,8 +8,18 @@
       ".output",
       ".vercel",
       ".prototype",
+      "**/tests/browser/.pages",
+      "examples/*/.next",
+      "examples/.cli-init-*",
+      "packages/cli/tests/.projects",
+      "examples/*/.nuxt",
+      "examples/*/.svelte-kit",
+      "examples/*/.react-router",
+      "examples/*/next-env.d.ts",
+      "examples/*/src/routeTree.gen.ts",
       "**/farm.d.ts",
       "**/*.generated.ts",
+      "packages/sdk/tests/storage/.fiducy_test_*",
       "apps/site/src/components/ui",
       "apps/site/src/lib/utils.ts",
       "apps/site/convex/_generated"
@@ -47,7 +57,11 @@
         "apps/*/farm.config.ts",
         "apps/*/docs.config.ts",
         "apps/site/convex/schema.ts",
-        "apps/site/convex/convex.config.ts"
+        "apps/site/convex/convex.config.ts",
+        "examples/*/app/**",
+        "examples/*/src/routes/**",
+        "examples/*/server/**",
+        "examples/*/*.config.ts"
       ],
       "linter": {
         "rules": {

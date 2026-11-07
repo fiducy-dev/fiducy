@@ -27,6 +27,7 @@ export function KeysList({ appID, keys, usage, monthlyLimit }: KeysTableProps) {
                   </code>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
+                  {key.source === 'import' ? <Badge variant="secondary">Imported</Badge> : null}
                   <Badge variant={revoked ? 'secondary' : 'outline'}>
                     {revoked ? 'Revoked' : 'Active'}
                   </Badge>

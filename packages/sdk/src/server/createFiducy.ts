@@ -1,69 +1,54 @@
-import { SEALED_RECORD_FIELDS, parseHandle } from '@fiducy/core';
+import { parseHandle } from '@fiducy/core';
 
-import { KEY_RECORD_HEADER, PROVIDER_BASE_PATHS } from '../constants.ts';
+import { DEFAULT_BASE_PATH, MAX_IMPORT_BATCH_SIZE } from '../constants.ts';
 import { createGatewayClient } from '../gatewayClient.ts';
+import { resolveConnection } from './environment.ts';
+import { FiducyGatewayError, FiducyInputError } from './errors.ts';
+import { createProviderSettingsResolver } from './providerSettings.ts';
+import { createRouter } from './routes.ts';
+import { isProvider } from './validators.ts';
 
-import type { SealedRecord } from '@fiducy/core';
-import type { GatewayProvider } from '../types.ts';
-import type { CreateFiducyOptions, Fiducy, SaveKeyInput, StoredUserKey } from './types.ts';
-import type { UserKeySummary } from './types.ts';
-
-const DEFAULT_BASE_PATH = '/api/fiducy';
-
-class FiducyInputError extends Error {}
-
-class FiducyGatewayError extends Error {}
-
-function respondWith(status: number, data: unknown, message: string): Response {
-  return Response.json({ data, message }, { status });
-}
+import type { GatewayClient } from '../types.ts';
+import type { CreateFiducyOptions, Fiducy, FiducyConnection } from './types.ts';
+import type { ImportKeyInput, ImportKeysResult, ImportedUserKey } from './types.ts';
+import type { KeySource, SaveKeyInput, StoredUserKey, UserKeySummary } from './types.ts';
 
 function toSummary({ keyID, provider, createdAt }: StoredUserKey): UserKeySummary {
   return { keyID, provider, createdAt };
 }
 
-function isProvider(value: unknown): value is GatewayProvider {
-  return typeof value === 'string' && value in PROVIDER_BASE_PATHS;
-}
-
-function isSealedRecord(value: unknown): value is SealedRecord {
-  if (typeof value !== 'object' || value === null) return false;
-  const fields = value as Record<string, unknown>;
-  return SEALED_RECORD_FIELDS.every((field) => typeof fields[field] === 'string');
-}
-
-function encodeRecord(record: SealedRecord): string {
-  return Buffer.from(JSON.stringify(record)).toString('base64url');
-}
-
-function isCrossSite(request: Request): boolean {
-  const origin = request.headers.get('origin');
-  if (origin === null) return false;
-  const host = request.headers.get('host') ?? new URL(request.url).host;
-  return URL.parse(origin)?.host !== host;
-}
-
-function readSaveKeyInput(body: unknown): SaveKeyInput {
-  if (typeof body !== 'object' || body === null) throw new FiducyInputError('Send a JSON body');
-  const { provider, handle, record } = body as Record<string, unknown>;
-  if (!isProvider(provider)) throw new FiducyInputError('Unknown provider');
-  if (typeof handle !== 'string') throw new FiducyInputError('handle is required');
-  if (record !== undefined && !isSealedRecord(record)) {
-    throw new FiducyInputError('The sealed record is malformed');
+function chunk<Item>(items: Item[], size: number): Item[][] {
+  const chunks: Item[][] = [];
+  for (let start = 0; start < items.length; start += size) {
+    chunks.push(items.slice(start, start + size));
   }
-  return { provider, handle, record };
+  return chunks;
+}
+
+function createLazyConnection(options: CreateFiducyOptions) {
+  let connection: FiducyConnection | null = null;
+  let gateway: GatewayClient | null = null;
+  const readConnection = () => {
+    connection ??= resolveConnection(options);
+    return connection;
+  };
+  const readGateway = () => {
+    gateway ??= createGatewayClient({ ...readConnection(), fetch: options.fetch });
+    return gateway;
+  };
+  return { readConnection, readGateway };
 }
 
 export function createFiducy(options: CreateFiducyOptions): Fiducy {
   const { storage, getUserID } = options;
   const basePath = (options.basePath ?? DEFAULT_BASE_PATH).replace(/\/+$/, '');
-  const gateway = createGatewayClient(options);
+  const { readConnection, readGateway } = createLazyConnection(options);
 
   const revokeKey = async (userID: string, keyID: string) => {
     const stored = (await storage.listKeys(userID)).find((key) => key.keyID === keyID);
     if (!stored) return false;
     if (!stored.record) {
-      const revoked = await gateway.revokeKey(stored.handle);
+      const revoked = await readGateway().revokeKey(stored.handle);
       if (!revoked.ok && revoked.error.status !== 404) {
         throw new FiducyGatewayError(`The key could not be revoked: ${revoked.error.message}`);
       }
@@ -71,7 +56,7 @@ export function createFiducy(options: CreateFiducyOptions): Fiducy {
     return storage.deleteKey(userID, keyID);
   };
 
-  const saveKey = async (userID: string, input: SaveKeyInput) => {
+  const saveKey = async (userID: string, input: SaveKeyInput, source: KeySource = 'widget') => {
     const parsedHandle = parseHandle(input.handle);
     if (!parsedHandle.ok) throw new FiducyInputError('The key handle is malformed');
     const { keyID } = parsedHandle.value;
@@ -79,14 +64,9 @@ export function createFiducy(options: CreateFiducyOptions): Fiducy {
       throw new FiducyInputError('The record does not belong to this handle');
     }
     const previous = await storage.findKey(userID, input.provider);
-    const stored: StoredUserKey = {
-      userID,
-      provider: input.provider,
-      keyID,
-      handle: input.handle,
-      record: input.record,
-      createdAt: new Date().toISOString()
-    };
+    const { provider, handle, record } = input;
+    const createdAt = new Date().toISOString();
+    const stored: StoredUserKey = { userID, provider, keyID, handle, record, source, createdAt };
     await storage.saveKey(stored);
     if (previous && previous.keyID !== keyID) {
       await revokeKey(userID, previous.keyID).catch(() => false);
@@ -94,47 +74,56 @@ export function createFiducy(options: CreateFiducyOptions): Fiducy {
     return toSummary(stored);
   };
 
+  const importBatch = async (batch: ImportKeyInput[]): Promise<ImportedUserKey[]> => {
+    const sealed = await readGateway().importKeys(batch.map(({ apiKey }) => apiKey));
+    if (!sealed.ok) {
+      throw new FiducyGatewayError(`The keys could not be imported: ${sealed.error.message}`);
+    }
+    const imported: ImportedUserKey[] = [];
+    for (const [index, { userID, provider }] of batch.entries()) {
+      const key = sealed.value.keys[index];
+      if (!key) throw new FiducyGatewayError('The gateway returned fewer keys than were sent');
+      const summary = await saveKey(userID, { provider, ...key }, 'import');
+      imported.push({ ...summary, userID });
+    }
+    return imported;
+  };
+
+  const importKeys = async (keys: ImportKeyInput[]): Promise<ImportKeysResult> => {
+    const result: ImportKeysResult = { imported: [], skipped: [] };
+    const pending: ImportKeyInput[] = [];
+    for (const key of keys) {
+      if (!isProvider(key.provider)) {
+        throw new FiducyInputError(`Unknown provider: ${key.provider}`);
+      }
+      const alreadyConnected = await storage.findKey(key.userID, key.provider);
+      const alreadyPending = pending.some(
+        (other) => other.userID === key.userID && other.provider === key.provider
+      );
+      if (alreadyConnected || alreadyPending) {
+        result.skipped.push({ userID: key.userID, provider: key.provider });
+      } else {
+        pending.push(key);
+      }
+    }
+    for (const batch of chunk(pending, MAX_IMPORT_BATCH_SIZE)) {
+      result.imported.push(...(await importBatch(batch)));
+    }
+    return result;
+  };
+
   const listKeys = async (userID: string) => (await storage.listKeys(userID)).map(toSummary);
+  const widgetSaveKey = (userID: string, input: SaveKeyInput) => saveKey(userID, input);
+  const actions = { listKeys, saveKey: widgetSaveKey, revokeKey };
 
-  const providerSettings: Fiducy['providerSettings'] = async (provider, { userID }) => {
-    const stored = await storage.findKey(userID, provider);
-    if (!stored) return null;
-    const settings = gateway.providerSettings(provider, stored.handle);
-    if (stored.record) settings.headers[KEY_RECORD_HEADER] = encodeRecord(stored.record);
-    return settings;
+  return {
+    handler: createRouter({ basePath, getUserID, readConnection, actions }),
+    providerSettings: createProviderSettingsResolver(storage, getUserID, readConnection),
+    listKeys,
+    saveKey: widgetSaveKey,
+    revokeKey,
+    importKeys,
+    basePath,
+    storage
   };
-
-  const route = async (request: Request, userID: string, path: string) => {
-    if (path === '/keys' && request.method === 'GET') {
-      return respondWith(200, { keys: await listKeys(userID) }, 'Keys loaded');
-    }
-    if (isCrossSite(request)) return respondWith(403, null, 'Cross-site requests are not allowed');
-    if (path === '/keys' && request.method === 'POST') {
-      const input = readSaveKeyInput(await request.json().catch(() => null));
-      return respondWith(201, await saveKey(userID, input), 'Key connected');
-    }
-    const keyID = /^\/keys\/([A-Za-z0-9_-]{22})$/.exec(path)?.[1];
-    if (keyID && request.method === 'DELETE') {
-      const revoked = await revokeKey(userID, keyID);
-      if (!revoked) return respondWith(404, null, 'No key with this ID for this user');
-      return respondWith(200, { keyID }, 'Key revoked');
-    }
-    return respondWith(404, null, 'Route not found');
-  };
-
-  const handler = async (request: Request) => {
-    const { pathname } = new URL(request.url);
-    if (!pathname.startsWith(basePath)) return respondWith(404, null, 'Route not found');
-    const userID = await getUserID(request);
-    if (!userID) return respondWith(401, null, 'Sign in to manage your API keys');
-    try {
-      return await route(request, userID, pathname.slice(basePath.length));
-    } catch (error) {
-      if (error instanceof FiducyInputError) return respondWith(400, null, error.message);
-      if (error instanceof FiducyGatewayError) return respondWith(502, null, error.message);
-      throw error;
-    }
-  };
-
-  return { handler, providerSettings, listKeys, saveKey, revokeKey };
 }

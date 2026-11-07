@@ -9,13 +9,17 @@ defaults:
   cpu_count: ${ENCLAVE_CPU_COUNT}
   memory_mb: ${ENCLAVE_MEMORY_MB}
 ingress:
-  - listen_port: 8787
+  - listen_port: 443
+  - listen_port: 80
 egress:
   allow:
     - 169.254.169.254
     - kms.${AWS_REGION}.amazonaws.com
     - dynamodb.${AWS_REGION}.amazonaws.com
     - ${CONTROL_PLANE_HOST}
+    - acme-v02.api.letsencrypt.org
+    - acme.zerossl.com
+    - api.zerossl.com
     - api.openai.com
     - api.anthropic.com
     - generativelanguage.googleapis.com

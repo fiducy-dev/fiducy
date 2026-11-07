@@ -1,0 +1,27 @@
+---
+title: Vue
+order: 2
+description: FiducyKey for Vue and Nuxt.
+---
+
+# Vue
+
+```vue
+<script setup lang="ts">
+import { FiducyKey } from '@fiducy/sdk/vue';
+
+const onConnected = (key: { keyID: string }) => console.log('saved', key.keyID);
+</script>
+
+<template>
+  <FiducyKey provider="openai" @connected="onConnected" />
+</template>
+```
+
+| Prop | | Event | Payload |
+| --- | --- | --- | --- |
+| `provider` | required | `connected` | `{ keyID, provider, createdAt }` |
+| `base-path` | default `/api/fiducy` | `removed` | `keyID` |
+| | | `error` | `message` |
+
+The component registers `<fiducy-key>` itself, so you don't add `isCustomElement` to your Vue or Nuxt config. It renders on the client; during SSR it outputs an empty `<fiducy-key>` tag that fills in on hydration.

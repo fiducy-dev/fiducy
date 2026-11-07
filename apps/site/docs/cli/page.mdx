@@ -1,0 +1,105 @@
+---
+title: CLI
+order: 2.5
+description: npx fiducy init, dev, generate and migrate.
+---
+
+# CLI
+
+```bash
+npx fiducy init       # add Fiducy to this app (new files only)
+npx fiducy dev        # local gateway for development
+npx fiducy generate   # write the storage table in your ORM's format
+npx fiducy migrate    # create the table (Kysely storage)
+```
+
+Every command takes `--help`. The CLI never edits a file you already have and never creates a new app.
+
+## init
+
+```bash
+npx fiducy init [--dry-run] [--skip-install] [--framework <name>] [--auth <name>]
+```
+
+Run it in the root of your app (where `package.json` is).
+
+| It detects | From |
+| --- | --- |
+| Framework | `package.json`: `next`, `@tanstack/react-start`, `@react-router/dev`, `@sveltejs/kit` (2 or 3), `nuxt`, `@farm.js/core`, `express`, `hono`; anything else is treated as a plain Node server |
+| Package manager | the lockfile, here or in a parent folder (monorepos), then the one running `npx` |
+| Auth | `better-auth` (finds your `export const auth = betterAuth(...)`), `next-auth` (finds `export const { auth } = NextAuth(...)`), `@clerk/nextjs` |
+| Database | an exported Prisma client (`new PrismaClient`), Drizzle db (`drizzle(...)`) or Kysely instance (`new Kysely`), with the dialect from `schema.prisma` or `drizzle.config` |
+| Import style | your `tsconfig.json` paths, so it writes `@/lib/fiducy` when you use `@/*` |
+
+What it writes, per framework:
+
+| Framework | New files | Printed for you to paste |
+| --- | --- | --- |
+| Next.js | `lib/fiducy.ts`, `app/api/fiducy/[...path]/route.ts` (under `src/` if you use it) | |
+| TanStack Start | `src/lib/fiducy.ts`, `src/routes/api/fiducy/$.ts` | |
+| React Router | `app/lib/fiducy.ts`, `app/routes/fiducy.ts` (or `api.fiducy.$.ts` with flat routes) | the `route(...)` line for `app/routes.ts` |
+| SvelteKit | `src/lib/server/fiducy.ts`, `src/hooks.server.ts` and `src/env.ts` if missing | the handle and env lines when those files exist |
+| Nuxt | `server/utils/fiducy.ts`, `server/api/fiducy/[...path].ts` | |
+| Farm.js | `src/lib/fiducy.ts` | the integration for `farm.config.ts` |
+| Express, Hono, Node | `src/fiducy.ts` | the one line that mounts the handler |
+
+It also prints where to put the widget and how to call the model. Without a recognised auth, the server module gets a `readSignedInUserID` function that throws a clear error until you fill it in. Without a recognised database, it uses a local SQLite file (`.fiducy/keys.sqlite`), which you should replace before deploying.
+
+| Flag | |
+| --- | --- |
+| `--dry-run` | Print every file and command, write nothing |
+| `--skip-install` | Do not run your package manager |
+| `--framework` | `next`, `tanstack-start`, `react-router`, `sveltekit`, `nuxt`, `farmjs`, `express`, `hono` or `node` |
+| `--auth` | `better-auth`, `authjs`, `clerk` or `none` |
+
+Running it again is safe: files that exist are kept and reported.
+
+## dev
+
+```bash
+npx fiducy dev [--port 3438] [--origin http://localhost:5173] [--mock]
+```
+
+A real Fiducy gateway for local development, so you don't need to deploy one or clone the repo.
+
+- **Listens on `127.0.0.1` only.** Nothing outside your machine can reach it.
+- **Keeps a dev app in `.fiducy/`**: an app ID, app secret and master key, created on the first run. The folder is readable only by you and has its own `.gitignore`. Saved keys are stored there too, sealed, so they survive restarts. Delete the folder to start fresh.
+- **Writes `.env`** with `FIDUCY_GATEWAY_URL`, `FIDUCY_APP_ID` and `FIDUCY_APP_SECRET` when you have no `.env` (mode 0600). Otherwise it prints the lines and tells you if your env files hold different values.
+- **Allows the widget** on `localhost` and `127.0.0.1` at the common dev ports (3000 to 3003, 4173, 4200, 4321, 5000, 5173 to 5175, 8000, 8080, 8081, 8888, 9000). Add others with `--origin`, which you can repeat. A blocked page gets a message naming the flag to add.
+- **Remembers `--port`**, so the env lines stay valid on the next run.
+
+| Flag | |
+| --- | --- |
+| `--port` | Gateway port. Default `3438` |
+| `--origin` | Extra origin allowed to show the widget |
+| `--mock` | Answer OpenAI and Anthropic calls with a fake model (Chat Completions, Responses and Messages APIs). Any string works as a key |
+
+Without `--mock`, model calls go to the real provider with the user's real key.
+
+## generate
+
+```bash
+npx fiducy generate [--config path/to/fiducy.ts] [--output path]
+```
+
+Loads your server module, reads its storage, and writes the table it needs:
+
+| Storage | Writes | Then |
+| --- | --- | --- |
+| `kyselyStorage` | `fiducy_migrations/create_fiducy_user_key.sql`, only if the table is missing | `npx fiducy migrate`, or your own migration tool |
+| `drizzleStorage` | `fiducy-schema.ts` next to the schema in your `drizzle.config` | export it from your schema, `drizzle-kit generate` and `drizzle-kit migrate` |
+| `prismaStorage` | `prisma/schema/fiducy.prisma` when you use a schema folder; with a single `schema.prisma` it prints the model for you to paste | `prisma migrate dev` |
+
+It never overwrites a file. If the target exists with different content, it prints the new content and stops.
+
+The server module is found the way [Better Auth's CLI](https://www.better-auth.com/docs/concepts/cli) finds `auth.ts`: `fiducy.ts` in the project root, `lib/`, `utils/`, `server/`, `src/`, `src/lib/`, `src/lib/server/`, `app/lib/` or `server/utils/`. Pass `--config` for anywhere else. It loads `.env` files, your `tsconfig.json` path aliases, and stubs SvelteKit's `$env` modules and Next's `server-only`.
+
+## migrate
+
+```bash
+npx fiducy migrate [--config path/to/fiducy.ts] [--yes]
+```
+
+Creates the Fiducy table and its index in your database when they are missing, for `kyselyStorage` (Postgres, MySQL, SQLite). It prints the SQL and asks before applying; pass `--yes` in scripts and CI. It only ever creates. It never alters or drops, and it stops with a clear error if a table with that name exists without the right columns.
+
+With Drizzle or Prisma, your ORM owns migrations: run `fiducy generate` and then the ORM's migrate command.

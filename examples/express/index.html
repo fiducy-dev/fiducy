@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fiducy with Express</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Fiducy with Express</h1>
+      <form method="post" action="/api/session">
+        <button type="submit">Sign in as a test user</button>
+      </form>
+      <fiducy-key provider="openai"></fiducy-key>
+      <form class="ask" id="ask">
+        <label for="question">Question</label>
+        <input id="question" name="question" value="Say hello" />
+        <button type="submit">Ask</button>
+        <output id="reply"></output>
+      </form>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -8,6 +8,29 @@ on:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: fiducy
+          POSTGRES_PASSWORD: fiducy
+          POSTGRES_DB: fiducy_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U fiducy" --health-interval 5s --health-timeout 5s --health-retries 10
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_USER: fiducy
+          MYSQL_PASSWORD: fiducy
+          MYSQL_DATABASE: fiducy_test
+          MYSQL_ROOT_PASSWORD: fiducy
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -ufiducy -pfiducy" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      FIDUCY_TEST_POSTGRES_URL: postgres://fiducy:fiducy@localhost:5432/fiducy_test
+      FIDUCY_TEST_MYSQL_URL: mysql://fiducy:fiducy@127.0.0.1:3306/fiducy_test
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -23,5 +46,29 @@ jobs:
       - run: bun run check:packages
       - run: bunx farm build
         working-directory: apps/site
-      - run: bunx playwright@1.56.1 install --with-deps chromium
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.56.1-chromium-${{ runner.os }}
+      - run: bunx playwright@1.56.1 install chromium
+        timeout-minutes: 3
       - run: bun test
+
+  examples:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: bun install
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.56.1-chromium-${{ runner.os }}
+      - run: bunx playwright@1.56.1 install chromium
+        timeout-minutes: 3
+      - run: bun run test:examples

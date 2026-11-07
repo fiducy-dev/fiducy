@@ -1,0 +1,17 @@
+---
+title: Solid
+order: 4
+description: FiducyKey for Solid and SolidStart.
+---
+
+# Solid
+
+```tsx
+import { FiducyKey } from '@fiducy/sdk/solid';
+
+export const KeySettings = () => (
+  <FiducyKey provider="openai" onConnected={(key) => console.log('saved', key.keyID)} />
+);
+```
+
+Props are the same as [React's](/docs/widget/react): `provider`, `basePath`, `onConnected`, `onRemoved`, `onError` and `className`. Props are reactive; changing `provider` switches the widget. In SolidStart, render it on the client (inside `clientOnly` or a component that only mounts in the browser).

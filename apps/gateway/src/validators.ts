@@ -1,10 +1,10 @@
 import { SEALED_RECORD_FIELDS, fail, succeed } from '@fiducy/core';
 
-import { MAX_API_KEY_LENGTH, MAX_RECORD_HEADER_LENGTH } from './constants';
+import { MAX_API_KEY_LENGTH, MAX_IMPORT_BATCH_SIZE, MAX_RECORD_HEADER_LENGTH } from './constants';
 import { describeFailure } from './responses';
 
 import type { SealedRecord } from '@fiducy/core';
-import type { GatewayResult, StoreKeyBody } from './types';
+import type { GatewayResult, ImportKeysBody, StoreKeyBody } from './types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -23,6 +23,24 @@ export function validateStoreKeyBody(body: unknown): GatewayResult<StoreKeyBody>
     );
   }
   return succeed({ appID: body.appID, apiKey: body.apiKey.trim() });
+}
+
+export function validateImportKeysBody(body: unknown): GatewayResult<ImportKeysBody> {
+  const apiKeys = isRecord(body) ? body.apiKeys : undefined;
+  if (!Array.isArray(apiKeys) || apiKeys.length === 0 || apiKeys.length > MAX_IMPORT_BATCH_SIZE) {
+    return fail(
+      describeFailure(400, `Send apiKeys as a list of 1 to ${MAX_IMPORT_BATCH_SIZE} keys`)
+    );
+  }
+  if (!apiKeys.every((apiKey) => isNonEmptyString(apiKey, MAX_API_KEY_LENGTH))) {
+    return fail(
+      describeFailure(
+        400,
+        `Each apiKey must be a non-empty string under ${MAX_API_KEY_LENGTH} characters`
+      )
+    );
+  }
+  return succeed({ apiKeys: apiKeys.map((apiKey: string) => apiKey.trim()) });
 }
 
 export async function readJSONBody(request: Request): Promise<unknown> {

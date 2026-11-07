@@ -11,8 +11,9 @@ export interface ConnectKeyResult {
 }
 
 export interface FiducyToolkitOptions {
-  gatewayURL: string;
-  appID: string;
+  /** Optional: by default the key box reads these from your Fiducy route. */
+  gatewayURL?: string;
+  appID?: string;
   /** Where the app mounted its Fiducy handler. Defaults to /api/fiducy. */
   basePath?: string;
   /** Runs after a key is saved, for example to refresh a keys list. */

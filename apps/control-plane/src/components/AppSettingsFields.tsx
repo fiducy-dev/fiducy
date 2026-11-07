@@ -17,6 +17,11 @@ const RECORD_STORAGE_OPTIONS = [
   { label: 'In your database', value: 'app' }
 ];
 
+const KEY_IMPORT_OPTIONS = [
+  { label: 'Off', value: 'off' },
+  { label: 'On', value: 'on' }
+];
+
 function describeRecordStorage(recordStorage: AppSettings['recordStorage']): string {
   const value = recordStorage ?? 'fiducy';
   return RECORD_STORAGE_OPTIONS.find((option) => option.value === value)?.label ?? value;
@@ -53,6 +58,29 @@ export function AppSettingsFields({ defaults }: AppSettingsFieldsProps) {
           min={1}
           defaultValue={defaults?.monthlyRequestLimitPerKey ?? 10000}
         />
+      </Field>
+      <Field>
+        <FieldLabel>Key import</FieldLabel>
+        <Select
+          name="allowKeyImport"
+          items={KEY_IMPORT_OPTIONS}
+          defaultValue={defaults?.allowKeyImport ? 'on' : 'off'}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectPopup>
+            {KEY_IMPORT_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
+        <FieldDescription>
+          Lets your server move keys you already store into Fiducy with fiducy.importKeys(). Turn it
+          off when the move is done, so new keys only come in through the widget.
+        </FieldDescription>
       </Field>
       {defaults ? (
         <Field>
