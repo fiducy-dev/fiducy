@@ -13,7 +13,7 @@ const CYCLE_SECONDS = 12;
 const STEP_STARTS = [0, 0.22, 0.44, 0.74];
 const JOINED_X = 0.17;
 const KEY_OPEN_GRAY = 0x2a2a2a;
-const KEY_SEALED_WHITE = 0xffffff;
+const KEY_SEALED_GRAY = 0x808080;
 
 function createKeyHalves(): KeyHalves {
   const keyFaces = createSolidFaces();
@@ -69,9 +69,7 @@ export function animateEnclave(parts: EnclaveParts, elapsedSeconds: number): voi
   const opened = phaseProgress(cycle, 0.42, 0.48) - phaseProgress(cycle, 0.7, 0.76);
   const { handleHalf, keyFaces } = parts.halves;
   handleHalf.position.x = MathUtils.lerp(-TRACK_END, JOINED_X, arriving) - leaving * TRACK_END;
-  keyFaces.color
-    .setHex(KEY_SEALED_WHITE)
-    .lerp(keyFaces.color.clone().setHex(KEY_OPEN_GRAY), opened);
+  keyFaces.color.setHex(KEY_SEALED_GRAY).lerp(keyFaces.color.clone().setHex(KEY_OPEN_GRAY), opened);
   parts.request.position.x = MathUtils.lerp(0, TRACK_END, phaseProgress(cycle, 0.48, 0.72));
   parts.request.visible = cycle > 0.46 && cycle < 0.74;
   parts.attestationFrame.rotation.y = elapsedSeconds * 0.12;

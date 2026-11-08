@@ -198,3 +198,15 @@ export interface ShaderBoxProps {
   viewWidth: number;
   viewHeight: number;
 }
+
+export interface AsciiGrid {
+  columns: number;
+  rows: number;
+  cellWidth: number;
+}
+
+export interface AsciiPass {
+  resize: (width: number, height: number) => void;
+  render: (scene: Scene, camera: PerspectiveCamera) => void;
+  dispose: () => void;
+}

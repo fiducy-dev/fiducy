@@ -1,12 +1,12 @@
 import { MathUtils, Object3D, PerspectiveCamera, Vector3 } from 'three';
 import { WebGLRenderer } from 'three';
 
+import { createAsciiPass } from '@/lib/asciiPass';
 import { animateEnclave, createEnclaveParts, readEnclaveStep } from '@/lib/enclaveScene';
 
-import type { EnclaveParts, PointerState } from '@/types';
+import type { AsciiPass, EnclaveParts, PointerState } from '@/types';
 import type { SceneLabel, SceneLabelElements } from '@/types';
 
-const MAX_PIXEL_RATIO = 2;
 const BASE_PITCH = 0.42;
 const BASE_YAW = -0.62;
 const POINTER_YAW = 0.55;
@@ -79,13 +79,9 @@ function placeLabels(labels: SceneLabel[], camera: PerspectiveCamera, host: HTML
   }
 }
 
-function resizeRenderer(
-  renderer: WebGLRenderer,
-  camera: PerspectiveCamera,
-  host: HTMLElement
-): void {
+function resizeRenderer(ascii: AsciiPass, camera: PerspectiveCamera, host: HTMLElement): void {
   const { width, height } = host.getBoundingClientRect();
-  renderer.setSize(Math.max(1, width), Math.max(1, height), false);
+  ascii.resize(Math.max(1, width), Math.max(1, height));
   camera.aspect = Math.max(1, width) / Math.max(1, height);
   camera.updateProjectionMatrix();
 }
@@ -96,8 +92,8 @@ export function startEnclaveRenderer(
   labelElements: SceneLabelElements,
   onStep: (step: number) => void
 ): () => void {
-  const renderer = new WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO));
+  const renderer = new WebGLRenderer({ alpha: true });
+  const ascii = createAsciiPass(renderer, canvas);
   const camera = new PerspectiveCamera(28, 1, 0.1, 100);
   camera.position.set(0, 0, 16);
   const parts = createEnclaveParts();
@@ -116,11 +112,11 @@ export function startEnclaveRenderer(
     const elapsedSeconds = isReducedMotion ? REDUCED_MOTION_SECONDS : (now - startedAt) / 1000;
     animateEnclave(parts, elapsedSeconds);
     onStep(readEnclaveStep(elapsedSeconds));
-    renderer.render(parts.scene, camera);
+    ascii.render(parts.scene, camera);
     placeLabels(labels, camera, host);
     frame = isVisible && !document.hidden ? requestAnimationFrame(render) : 0;
   };
-  const resizeObserver = new ResizeObserver(() => resizeRenderer(renderer, camera, host));
+  const resizeObserver = new ResizeObserver(() => resizeRenderer(ascii, camera, host));
   const visibilityObserver = new IntersectionObserver(([entry]) => {
     isVisible = entry?.isIntersecting ?? true;
     if (isVisible && !frame) frame = requestAnimationFrame(render);
@@ -128,7 +124,7 @@ export function startEnclaveRenderer(
   const stopListening = listenToPointer(canvas, pointer);
   resizeObserver.observe(host);
   visibilityObserver.observe(host);
-  resizeRenderer(renderer, camera, host);
+  resizeRenderer(ascii, camera, host);
   frame = requestAnimationFrame(render);
 
   return () => {
@@ -136,6 +132,7 @@ export function startEnclaveRenderer(
     resizeObserver.disconnect();
     visibilityObserver.disconnect();
     stopListening();
+    ascii.dispose();
     renderer.dispose();
   };
 }
