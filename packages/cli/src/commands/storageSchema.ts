@@ -13,7 +13,7 @@ export async function loadStorageSchema(
   output: Output
 ): Promise<StorageSchema | null> {
   const { file, schema } = await loadFiducy(root, configPath);
-  output.info(`Loaded ${relative(root, file)}`);
+  output.info(`Loaded ${output.style.path(relative(root, file))}`);
   if (!schema) output.error(NO_SCHEMA_MESSAGE);
   return schema;
 }

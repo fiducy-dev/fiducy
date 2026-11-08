@@ -53,3 +53,5 @@ export const LOCKFILES: [string, string][] = [
   ['yarn.lock', 'yarn'],
   ['package-lock.json', 'npm']
 ];
+export const COMMAND_PATTERN =
+  /npx fiducy \w+(?: --[\w-]+(?: <[^>]+>)?)*|prisma migrate dev|drizzle-kit migrate|https:\/\/\S+[^\s.,]/g;

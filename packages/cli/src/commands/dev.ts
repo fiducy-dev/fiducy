@@ -62,19 +62,26 @@ function reportEnvironment(root: string, lines: string[], output: Output) {
   if (missing.length === Object.keys(expected).length) {
     const created = writeNewFile(join(root, '.env'), `${lines.join('\n')}\n`, PRIVATE_FILE_MODE);
     if (created) {
-      output.info('Wrote .env with the dev gateway settings. Restart your dev server to load it.');
-      if (!isEnvironmentIgnored(root)) output.info('Add .env to your .gitignore.');
+      output.info(
+        `${output.style.success('Wrote')} ${output.style.path('.env')} with the dev gateway settings. Restart your dev server to load it.`
+      );
+      if (!isEnvironmentIgnored(root))
+        output.info(output.style.warning('Add .env to your .gitignore.'));
       return;
     }
   }
   if (missing.length === 0 && different.length === 0) {
-    output.info('Your env files already point at this dev gateway.');
+    output.info(output.style.success('Your env files already point at this dev gateway.'));
     return;
   }
-  output.info('Add these lines to your server env file, then restart your dev server:');
-  for (const line of lines) output.info(`  ${line}`);
+  output.info(
+    output.style.heading('Add these lines to your server env file, then restart your dev server:')
+  );
+  output.info(output.style.code(lines.join('\n')));
   if (different.length > 0) {
-    output.info(`Your env files have different values for ${different.join(', ')}.`);
+    output.info(
+      output.style.warning(`Your env files have different values for ${different.join(', ')}.`)
+    );
   }
 }
 
@@ -120,13 +127,16 @@ export async function runDev(argv: string[], { cwd, output }: CommandContext): P
     );
     return 1;
   }
+  const mode = options.mock ? output.style.warning(' with a fake model (--mock)') : '';
   output.info(
-    `Fiducy dev gateway on ${gateway.url}${options.mock ? ' with a fake model (--mock)' : ''}`
+    `${output.style.heading('Fiducy dev gateway')} on ${output.style.path(gateway.url)}${mode}`
   );
   reportEnvironment(cwd, buildEnvironmentLines(gateway.state, gateway.url), output);
   output.info(
-    'Widget origins: localhost and 127.0.0.1 on common dev ports. Add others with --origin.'
+    output.style.muted(
+      'Widget origins: localhost and 127.0.0.1 on common dev ports. Add others with --origin.'
+    )
   );
-  output.info('Keys stay in .fiducy/ until you delete it. Ctrl+C to stop.');
+  output.info(output.style.muted('Keys stay in .fiducy/ until you delete it. Ctrl+C to stop.'));
   return waitForStop(gateway);
 }

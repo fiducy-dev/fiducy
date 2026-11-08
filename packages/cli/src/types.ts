@@ -1,6 +1,23 @@
+import type { styleText } from 'node:util';
+
+export type StyleFormat = Parameters<typeof styleText>[0];
+
+export interface Style {
+  success: (text: string) => string;
+  warning: (text: string) => string;
+  failure: (text: string) => string;
+  heading: (text: string) => string;
+  path: (text: string) => string;
+  command: (text: string) => string;
+  muted: (text: string) => string;
+  code: (block: string) => string;
+  prose: (text: string) => string;
+}
+
 export interface Output {
   info: (message: string) => void;
   error: (message: string) => void;
+  style: Style;
 }
 
 export interface CommandContext {
