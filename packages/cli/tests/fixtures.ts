@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { runCli } from '../src/cli.ts';
+import { createStyle } from '../src/style.ts';
 
 const FIXTURES_DIRECTORY = join(import.meta.dir, '.projects');
 
@@ -27,7 +28,8 @@ export async function run(root: string, argv: string[]) {
   const lines: string[] = [];
   const output = {
     info: (line: string) => lines.push(line),
-    error: (line: string) => lines.push(line)
+    error: (line: string) => lines.push(line),
+    style: createStyle(false)
   };
   const code = await runCli(argv, { cwd: root, output, environment: {} });
   return { code, text: lines.join('\n') };

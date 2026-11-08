@@ -35,20 +35,35 @@ function applyOverrides(project: ProjectInfo, framework?: string, auth?: string)
   };
 }
 
-function describeProject(project: ProjectInfo): string {
+function describeProject(project: ProjectInfo, { style }: Output): string {
   const storage = project.storage.source
     ? `${project.storage.name} (${project.storage.source.exportName})`
-    : 'none found, using a local SQLite file';
-  return `Found ${project.framework}, ${project.packageManager}, auth: ${project.auth}, database: ${storage}`;
+    : style.warning('none found, using a local SQLite file');
+  const auth = project.auth === 'none' ? style.warning('none') : style.heading(project.auth);
+  const found = [style.heading(project.framework), style.heading(project.packageManager)];
+  return `Found ${found.join(', ')}, auth: ${auth}, database: ${storage}`;
+}
+
+function describeNote(note: string, { style }: Output): string {
+  return note.startsWith('No ') ? style.warning(note) : style.prose(note);
 }
 
 function printPlanTail(plan: InitPlan, output: Output) {
+  const { style } = output;
   for (const snippet of plan.snippets) {
-    output.info(`\nIn ${snippet.file}: ${snippet.title}\n`);
-    output.info(snippet.code.replace(/^/gm, '  '));
+    output.info(`\n${style.heading(`In ${snippet.file}:`)} ${snippet.title}\n`);
+    output.info(style.code(snippet.code));
   }
   output.info('');
-  for (const note of plan.notes) output.info(note);
+  for (const note of plan.notes) output.info(describeNote(note, output));
+}
+
+function reportFile(path: string, created: boolean, { info, style }: Output) {
+  if (created) info(`${style.success('Created')} ${style.path(path)}`);
+  else
+    info(
+      `${style.warning('Kept')} your existing ${style.path(path)}. Compare it with: ${style.command('npx fiducy init --dry-run')}`
+    );
 }
 
 export async function runInit(argv: string[], { cwd, output, environment }: CommandContext) {
@@ -64,19 +79,18 @@ export async function runInit(argv: string[], { cwd, output, environment }: Comm
     readString(flags, 'framework'),
     readString(flags, 'auth')
   );
-  output.info(describeProject(project));
+  output.info(describeProject(project, output));
   const plan = buildInitPlan(project);
   for (const file of plan.files) {
     if (dryRun) {
-      output.info(`\nWould create ${file.path}:\n`);
-      output.info(file.contents.replace(/^/gm, '  '));
-    } else if (writeNewFile(join(cwd, file.path), file.contents))
-      output.info(`Created ${file.path}`);
-    else output.info(`Kept your existing ${file.path}. Compare it with: npx fiducy init --dry-run`);
+      output.info(`\n${output.style.heading('Would create')} ${output.style.path(file.path)}\n`);
+      output.info(output.style.code(file.contents));
+    } else reportFile(file.path, writeNewFile(join(cwd, file.path), file.contents), output);
   }
   if (plan.packages.length > 0) {
     const command = describeInstall(project.packageManager, plan.packages);
-    if (dryRun || readBoolean(flags, 'skip-install')) output.info(`\nInstall with: ${command}`);
+    if (dryRun || readBoolean(flags, 'skip-install'))
+      output.info(`\nInstall with: ${output.style.command(command)}`);
     else if (!installPackages(cwd, project.packageManager, plan.packages)) {
       output.error(`Install failed. Run it yourself: ${command}`);
       return 1;
