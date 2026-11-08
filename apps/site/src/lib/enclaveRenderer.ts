@@ -2,8 +2,9 @@ import { MathUtils, Object3D, PerspectiveCamera, Vector3 } from 'three';
 import { WebGLRenderer } from 'three';
 
 import { animateEnclave, createEnclaveParts, readEnclaveStep } from '@/lib/enclaveScene';
+import { createPixelPass } from '@/lib/pixelPass';
 
-import type { EnclaveParts, PointerState } from '@/types';
+import type { Disturbance, EnclaveParts, PixelPass, PointerState } from '@/types';
 import type { SceneLabel, SceneLabelElements } from '@/types';
 
 const MAX_PIXEL_RATIO = 2;
@@ -14,6 +15,11 @@ const POINTER_PITCH = 0.3;
 const FOLLOW_RATE = 0.06;
 const DRAG_FRICTION = 0.94;
 const REDUCED_MOTION_SECONDS = 6.5;
+const DISTURB_SPEED = 1.2;
+const DISTURB_TAP = 0.8;
+const DISTURB_FOLLOW = 0.25;
+const DISTURB_DECAY = 0.9;
+const DISTURB_RADIUS_SHARE = 0.24;
 
 function createPointerState(): PointerState {
   return { targetX: 0, targetY: 0, dragVelocity: 0, isDragging: false, lastClientX: 0 };
@@ -52,6 +58,48 @@ function listenToPointer(canvas: HTMLCanvasElement, pointer: PointerState): () =
   };
 }
 
+function createDisturbance(): Disturbance {
+  return { x: -1e4, y: -1e4, strength: 0, target: 0, lastX: 0, lastY: 0, lastTime: 0 };
+}
+
+function listenToDisturbance(host: HTMLElement, disturbance: Disturbance): () => void {
+  const locate = (event: PointerEvent) => {
+    const bounds = host.getBoundingClientRect();
+    disturbance.x = event.clientX - bounds.left;
+    disturbance.y = bounds.height - (event.clientY - bounds.top);
+  };
+  const move = (event: PointerEvent) => {
+    locate(event);
+    const elapsed = Math.max(1, event.timeStamp - disturbance.lastTime);
+    const distance = Math.hypot(
+      event.clientX - disturbance.lastX,
+      event.clientY - disturbance.lastY
+    );
+    disturbance.target = Math.max(
+      disturbance.target,
+      Math.min(1, distance / elapsed / DISTURB_SPEED)
+    );
+    disturbance.lastX = event.clientX;
+    disturbance.lastY = event.clientY;
+    disturbance.lastTime = event.timeStamp;
+  };
+  const press = (event: PointerEvent) => {
+    locate(event);
+    disturbance.target = Math.max(disturbance.target, DISTURB_TAP);
+  };
+  host.addEventListener('pointermove', move, { passive: true });
+  host.addEventListener('pointerdown', press);
+  return () => {
+    host.removeEventListener('pointermove', move);
+    host.removeEventListener('pointerdown', press);
+  };
+}
+
+function settleDisturbance(disturbance: Disturbance): void {
+  disturbance.strength = MathUtils.lerp(disturbance.strength, disturbance.target, DISTURB_FOLLOW);
+  disturbance.target *= DISTURB_DECAY;
+}
+
 function createAnchor(parent: Object3D, x: number, y: number): Object3D {
   const anchor = new Object3D();
   anchor.position.set(x, y, 0);
@@ -81,11 +129,13 @@ function placeLabels(labels: SceneLabel[], camera: PerspectiveCamera, host: HTML
 
 function resizeRenderer(
   renderer: WebGLRenderer,
+  pass: PixelPass,
   camera: PerspectiveCamera,
   host: HTMLElement
 ): void {
   const { width, height } = host.getBoundingClientRect();
   renderer.setSize(Math.max(1, width), Math.max(1, height), false);
+  pass.resize();
   camera.aspect = Math.max(1, width) / Math.max(1, height);
   camera.updateProjectionMatrix();
 }
@@ -98,6 +148,8 @@ export function startEnclaveRenderer(
 ): () => void {
   const renderer = new WebGLRenderer({ canvas, alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO));
+  const pass = createPixelPass(renderer);
+  const disturbance = createDisturbance();
   const camera = new PerspectiveCamera(28, 1, 0.1, 100);
   camera.position.set(0, 0, 16);
   const parts = createEnclaveParts();
@@ -116,19 +168,27 @@ export function startEnclaveRenderer(
     const elapsedSeconds = isReducedMotion ? REDUCED_MOTION_SECONDS : (now - startedAt) / 1000;
     animateEnclave(parts, elapsedSeconds);
     onStep(readEnclaveStep(elapsedSeconds));
-    renderer.render(parts.scene, camera);
+    settleDisturbance(disturbance);
+    const { width, height } = host.getBoundingClientRect();
+    pass.render(parts.scene, camera, {
+      x: disturbance.x,
+      y: disturbance.y,
+      strength: isReducedMotion ? 0 : disturbance.strength,
+      radius: Math.min(width, height) * DISTURB_RADIUS_SHARE
+    });
     placeLabels(labels, camera, host);
     frame = isVisible && !document.hidden ? requestAnimationFrame(render) : 0;
   };
-  const resizeObserver = new ResizeObserver(() => resizeRenderer(renderer, camera, host));
+  const resizeObserver = new ResizeObserver(() => resizeRenderer(renderer, pass, camera, host));
   const visibilityObserver = new IntersectionObserver(([entry]) => {
     isVisible = entry?.isIntersecting ?? true;
     if (isVisible && !frame) frame = requestAnimationFrame(render);
   });
   const stopListening = listenToPointer(canvas, pointer);
+  const stopDisturbing = listenToDisturbance(host, disturbance);
   resizeObserver.observe(host);
   visibilityObserver.observe(host);
-  resizeRenderer(renderer, camera, host);
+  resizeRenderer(renderer, pass, camera, host);
   frame = requestAnimationFrame(render);
 
   return () => {
@@ -136,6 +196,8 @@ export function startEnclaveRenderer(
     resizeObserver.disconnect();
     visibilityObserver.disconnect();
     stopListening();
+    stopDisturbing();
+    pass.dispose();
     renderer.dispose();
   };
 }

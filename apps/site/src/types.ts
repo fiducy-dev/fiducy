@@ -198,3 +198,26 @@ export interface ShaderBoxProps {
   viewWidth: number;
   viewHeight: number;
 }
+
+export interface PixelEffect {
+  x: number;
+  y: number;
+  strength: number;
+  radius: number;
+}
+
+export interface PixelPass {
+  resize: () => void;
+  render: (scene: Scene, camera: PerspectiveCamera, effect: PixelEffect) => void;
+  dispose: () => void;
+}
+
+export interface Disturbance {
+  x: number;
+  y: number;
+  strength: number;
+  target: number;
+  lastX: number;
+  lastY: number;
+  lastTime: number;
+}
