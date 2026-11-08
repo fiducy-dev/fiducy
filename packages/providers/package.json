@@ -1,6 +1,6 @@
 {
   "name": "@fiducy/providers",
-  "version": "0.3.0-beta.0",
+  "version": "0.3.0-beta.1",
   "description": "Provider adapters for the Fiducy gateway: header swap, path allowlist, redaction and streamed usage",
   "license": "Apache-2.0",
   "repository": {
@@ -29,7 +29,7 @@
     "build": "rm -rf dist && bun build src/index.ts --outdir dist --target node --packages external --sourcemap=linked && tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@fiducy/core": "0.3.0-beta.0"
+    "@fiducy/core": "0.3.0-beta.1"
   },
   "devDependencies": {
     "@fiducy/testing": "0.1.0"

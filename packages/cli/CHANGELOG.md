@@ -1,5 +1,11 @@
 # fiducy
 
+## 0.3.0-beta.1
+
+### Patch Changes
+
+- [#95](https://github.com/fiducy-dev/fiducy/pull/95) [`27491ce`](https://github.com/fiducy-dev/fiducy/commit/27491ce20333a7be9f98d4ebb06970deb70bc676) Thanks [@Benonii](https://github.com/Benonii)! - Color the CLI output in a terminal: created files in green, things to check in yellow, commands and paths in cyan, code to paste in blue. Plain text when piped or when NO_COLOR is set.
+
 ## 0.3.0-beta.0
 
 ### Minor Changes
