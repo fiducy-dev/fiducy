@@ -1,5 +1,15 @@
 # fiducy
 
+## 0.3.0-beta.4
+
+### Minor Changes
+
+- [#105](https://github.com/fiducy-dev/fiducy/pull/105) [`c1a690c`](https://github.com/fiducy-dev/fiducy/commit/c1a690c908add0b808badeb8575aedd78935ce81) Thanks [@Benonii](https://github.com/Benonii)! - `fiducy init` asks where users add their key: in the chat, on the settings page, or on a page you name (`--widget chat|settings|/route`). It detects assistant-ui and AI SDK `useChat` to default to the chat, falls back to settings when there is no chat UI, and tells your coding agent never to put the key box in a header or layout. The model snippet now uses `createOpenAI(settings).responses(...)`, since OpenAI's current reasoning models refuse tool calls with reasoning on Chat Completions.
+
+### Patch Changes
+
+- [#106](https://github.com/fiducy-dev/fiducy/pull/106) [`45b2d62`](https://github.com/fiducy-dev/fiducy/commit/45b2d62da80f696149b3db51c7877156e3d2cf69) Thanks [@Benonii](https://github.com/Benonii)! - The setup prompt from `fiducy init` and `fiducy prompt` covers what an agent previously had to work out alone. Commands use your package manager and the pinned CLI version. Drizzle apps get `drizzle-kit push`, or `generate` + `migrate` when they keep migrations, plus the schema export line. The prompt explains that `fiducy dev` keeps running and writes `.env`, tells the agent to keep the app's model and request variable, mentions the now unused provider key, and ends with a done check.
+
 ## 0.3.0-beta.3
 
 ### Patch Changes
