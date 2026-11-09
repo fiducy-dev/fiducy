@@ -110,7 +110,7 @@ function readPrismaProvider(root: string): string {
   return 'postgresql';
 }
 
-function readDrizzleProvider(root: string): string {
+export function readDrizzleProvider(root: string): string {
   for (const name of ['drizzle.config.ts', 'drizzle.config.js', 'drizzle.config.mjs']) {
     const dialect = /dialect\s*:\s*['"](\w+)['"]/.exec(readText(join(root, name)) ?? '')?.[1];
     if (dialect === 'postgresql') return 'pg';

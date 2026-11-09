@@ -35,6 +35,14 @@ export const ENVIRONMENT_FILES = [
   '.env.development.local'
 ];
 
+export const GENERATED_SCHEMA_MODULE = 'fiducy-schema';
+
+export const DRIZZLE_PROVIDER_DIALECTS: Record<string, 'postgres' | 'mysql' | 'sqlite'> = {
+  pg: 'postgres',
+  mysql: 'mysql',
+  sqlite: 'sqlite'
+};
+
 export const CONFIG_FILE_NAMES = ['fiducy.ts', 'fiducy.js', 'fiducy.mts', 'fiducy.mjs'];
 export const CONFIG_DIRECTORIES = [
   '',
