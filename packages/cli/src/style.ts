@@ -26,6 +26,9 @@ export function createStyle(enabled: boolean): Style {
     path: paint(['bold', 'cyan']),
     command,
     muted: paint('gray'),
+    accent: paint(['bold', 'magenta']),
+    link: paint(['underline', 'blueBright']),
+    badge: (text) => (enabled ? paint(['bold', 'inverse', 'cyan'])(` ${text} `) : `${text}.`),
     code: (block) => block.replace(/^.*$/gm, (line) => (line ? `  ${snippet(line)}` : line)),
     prose: (text) => text.replace(COMMAND_PATTERN, (match) => command(match))
   };
