@@ -1,4 +1,7 @@
+import packageJSON from '../package.json' with { type: 'json' };
+
 export const CLI_NAME = 'fiducy';
+export const CLI_VERSION = packageJSON.version;
 export const STATE_DIRECTORY = '.fiducy';
 export const DEV_STATE_FILE = 'dev.json';
 export const DEV_RECORDS_FILE = 'dev-records.json';

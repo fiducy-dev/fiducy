@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import { buildFrameworkFiles } from './frameworkFiles.ts';
 import { buildServerModule, chooseServerModulePath, readExportName } from './serverModule.ts';
 
+import { CLI_VERSION } from '../constants.ts';
+
 import type { InitPlan, ProjectInfo } from '../types.ts';
 
 const MODEL_CALL = `const settings = await fiducy.providerSettings('openai', { request });
@@ -20,7 +22,7 @@ export function buildInitPlan(project: ProjectInfo): InitPlan {
     ...(project.dependencies['@fiducy/sdk'] ? [] : ['@fiducy/sdk']),
     ...serverModule.packages,
     ...framework.packages
-  ];
+  ].map(pinFiducyPackage);
   return {
     files: [{ path: serverModulePath, contents: serverModule.contents }, ...framework.files],
     snippets: [
@@ -35,4 +37,8 @@ export function buildInitPlan(project: ProjectInfo): InitPlan {
     packages,
     notes: [...serverModule.notes, 'Then run npx fiducy dev for a local gateway.']
   };
+}
+
+function pinFiducyPackage(name: string): string {
+  return name.startsWith('@fiducy/') ? `${name}@${CLI_VERSION}` : name;
 }
