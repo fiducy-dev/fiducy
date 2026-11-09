@@ -86,7 +86,7 @@ export const SETUP_QUESTIONS: SetupQuestion[] = [
     id: 'chat',
     step: 'Chat UI',
     title: 'Where do users chat?',
-    helper: 'The key box shows up there when a user has no key yet.',
+    helper: 'Your agent fits the key box to it.',
     options: [
       {
         id: 'assistant-ui',
@@ -100,6 +100,21 @@ export const SETUP_QUESTIONS: SetupQuestion[] = [
       { id: 'solid', label: 'Solid', detail: 'FiducyKey component', docs: 'widget/solid' },
       { id: 'html', label: 'Anything else', detail: 'The <fiducy-key> element', docs: 'widget' },
       NOT_SURE_OPTION
+    ]
+  },
+  {
+    id: 'widget',
+    step: 'Key box',
+    title: 'Where should users add their key?',
+    helper: 'Your agent puts the key box here. You can add it in the other place later.',
+    options: [
+      {
+        id: 'chat',
+        label: 'In the chat',
+        detail: 'Shows up when a key is missing'
+      },
+      { id: 'settings', label: 'Settings page', detail: 'Add keys ahead of time' },
+      { ...NOT_SURE_OPTION, detail: 'Chat if you have one, else settings' }
     ]
   },
   {

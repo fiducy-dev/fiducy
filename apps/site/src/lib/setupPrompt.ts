@@ -4,7 +4,7 @@ import { NOT_SURE, SETUP_QUESTIONS } from '@/lib/setupOptions';
 import type { SetupAnswers, SetupOption, SetupQuestionID } from '@/types';
 
 const DOCS_BASE = 'https://fiducy.dev/docs';
-const INIT_FLAGS: SetupQuestionID[] = ['framework', 'auth'];
+const INIT_FLAGS: SetupQuestionID[] = ['framework', 'auth', 'widget'];
 
 function chosenOptions(answers: SetupAnswers, id: SetupQuestionID): SetupOption[] {
   const options = SETUP_QUESTIONS.find((question) => question.id === id)?.options ?? [];

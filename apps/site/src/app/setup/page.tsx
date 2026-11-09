@@ -8,7 +8,7 @@ import type { Metadata } from '@farm.js/core';
 export const metadata: Metadata = {
   title: 'Set up Fiducy',
   description:
-    'Answer five questions about your stack and get a setup prompt for your coding agent plus the exact fiducy init command.',
+    'Answer six questions about your stack and get a setup prompt for your coding agent plus the exact fiducy init command.',
   alternates: { canonical: '/setup' }
 };
 
@@ -21,7 +21,7 @@ export default function SetupPage() {
           <div className={SECTION_HEAD_CLASS}>
             <h1 className={TITLE_CLASS}>Set up Fiducy with your agent</h1>
             <p className={`${DESCRIPTION_CLASS} text-[0.9375rem]`}>
-              Five quick questions about your app. You get a prompt tailored to your stack and the
+              Six quick questions about your app. You get a prompt tailored to your stack and the
               exact command to run. Nothing you pick leaves this page.
             </p>
           </div>
