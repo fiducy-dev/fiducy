@@ -262,7 +262,7 @@
     },
     "packages/assistant-ui": {
       "name": "@fiducy/assistant-ui",
-      "version": "0.3.0-beta.1",
+      "version": "0.3.0-beta.2",
       "devDependencies": {
         "@assistant-ui/react": "0.15.28",
         "@fiducy/sdk": "0.3.0-beta.1",
@@ -279,7 +279,7 @@
     },
     "packages/cli": {
       "name": "fiducy",
-      "version": "0.3.0-beta.1",
+      "version": "0.3.0-beta.2",
       "bin": {
         "fiducy": "./dist/index.js",
       },
@@ -296,11 +296,11 @@
     },
     "packages/core": {
       "name": "@fiducy/core",
-      "version": "0.3.0-beta.1",
+      "version": "0.3.0-beta.2",
     },
     "packages/farm": {
       "name": "@fiducy/farm",
-      "version": "0.3.0-beta.1",
+      "version": "0.3.0-beta.2",
       "devDependencies": {
         "@farm.js/core": "0.1.40",
         "@fiducy/sdk": "0.3.0-beta.1",
@@ -312,7 +312,7 @@
     },
     "packages/providers": {
       "name": "@fiducy/providers",
-      "version": "0.3.0-beta.1",
+      "version": "0.3.0-beta.2",
       "dependencies": {
         "@fiducy/core": "0.3.0-beta.1",
       },
@@ -322,7 +322,7 @@
     },
     "packages/sdk": {
       "name": "@fiducy/sdk",
-      "version": "0.3.0-beta.1",
+      "version": "0.3.0-beta.2",
       "dependencies": {
         "@fiducy/core": "0.3.0-beta.1",
         "@fiducy/widget": "0.3.0-beta.1",
@@ -373,7 +373,7 @@
     },
     "packages/widget": {
       "name": "@fiducy/widget",
-      "version": "0.3.0-beta.1",
+      "version": "0.3.0-beta.2",
     },
   },
   "overrides": {
