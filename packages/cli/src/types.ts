@@ -128,6 +128,7 @@ export interface PlannedFile {
 
 export interface InitPlan {
   placement: WidgetPlacement;
+  fiducyCommand: string;
   files: PlannedFile[];
   steps: Snippet[];
   packages: string[];
@@ -145,6 +146,12 @@ export interface Snippet {
 export interface NextCommand {
   command: string;
   purpose: string;
+  followUp?: string;
+}
+
+export interface DrizzleSetup {
+  schema: string | null;
+  usesMigrations: boolean;
 }
 
 export interface PlacementSection {

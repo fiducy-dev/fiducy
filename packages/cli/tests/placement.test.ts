@@ -78,3 +78,37 @@ describe('fiducy init key box placement', () => {
     expect(result.text).toContain(".responses('gpt-4o-mini')");
   });
 });
+
+describe('fiducy prompt for a coding agent', () => {
+  it('uses the drizzle-kit flow the app already has and names the schema export', async () => {
+    const files = {
+      'package.json': packageWith({ next: '16.4.4', 'drizzle-orm': '0.45.0' }),
+      'pnpm-lock.yaml': '',
+      'src/db/index.ts': 'export const db = drizzle(client);\n',
+      'drizzle.config.ts': "export default { dialect: 'sqlite', schema: './src/db/schema.ts' };\n"
+    };
+    const pushed = await run(createProject(files), ['prompt']);
+    expect(pushed.text).toContain(`\`pnpm dlx fiducy@${CLI_VERSION} generate\``);
+    expect(pushed.text).toContain("add export * from './fiducy-schema' to ./src/db/schema.ts");
+    expect(pushed.text).toContain('`pnpm exec drizzle-kit push` creates the table');
+    expect(pushed.text).not.toContain('drizzle-kit migrate');
+    const migrated = await run(createProject({ ...files, 'drizzle/meta/_journal.json': '{}' }), [
+      'prompt'
+    ]);
+    expect(migrated.text).toContain('`pnpm exec drizzle-kit generate` writes the migration');
+    expect(migrated.text).toContain('`pnpm exec drizzle-kit migrate` applies it');
+  });
+
+  it('spells out the dev gateway, the old provider key and a done check', async () => {
+    const root = createProject({ 'package.json': packageWith(ASSISTANT_UI_APP) });
+    const result = await run(root, ['prompt']);
+    expect(result.text).toContain('keep it running in the background');
+    expect(result.text).toContain('Restart the dev server after env changes');
+    expect(result.text).toContain('OPENAI_API_KEY');
+    expect(result.text).toContain("Keep the app's model, request variable and API style");
+    expect(result.text).toContain(
+      'Done when: signed in, a message without a key shows the key box'
+    );
+    expect(result.text).not.toContain('editing only what each one names');
+  });
+});

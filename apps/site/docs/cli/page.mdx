@@ -76,7 +76,7 @@ The default is the chat when it finds a chat UI, otherwise the settings page. If
 npx fiducy prompt [--widget <place>] [--framework <name>] [--auth <name>]
 ```
 
-Prints a setup prompt for your coding agent: which Fiducy files exist, every step left with its code, and the guide for your framework. It writes nothing, so you can pipe it, for example `npx fiducy prompt | pbcopy`.
+Prints a setup prompt for your coding agent: which Fiducy files exist, where the key box goes, every edit left with its code, the commands to run in order (with your package manager, the pinned CLI version, and `drizzle-kit push` or `generate` + `migrate` to match your project), what `fiducy dev` does to your env, a check that says when it is done, and the guide for your framework. It writes nothing, so you can pipe it, for example `npx fiducy prompt | pbcopy`.
 
 ## dev
 

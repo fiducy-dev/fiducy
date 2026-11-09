@@ -80,6 +80,8 @@ function printCommands(commands: NextCommand[], output: Output) {
     output.info(
       `  ${output.style.command(next.command.padEnd(width))}  ${output.style.muted(next.purpose)}`
     );
+    if (next.followUp)
+      output.info(`  ${' '.repeat(width)}  ${output.style.muted(`then ${next.followUp}`)}`);
   }
 }
 
@@ -97,7 +99,7 @@ export function printSteps(
   info('');
   if (!showCode)
     info(
-      `  ${style.muted('Code for each'.padEnd(16))}${style.command('npx fiducy init --show-code')}`
+      `  ${style.muted('Code for each'.padEnd(16))}${style.command(`${plan.fiducyCommand} init --show-code`)}`
     );
   info(
     `  ${style.muted('Full guide'.padEnd(16))}${style.link(findGuideURL(project.framework, plan.placement))}`
@@ -106,7 +108,7 @@ export function printSteps(
   printCommands(plan.commands, output);
 }
 
-export function printAgentHint(copied: boolean, { info, style }: Output) {
+export function printAgentHint(copied: boolean, plan: InitPlan, { info, style }: Output) {
   const arrow = style.accent('→');
   if (copied) {
     info(
@@ -114,7 +116,7 @@ export function printAgentHint(copied: boolean, { info, style }: Output) {
     );
   } else {
     info(
-      `\n${arrow} Using a coding agent? Run ${style.command('npx fiducy prompt')} and paste what it prints.\n`
+      `\n${arrow} Using a coding agent? Run ${style.command(`${plan.fiducyCommand} prompt`)} and paste what it prints.\n`
     );
   }
 }
