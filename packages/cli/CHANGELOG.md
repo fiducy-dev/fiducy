@@ -1,5 +1,11 @@
 # fiducy
 
+## 0.3.0-beta.3
+
+### Patch Changes
+
+- [#102](https://github.com/fiducy-dev/fiducy/pull/102) [`a876fb2`](https://github.com/fiducy-dev/fiducy/commit/a876fb2b8305050b13cdc078cbb8361c07f0b3ea) Thanks [@Benonii](https://github.com/Benonii)! - `fiducy init` output is shorter: a spinner while packages install, a checklist of what it did, numbered steps for what is left, and the next commands. `--show-code` prints the code for each step. In a terminal it copies a setup prompt for your coding agent to the clipboard, and the new `fiducy prompt` command prints that prompt.
+
 ## 0.3.0-beta.2
 
 ### Patch Changes
