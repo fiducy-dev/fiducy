@@ -3,9 +3,10 @@ import { join } from 'node:path';
 
 import { buildFrameworkFiles } from './frameworkFiles.ts';
 import { buildPlacementSection } from './placementSteps.ts';
+import { runFiducy } from './runners.ts';
 import { buildServerModule, chooseServerModulePath, readExportName } from './serverModule.ts';
 
-import { CHAT_FALLBACK_WARNING, CLI_VERSION } from '../constants.ts';
+import { CHAT_FALLBACK_WARNING, CLI_VERSION, DEV_GATEWAY_NOTE } from '../constants.ts';
 
 import type { InitPlan, ProjectInfo, ResolvedPlacement } from '../types.ts';
 
@@ -25,13 +26,18 @@ export function buildInitPlan(project: ProjectInfo, resolved: ResolvedPlacement)
   ].map(pinFiducyPackage);
   return {
     placement,
+    fiducyCommand: runFiducy(project.packageManager, '').trim(),
     files: [{ path: serverModulePath, contents: serverModule.contents }, ...framework.files],
     steps: [...serverModule.steps, ...framework.snippets, ...placementSection.steps],
     packages,
     warnings: [...(fellBack ? [CHAT_FALLBACK_WARNING] : []), ...serverModule.warnings],
     commands: [
       ...serverModule.commands,
-      { command: 'npx fiducy dev', purpose: 'runs a local gateway' }
+      {
+        command: runFiducy(project.packageManager, 'dev'),
+        purpose: 'runs a local gateway',
+        followUp: DEV_GATEWAY_NOTE
+      }
     ]
   };
 }

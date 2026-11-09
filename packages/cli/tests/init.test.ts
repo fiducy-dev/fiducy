@@ -170,10 +170,10 @@ describe('fiducy init', () => {
     expect(result.text).toContain('4 things left');
     expect(result.text).toContain('1.  Fill in readSignedInUserID');
     expect(result.text).toContain('in src/fiducy.ts');
-    expect(result.text).toContain('npx fiducy init --show-code');
+    expect(result.text).toContain(`bunx fiducy@${CLI_VERSION} init --show-code`);
     expect(result.text).toContain('https://fiducy.dev/docs/frameworks/express');
-    expect(result.text).toContain('npx fiducy migrate  creates the table');
-    expect(result.text).toContain('Run npx fiducy prompt');
+    expect(result.text).toContain(`bunx fiducy@${CLI_VERSION} migrate  creates the table`);
+    expect(result.text).toContain(`Run bunx fiducy@${CLI_VERSION} prompt`);
     expect(result.text).not.toContain('toNodeHandler(fiducy)');
   });
 });
@@ -183,7 +183,7 @@ describe('fiducy prompt', () => {
     const root = createProject({ 'package.json': packageWith({ next: '16.4.4' }) });
     const result = await run(root, ['prompt']);
     expect(result.code).toBe(0);
-    expect(result.text).toContain('Run `npx fiducy init` first');
+    expect(result.text).toContain(`Run \`bunx fiducy@${CLI_VERSION} init\` first`);
     expect(result.text).toContain("import { FiducyKey } from '@fiducy/sdk/react';");
     expect(result.text).toContain('Guide: https://fiducy.dev/docs/frameworks/next.md');
     expect(existsSync(join(root, 'lib'))).toBe(false);
