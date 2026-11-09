@@ -4,8 +4,10 @@ import { useLayoutEffect, useRef, useState } from 'react';
 
 import type { IsoSceneProps } from '@/types';
 
-const SCENE_WIDTH = 250;
+const SCENE_WIDTH = 300;
 const SCENE_HEIGHT = 175;
+const SCENE_RATIO = SCENE_WIDTH / SCENE_HEIGHT;
+const SCENE_PADDING = 8;
 
 export function IsoScene({ children }: IsoSceneProps) {
   const sceneRef = useRef<SVGGElement>(null);
@@ -23,14 +25,18 @@ export function IsoScene({ children }: IsoSceneProps) {
     if (!bounds || bounds.width === 0) return;
     const centerX = bounds.x + bounds.width / 2;
     const centerY = bounds.y + bounds.height / 2;
-    setViewBox(
-      `${centerX - SCENE_WIDTH / 2} ${centerY - SCENE_HEIGHT / 2} ${SCENE_WIDTH} ${SCENE_HEIGHT}`
+    const width = Math.max(
+      SCENE_WIDTH,
+      bounds.width + SCENE_PADDING,
+      (bounds.height + SCENE_PADDING) * SCENE_RATIO
     );
+    const height = width / SCENE_RATIO;
+    setViewBox(`${centerX - width / 2} ${centerY - height / 2} ${width} ${height}`);
   }, [isMounted]);
 
   return (
     <svg
-      className="h-[clamp(160px,20vh,240px)] w-full overflow-visible stroke-ink [stroke-linejoin:round] max-md:h-[170px]"
+      className="h-[clamp(190px,24vh,260px)] w-full overflow-visible stroke-ink [stroke-linejoin:round] max-md:h-[200px]"
       viewBox={viewBox}
       aria-hidden="true"
     >

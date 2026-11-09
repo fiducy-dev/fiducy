@@ -7,7 +7,7 @@
   --font-sans: "Geist Variable", system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, Menlo, monospace;
 
-  --color-ink: #000000;
+  --color-ink: #080808;
   --color-ink-body: #333333;
   --color-ink-muted: #5e5e5e;
   --color-ink-quiet: #8a8a8a;
@@ -26,7 +26,6 @@
   --animate-leak-scroll: leak-scroll 18s linear infinite;
   --animate-marquee: marquee 16s linear infinite;
   --animate-leak-steal: leak-steal 6s var(--ease-out-expo) infinite;
-  --animate-leak-first: leak-first 6s linear infinite;
   --animate-leak-last: leak-last 6s linear infinite;
 
   @keyframes leak-steal {
@@ -51,19 +50,6 @@
     }
     100% {
       transform: none;
-      opacity: 1;
-    }
-  }
-
-  @keyframes leak-first {
-    0%,
-    23.9%,
-    66%,
-    100% {
-      opacity: 0;
-    }
-    24%,
-    65.9% {
       opacity: 1;
     }
   }

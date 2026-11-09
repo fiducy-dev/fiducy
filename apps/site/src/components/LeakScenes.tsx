@@ -1,12 +1,12 @@
+import { QuietLine } from '@/components/Emphasis';
 import { IsoScene } from '@/components/IsoScene';
-import { TypedTag } from '@/components/TypedTag';
+import { Callout } from '@/components/isoCallout';
 import { IsoKey, KEY_SHAFT_DEPTH, KEY_SHAFT_OFFSET } from '@/components/isoKey';
 import { KEY_SPLIT_AT, KEY_TIP_END } from '@/components/isoKey';
 import { Box, Line, Plate, offset } from '@/components/isometric';
 import { ISO_DETAIL, ISO_GHOST, ISO_LINE_STRONG } from '@/lib/isoStyles';
 import { ISO_SCREEN, ISO_SCROLL, ISO_SLOT } from '@/lib/isoStyles';
-import { ISO_STEAL, ISO_TAG_FIRST, ISO_TAG_LAST } from '@/lib/isoStyles';
-import { LEAK_FIRST_AT, LEAK_LAST_AT } from '@/lib/isoStyles';
+import { ISO_RESULT, ISO_STEAL } from '@/lib/isoStyles';
 import { DESCRIPTION_CLASS, LABEL_CLASS } from '@/lib/styles';
 
 import type { LeakCardProps, LeakScene } from '@/types';
@@ -44,19 +44,9 @@ function DatabaseScene() {
       <Plate at={[2.4, 2.6, 4.1]} size={[1.2, 0.8]} className={ISO_GHOST} />
       <g className={ISO_STEAL} style={moves({ '--to': offset(0, 0, 3.4) })}>
         <Box at={[2.4, 2.6, 4.1]} size={[1.2, 0.8, 0.25]} tone="solid" />
-        <TypedTag
-          at={[4.2, 2.6, 4.6]}
-          text="stolen: kh_9f2c…"
-          startsAt={LEAK_FIRST_AT}
-          className={ISO_TAG_FIRST}
-        />
       </g>
-      <TypedTag
-        at={[4.2, 2.6, 7.8]}
-        text="opens nothing"
-        startsAt={LEAK_LAST_AT}
-        className={ISO_TAG_LAST}
-      />
+      <Callout at={[3, 3, 4.1]} to={[105, -30]} name="handle" value="kh_9f2c…" />
+      <Callout at={[6, 3, 2.05]} to={[105, 40]} name="api keys stored" value="0" />
     </>
   );
 }
@@ -85,18 +75,8 @@ function LogsScene() {
           <Line from={[0.5, 0.8, 0.8]} to={[7.5, 0.8, 0.8]} className={ISO_LINE_STRONG} />
         </g>
       </g>
-      <TypedTag
-        at={[2.2, -1.4, 0.8]}
-        text="looking for keys"
-        startsAt={LEAK_FIRST_AT}
-        className={ISO_TAG_FIRST}
-      />
-      <TypedTag
-        at={[2.2, -1.4, 0.8]}
-        text="0 keys found"
-        startsAt={LEAK_LAST_AT}
-        className={ISO_TAG_LAST}
-      />
+      <Callout at={[2, 1.55, 0.8]} to={[128, -8]} name="handle" value="kh_9f2c…" />
+      <Callout at={[5, 3.5, 0.8]} to={[128, 48]} name="keys in logs" value="0" />
     </>
   );
 }
@@ -118,19 +98,9 @@ function StorageScene() {
       />
       <g className={ISO_STEAL} style={moves({ '--to': offset(1.4, 2.4, 1.2) })}>
         <IsoKey at={[0, 0, 0]} part="tip" tone="solid" />
-        <TypedTag
-          at={[5.6, 1.4, 1.6]}
-          text="stolen: half a key"
-          startsAt={LEAK_FIRST_AT}
-          className={ISO_TAG_FIRST}
-        />
       </g>
-      <TypedTag
-        at={[5.6, 1.4, 3.4]}
-        text="opens nothing"
-        startsAt={LEAK_LAST_AT}
-        className={ISO_TAG_LAST}
-      />
+      <Callout at={[0.8, 0.8, 0.3]} to={[96, -30]} name="half A" value="your handle" />
+      <Callout at={[4.1, 1.25, 0]} to={[96, 30]} name="half B shows" value="0 of 256 bits" />
     </>
   );
 }
@@ -148,17 +118,13 @@ function EnclaveScene() {
       <g className={ISO_STEAL} style={moves({ '--to': offset(0, 0, -1.9) })}>
         <IsoKey at={[-0.8, 1.5, 5.6]} tone="solid" />
       </g>
-      <TypedTag
-        at={[4.6, 0.2, 6]}
-        text="admin: decrypt key"
-        startsAt={LEAK_FIRST_AT}
-        className={ISO_TAG_FIRST}
-      />
-      <TypedTag
-        at={[4.6, 0.2, 6]}
-        text="KMS: unwrap denied"
-        startsAt={LEAK_LAST_AT}
-        className={ISO_TAG_LAST}
+      <Callout at={[4.5, 2.25, 1.7]} to={[100, 45]} name="KMS key" value="locked to PCR0" />
+      <Callout
+        at={[3.4, 2.3, 3.4]}
+        to={[100, -24]}
+        name="admin"
+        value="Decrypt denied"
+        className={ISO_RESULT}
       />
     </>
   );
@@ -168,36 +134,41 @@ const SCENES: LeakScene[] = [
   {
     label: 'Your database',
     hint: 'A handle is stolen',
-    stat: 'opens nothing',
+    readout: 'handles stolen 1 · keys opened 0',
     title: 'If your database leaks,',
-    quiet: 'attackers get handles that open nothing.',
+    quiet: 'attackers open 0 keys.',
+    accent: '0',
     description: 'Each handle needs the enclave and your app secret before it opens anything.',
     scene: <DatabaseScene />
   },
   {
     label: 'Your server logs',
     hint: 'The logs are searched',
-    stat: '0 keys found',
+    readout: 'grep sk- · 0 matches',
     title: 'If your logs leak,',
-    quiet: 'there is no key in them to find.',
+    quiet: 'grep finds 0 keys in them.',
+    accent: '0',
     description: 'Keys go from the widget straight to the enclave and never pass your server.',
     scene: <LogsScene />
   },
   {
     label: "Fiducy's storage",
     hint: 'Half a key is stolen',
-    stat: 'useless alone',
+    readout: 'halves stolen 1 of 2',
     title: 'If Fiducy is breached,',
-    quiet: 'attackers get half a key. Useless alone.',
-    description: 'The other half lives only in your handle. Neither half opens anything alone.',
+    quiet: 'half a key reveals 0 bits.',
+    accent: '0',
+    description:
+      'Each key is split in two. The other half lives only in your handle, and one half alone says nothing about the key.',
     scene: <StorageScene />
   },
   {
     label: 'An AWS admin',
     hint: 'An admin tries to decrypt',
-    stat: 'unwrap denied',
+    readout: 'kms:Decrypt · AccessDenied',
     title: 'Even an AWS admin',
-    quiet: "cannot decrypt your users' keys.",
+    quiet: "decrypts 0 of your users' keys.",
+    accent: '0',
     description: 'KMS unwraps only for the attested enclave image, and nothing is stored open.',
     scene: <EnclaveScene />
   }
@@ -214,10 +185,11 @@ function LeakCard({ leak }: LeakCardProps) {
       <IsoScene>{leak.scene}</IsoScene>
       <div className={`${LABEL_CLASS} flex flex-wrap justify-between gap-x-3 gap-y-1`}>
         <span>{leak.hint}</span>
-        <span className="text-ink normal-case">{leak.stat}</span>
+        <span className="text-ink normal-case tabular-nums">{leak.readout}</span>
       </div>
       <h3 className="text-[clamp(1.25rem,2vw,1.625rem)] leading-[1.2] font-semibold tracking-[-0.035em] text-balance">
-        {leak.title} <span className="text-ink-quiet">{leak.quiet}</span>
+        {leak.title}
+        <QuietLine text={leak.quiet} word={leak.accent} />
       </h3>
       <p className={`${DESCRIPTION_CLASS} max-w-[46ch]`}>{leak.description}</p>
     </figure>

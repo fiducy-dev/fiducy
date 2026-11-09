@@ -43,9 +43,10 @@ export interface IsoSceneProps {
 export interface LeakScene {
   label: string;
   hint: string;
-  stat: string;
+  readout: string;
   title: string;
   quiet: string;
+  accent: string;
   description: string;
   scene: ReactNode;
 }
@@ -179,11 +180,17 @@ export interface ProviderLogoProps {
   name: string;
 }
 
-export interface TypedTagProps {
+export interface CalloutProps {
   at: Point;
+  to: readonly [number, number];
+  name: string;
+  value: string;
+  className?: string;
+}
+
+export interface EmphasisProps {
   text: string;
-  startsAt: number;
-  className: string;
+  word?: string;
 }
 
 export interface LeakCardProps {

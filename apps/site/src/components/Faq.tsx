@@ -2,6 +2,7 @@
 
 import { PlusIcon } from 'lucide-react';
 
+import { QuietLine } from '@/components/Emphasis';
 import { Accordion, AccordionItem, AccordionPanel } from '@/components/ui/accordion';
 import { AccordionPrimitive } from '@/components/ui/accordion';
 import { FAQ } from '@/lib/faq';
@@ -24,7 +25,8 @@ export function Faq() {
           Questions
         </p>
         <h2 id="faq-title" className={TITLE_CLASS}>
-          Before you hand over your users' keys.
+          Before you hand over
+          <QuietLine text="your users' keys." />
         </h2>
         <p className={DESCRIPTION_CLASS}>
           Something else on your mind? The{' '}
