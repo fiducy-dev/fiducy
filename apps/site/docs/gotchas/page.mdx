@@ -52,7 +52,7 @@ Most of what used to go wrong is now handled for you: `init` writes the files, `
 
 **"OPENAI_API_KEY is missing."** Some code still builds the provider from your own env key, usually a template's `import { openai } from '@ai-sdk/openai'`. Build it from the user's settings: `createOpenAI(settings)`.
 
-**Wrong model API.** Use `createOpenAI(settings).responses(...)`. `.chat(...)` uses Chat Completions, where newer OpenAI models reject tools together with reasoning ("function tools with reasoning_effort are not supported"). Both APIs go through the gateway.
+**"Function tools with reasoning_effort are not supported ... in /v1/chat/completions."** `.chat(...)` calls Chat Completions. There, OpenAI's current reasoning models (GPT-5.4 and later, all GPT-6) accept tools only with `reasoning_effort: 'none'`, and GPT-6 Astra, GPT-6.1 Sol and GPT-6.1 Terra need the Responses API for any tool call ([OpenAI's guide](https://developers.openai.com/api/docs/guides/latest-model)). Use `createOpenAI(settings).responses(...)`, which works for every OpenAI model. Both APIs go through the gateway.
 
 **Anthropic SDK paths.** `createAnthropic(settings)` works as is. The official `@anthropic-ai/sdk` adds `/v1` itself, so pass `baseURL.replace(/\/v1$/, '')`.
 

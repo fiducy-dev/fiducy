@@ -16,7 +16,7 @@ export const DOCS_URL = 'https://fiducy.dev/docs';
 export const PLACEMENT_ROUTE_PATTERN = /^\/[\w\-./[\]$:]*$/;
 export const MAX_ROUTE_ATTEMPTS = 3;
 export const MODEL_CALL_DETAIL =
-  "Keep the app's model, request variable and API style; only build the provider from createOpenAI(settings). Prefer .responses(...) over .chat(...): newer models reject tools with reasoning on Chat Completions.";
+  "Keep the app's model, request variable and API style; only build the provider from createOpenAI(settings). Use .responses(...), not .chat(...): on Chat Completions, current OpenAI reasoning models (GPT-5.4 and later, all GPT-6) refuse tool calls unless reasoning is off, and some refuse tools entirely. Responses works for every OpenAI model.";
 export const DEV_GATEWAY_NOTE =
   'keep it running in the background. With no Fiducy env vars yet it writes them to .env; otherwise it prints the lines to add. Restart the dev server after env changes';
 export const CHAT_FALLBACK_WARNING =
