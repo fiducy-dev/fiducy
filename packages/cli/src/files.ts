@@ -1,4 +1,12 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { PRIVATE_DIRECTORY_MODE, PRIVATE_FILE_MODE, STATE_DIRECTORY } from './constants.ts';
@@ -63,4 +71,14 @@ export function writePrivateFile(path: string, contents: string) {
   const temporaryPath = `${path}.${process.pid}.tmp`;
   writeFileSync(temporaryPath, contents, { mode: PRIVATE_FILE_MODE });
   renameSync(temporaryPath, path);
+}
+
+export function appendLines(path: string, lines: string[], mode: number) {
+  const current = readText(path);
+  if (current === null) {
+    writeFileSync(path, `${lines.join('\n')}\n`, { mode });
+    return;
+  }
+  const separator = current === '' || current.endsWith('\n') ? '' : '\n';
+  appendFileSync(path, `${separator}${lines.join('\n')}\n`);
 }

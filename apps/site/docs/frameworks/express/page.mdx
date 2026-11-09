@@ -25,10 +25,9 @@ npm install
 npx fiducy dev --mock
 ```
 
-`fiducy dev` writes `.env` and keeps running. In a second terminal, add the example's session secret and start the app:
+`fiducy dev` writes its settings to `.env` and keeps running. In a second terminal, start the app:
 
 ```bash
-echo "EXAMPLE_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
 npm run dev
 ```
 

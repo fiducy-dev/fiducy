@@ -15,6 +15,11 @@ export const PRIVATE_DIRECTORY_MODE = 0o700;
 export const DOCS_URL = 'https://fiducy.dev/docs';
 export const PLACEMENT_ROUTE_PATTERN = /^\/[\w\-./[\]$:]*$/;
 export const MAX_ROUTE_ATTEMPTS = 3;
+export const DEV_VALUE_PATTERNS: Record<string, RegExp> = {
+  FIDUCY_GATEWAY_URL: /^http:\/\/(localhost|127\.0\.0\.1):\d+$/,
+  FIDUCY_APP_ID: /^app_dev_/,
+  FIDUCY_APP_SECRET: /^fsk_dev_/
+};
 export const MODEL_CALL_DETAIL =
   "Keep the app's model, request variable and API style; only build the provider from createOpenAI(settings). Use .responses(...), not .chat(...): on Chat Completions, current OpenAI reasoning models (GPT-5.4 and later, all GPT-6) refuse tool calls unless reasoning is off, and some refuse tools entirely. Responses works for every OpenAI model.";
 export const DEV_GATEWAY_NOTE =

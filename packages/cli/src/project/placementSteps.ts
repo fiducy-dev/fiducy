@@ -8,7 +8,7 @@ const settings = await fiducy.providerSettings('openai', { request });
 if (!settings.ok) return respondToMissingKey(settings);
 const model = createOpenAI(settings).responses('gpt-4o-mini');`;
 
-const ASSISTANT_UI_ROUTE = `import { requestKey, withoutKeyRequests } from '@fiducy/assistant-ui/server';
+const ASSISTANT_UI_ROUTE = `import { requestKey, streamWithKeyRequests, withoutKeyRequests } from '@fiducy/assistant-ui/server';
 import { respondToMissingKey } from '@fiducy/sdk/server';
 
 const settings = await fiducy.providerSettings('openai', { request });
@@ -19,7 +19,8 @@ const result = streamText({
   model: createOpenAI(settings).responses('gpt-4o-mini'),
   messages: await convertToModelMessages(withoutKeyRequests(messages), { tools }),
   tools
-});`;
+});
+return streamWithKeyRequests({ provider: 'openai', stream: result.stream, tools });`;
 
 const ASSISTANT_UI_THREAD = `import { AuiConfig, Tools } from '@assistant-ui/react';
 import { fiducyToolkit } from '@fiducy/assistant-ui';

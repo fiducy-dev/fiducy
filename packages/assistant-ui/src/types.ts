@@ -1,4 +1,5 @@
 import type { GatewayProvider, UserKeySummaryView } from '@fiducy/sdk/react';
+import type { TextStreamPart, ToolSet } from 'ai';
 
 export interface ConnectKeyArgs extends Record<string, unknown> {
   provider: GatewayProvider;
@@ -24,4 +25,13 @@ export interface KeyRequestOptions {
   provider: GatewayProvider;
   /** Shown above the widget. Defaults to a line naming the provider. */
   message?: string;
+}
+
+export interface KeyRequestStreamOptions<TOOLS extends ToolSet = ToolSet> {
+  provider: GatewayProvider;
+  /** `result.stream` from `streamText`. */
+  stream: ReadableStream<TextStreamPart<TOOLS>>;
+  tools?: TOOLS;
+  /** Turns other errors into the text the thread shows. Defaults to the error message. */
+  onError?: (error: unknown) => string;
 }
