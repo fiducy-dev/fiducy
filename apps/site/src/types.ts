@@ -5,35 +5,10 @@ import type { Vector2, WebGLRenderTarget } from 'three';
 
 export type Point = readonly [number, number, number];
 
-export interface BoxProps {
-  at: Point;
-  size: Point;
-  tone?: 'line' | 'solid';
-  children?: ReactNode;
-}
-
-export interface PlateProps {
-  at: Point;
-  size: readonly [number, number];
-  className?: string;
-}
-
 export interface LineProps {
   from: Point;
   to: Point;
   className?: string;
-}
-
-export interface TagProps {
-  at: Point;
-  children: ReactNode;
-  className?: string;
-}
-
-export interface IsoKeyProps {
-  at: Point;
-  tone?: BoxProps['tone'];
-  part?: 'whole' | 'bow' | 'tip';
 }
 
 export interface IsoSceneProps {
@@ -43,9 +18,10 @@ export interface IsoSceneProps {
 export interface LeakScene {
   label: string;
   hint: string;
-  stat: string;
+  readout: string;
   title: string;
   quiet: string;
+  accent: string;
   description: string;
   scene: ReactNode;
 }
@@ -179,11 +155,58 @@ export interface ProviderLogoProps {
   name: string;
 }
 
-export interface TypedTagProps {
+export interface RoundBoxProps {
   at: Point;
+  size: Point;
+  radius?: number;
+  tone?: 'line' | 'solid';
+  className?: string;
+  children?: ReactNode;
+}
+
+export interface InsetProps {
+  at: Point;
+  size: readonly [number, number];
+  radius?: number;
+  className?: string;
+}
+
+export interface PrintProps {
+  at: Point;
+  face?: 'top' | 'front' | 'side';
+  size?: number;
+  className?: string;
+  children: ReactNode;
+}
+
+export interface CalloutProps {
+  at: Point;
+  to: readonly [number, number];
+  name: string;
+  value: string;
+  window?: readonly [number, number];
+}
+
+export interface DotProps {
+  at: Point;
+  radius?: number;
+  className?: string;
+}
+
+export interface TimedProps {
+  frames?: Keyframe[];
+  children: ReactNode;
+}
+
+export interface AnimateProps {
+  frames: Keyframe[];
+  className?: string;
+  children: ReactNode;
+}
+
+export interface EmphasisProps {
   text: string;
-  startsAt: number;
-  className: string;
+  word?: string;
 }
 
 export interface LeakCardProps {
