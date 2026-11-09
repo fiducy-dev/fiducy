@@ -6,7 +6,8 @@ import { LOCKFILES, SOURCE_EXTENSIONS, SOURCE_SEARCH_DEPTH } from '../constants.
 import { SOURCE_SEARCH_DIRECTORIES, SOURCE_SEARCH_IGNORED } from '../constants.ts';
 import { readPackageJSON, readText } from '../files.ts';
 
-import type { AuthName, FoundExport, FrameworkName, PackageManager } from '../types.ts';
+import type { AuthName, ChatStack, FoundExport, FrameworkName } from '../types.ts';
+import type { PackageManager } from '../types.ts';
 import type { ProjectInfo, StorageChoice } from '../types.ts';
 
 export class ProjectNotFoundError extends Error {}
@@ -27,6 +28,13 @@ const AUTH_PACKAGES: [string, AuthName][] = [
   ['better-auth', 'better-auth'],
   ['next-auth', 'authjs'],
   ['@clerk/nextjs', 'clerk']
+];
+
+const CHAT_PACKAGES: [string, ChatStack][] = [
+  ['@assistant-ui/react', 'assistant-ui'],
+  ['@ai-sdk/react', 'ai-sdk'],
+  ['@ai-sdk/vue', 'ai-sdk'],
+  ['@ai-sdk/svelte', 'ai-sdk']
 ];
 
 const AUTH_EXPORT_PATTERNS: Record<string, RegExp> = {
@@ -163,6 +171,7 @@ export function detectProject(root: string, userAgent?: string): ProjectInfo {
       ? { specifier: authExport.file, exportName: authExport.exportName }
       : undefined,
     storage: detectStorage(root, files, dependencies),
+    chat: CHAT_PACKAGES.find(([name]) => dependencies[name])?.[1] ?? 'none',
     sourceDirectory,
     alias: findSourceAlias(root, sourceDirectory === 'server' ? '' : sourceDirectory),
     dependencies

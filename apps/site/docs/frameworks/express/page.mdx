@@ -120,7 +120,7 @@ import { streamText } from 'ai';
 app.post('/api/chat', express.json(), async (request, response) => {
   const settings = await fiducy.providerSettings('openai', { request: toWebRequest(request) });
   if (!settings.ok) return sendWebResponse(respondToMissingKey(settings), response);
-  const model = createOpenAI(settings).chat('gpt-4o-mini');
+  const model = createOpenAI(settings).responses('gpt-4o-mini');
   const result = streamText({ model, messages: request.body.messages });
   await sendWebResponse(result.toUIMessageStreamResponse(), response);
 });

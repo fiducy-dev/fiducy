@@ -2,8 +2,9 @@ import { join, relative } from 'node:path';
 
 import { DOCS_URL, SQLITE_FALLBACK_PATH } from '../constants.ts';
 import { toRelativeSpecifier } from './detect.ts';
+import { drizzleCommands, fiducyMigrate, prismaCommands } from './storageCommands.ts';
 
-import type { ImportPath, ProjectInfo } from '../types.ts';
+import type { ImportPath, PlanSection, ProjectInfo } from '../types.ts';
 
 const SERVER_MODULE_PATHS: Record<string, string> = {
   'tanstack-start': 'src/lib/fiducy.ts',
@@ -40,13 +41,14 @@ function importFrom(project: ProjectInfo, modulePath: string, source: ImportPath
   return `import { ${source.exportName} } from '${toImportSpecifier(project, modulePath, source.specifier)}';`;
 }
 
-interface Section {
+interface Section extends PlanSection {
   imports: string[];
   statements: string[];
   options: string[];
   packages: string[];
-  notes: string[];
 }
+
+const NO_GUIDANCE = { steps: [], warnings: [], commands: [] };
 
 function describeStorage(project: ProjectInfo, modulePath: string): Section {
   const { storage } = project;
@@ -60,7 +62,8 @@ function describeStorage(project: ProjectInfo, modulePath: string): Section {
       statements: [],
       options: [`storage: prismaStorage(${source.exportName}, { provider: '${storage.dialect}' })`],
       packages: [],
-      notes: ['Next: npx fiducy generate adds the Prisma model, then run prisma migrate dev.']
+      ...NO_GUIDANCE,
+      commands: prismaCommands(project)
     };
   }
   if (storage.name === 'drizzle' && source) {
@@ -74,7 +77,8 @@ function describeStorage(project: ProjectInfo, modulePath: string): Section {
         `storage: drizzleStorage(${source.exportName}, { provider: '${storage.dialect}' })`
       ],
       packages: [],
-      notes: ['Next: npx fiducy generate writes the Drizzle table, then run drizzle-kit migrate.']
+      ...NO_GUIDANCE,
+      commands: drizzleCommands(project)
     };
   }
   if (storage.name === 'kysely' && source) {
@@ -86,7 +90,8 @@ function describeStorage(project: ProjectInfo, modulePath: string): Section {
       statements: [],
       options: [`storage: kyselyStorage(${source.exportName})`],
       packages: [],
-      notes: ['Next: npx fiducy migrate creates the table.']
+      ...NO_GUIDANCE,
+      commands: [fiducyMigrate(project)]
     };
   }
   return {
@@ -98,15 +103,16 @@ function describeStorage(project: ProjectInfo, modulePath: string): Section {
     statements: ["mkdirSync('.fiducy', { recursive: true });"],
     options: [`storage: kyselyStorage(new DatabaseSync('${SQLITE_FALLBACK_PATH}'))`],
     packages: project.dependencies.kysely ? [] : ['kysely'],
-    notes: [
-      `No Prisma, Drizzle or Kysely database export was found, so handles go in a local SQLite file (${SQLITE_FALLBACK_PATH}). Swap in your real database before you deploy: ${DOCS_URL}/storage`,
-      'Next: npx fiducy migrate creates the table.'
-    ]
+    ...NO_GUIDANCE,
+    warnings: [
+      `Handles go in ${SQLITE_FALLBACK_PATH} for now. Swap in your real database before you deploy: ${DOCS_URL}/storage`
+    ],
+    commands: [fiducyMigrate(project)]
   };
 }
 
 function describeAuth(project: ProjectInfo, modulePath: string): Section {
-  const empty = { statements: [], packages: [], notes: [] };
+  const empty = { statements: [], packages: [], ...NO_GUIDANCE };
   if (project.auth === 'better-auth' && project.authSource) {
     const name = project.authSource.exportName;
     return {
@@ -122,7 +128,7 @@ function describeAuth(project: ProjectInfo, modulePath: string): Section {
       ...empty,
       imports: [importFrom(project, modulePath, project.authSource)],
       options: ['getUserID: async () => (await auth())?.user?.id ?? null'],
-      notes: [
+      warnings: [
         'Auth.js leaves user.id out of JWT sessions unless your session callback copies token.sub into it. Check that session.user.id is set.'
       ]
     };
@@ -141,14 +147,18 @@ function describeAuth(project: ProjectInfo, modulePath: string): Section {
       `async function readSignedInUserID(_request: Request): Promise<string | null> {\n  throw new Error(\n    'Return the signed-in user ID from readSignedInUserID in ${modulePath}, or null when nobody is signed in. See ${DOCS_URL}/server'\n  );\n}`
     ],
     options: ['getUserID: readSignedInUserID'],
-    notes: [
-      `No Better Auth, Auth.js or Clerk setup was found. Fill in readSignedInUserID in ${modulePath} with your auth's user ID.`
+    steps: [
+      {
+        title: 'fill in readSignedInUserID',
+        file: modulePath,
+        detail: 'Return the signed-in user ID from your auth, or null when nobody is signed in.'
+      }
     ]
   };
 }
 
 function describeEnvironment(project: ProjectInfo): Section {
-  const empty = { statements: [], packages: [], notes: [] };
+  const empty = { statements: [], packages: [], ...NO_GUIDANCE };
   if (project.framework !== 'sveltekit') return { ...empty, imports: [], options: [] };
   if (project.frameworkMajor >= 3) {
     return { ...empty, imports: ["import * as env from '$app/env/private';"], options: ['env'] };
@@ -166,7 +176,8 @@ export function buildServerModule(project: ProjectInfo, modulePath: string) {
     describeStorage(project, modulePath),
     describeAuth(project, modulePath)
   ];
-  const all = (key: keyof Section) => sections.flatMap((section) => section[key]);
+  const all = (key: 'imports' | 'statements' | 'options' | 'packages') =>
+    sections.flatMap((section) => section[key]);
   const nodeImports = all('imports').filter((line) => line.includes("'node:"));
   const packageImports = all('imports').filter(
     (line) => !line.includes("'node:") && !/from '(\.|@\/|~\/|#|\$lib)/.test(line)
@@ -188,7 +199,9 @@ export function buildServerModule(project: ProjectInfo, modulePath: string) {
   ].join('\n\n');
   return {
     contents: `${contents}\n`,
-    packages: all('packages') as string[],
-    notes: all('notes') as string[]
+    packages: all('packages'),
+    steps: sections.flatMap((section) => section.steps),
+    warnings: sections.flatMap((section) => section.warnings),
+    commands: sections.flatMap((section) => section.commands)
   };
 }

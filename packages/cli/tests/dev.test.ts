@@ -6,13 +6,14 @@ import { join } from 'node:path';
 import { SAMPLE_API_KEY } from '@fiducy/testing';
 import { startDevGateway } from '../src/commands/dev.ts';
 import { serveOnLocalhost } from '../src/dev/server.ts';
+import { createStyle } from '../src/style.ts';
 import { createProject, removeProjects } from './fixtures.ts';
 
 import type { Output } from '../src/types.ts';
 
 afterAll(removeProjects);
 
-const silent: Output = { info: () => undefined, error: () => undefined };
+const silent: Output = { info: () => undefined, error: () => undefined, style: createStyle(false) };
 
 function choosePort(): number {
   return 20000 + Math.floor(Math.random() * 20000);
@@ -91,7 +92,11 @@ describe('fiducy dev', () => {
 
   it('explains how to allow an origin the widget is not allowed on', async () => {
     const lines: string[] = [];
-    const output = { info: () => undefined, error: (line: string) => lines.push(line) };
+    const output = {
+      info: () => undefined,
+      error: (line: string) => lines.push(line),
+      style: createStyle(false)
+    };
     const root = createProject({});
     const gateway = await startDevGateway(
       root,

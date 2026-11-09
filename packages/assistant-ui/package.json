@@ -1,6 +1,6 @@
 {
   "name": "@fiducy/assistant-ui",
-  "version": "0.3.0-beta.0",
+  "version": "0.3.0-beta.4",
   "description": "Bring-your-own-key for assistant-ui apps with Fiducy",
   "license": "Apache-2.0",
   "repository": {
@@ -35,13 +35,13 @@
   },
   "peerDependencies": {
     "@assistant-ui/react": "^0.15.28",
-    "@fiducy/sdk": "^0.3.0-beta.0",
+    "@fiducy/sdk": "^0.3.0-beta.4",
     "ai": "^7.0.139",
     "react": "^19.2.0"
   },
   "devDependencies": {
     "@assistant-ui/react": "0.15.28",
-    "@fiducy/sdk": "0.3.0-beta.0",
+    "@fiducy/sdk": "0.3.0-beta.4",
     "@types/react": "19.2.2",
     "ai": "7.0.139",
     "react": "19.2.7"

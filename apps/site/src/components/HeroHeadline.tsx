@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 
 import { CipherWord } from '@/components/CipherWord';
+import { Emphasis } from '@/components/Emphasis';
 import { useMotionAllowed } from '@/components/useMotionAllowed';
 
 const SEALED_WORDS = ['You', 'never', 'hold', 'them.'];
+const EMPHASIS_WORD = 'never';
 const HINT_DELAY_MILLISECONDS = 1100;
 const HINT_STAGGER_MILLISECONDS = 160;
 const HINT_HOLD_MILLISECONDS = 900;
@@ -33,12 +35,16 @@ export function HeroHeadline() {
 
   return (
     <h1 className="grid text-[min(4rem,10.6cqi)] leading-[1.06] font-bold tracking-[-0.05em] whitespace-nowrap">
-      <span className="animate-rise-in text-ink">Users bring keys.</span>
+      <span className="animate-rise-in text-ink-quiet">
+        <Emphasis text="Users bring keys." word="keys" />
+      </span>
       <span className="animate-rise-in text-ink-quiet [animation-delay:120ms]">
         {SEALED_WORDS.map((word, index) => (
           <span key={word}>
             {index > 0 ? ' ' : null}
-            <CipherWord word={word} isHinted={hinted.includes(index)} />
+            <span className={word === EMPHASIS_WORD ? 'text-emphasis' : undefined}>
+              <CipherWord word={word} isHinted={hinted.includes(index)} />
+            </span>
           </span>
         ))}
       </span>

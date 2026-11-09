@@ -1,13 +1,14 @@
 ---
 title: CLI
 order: 2.5
-description: npx fiducy init, dev, generate and migrate.
+description: npx fiducy init, prompt, dev, generate and migrate.
 ---
 
 # CLI
 
 ```bash
 npx fiducy init       # add Fiducy to this app (new files only)
+npx fiducy prompt     # setup prompt for your coding agent
 npx fiducy dev        # local gateway for development
 npx fiducy generate   # write the storage table in your ORM's format
 npx fiducy migrate    # create the table (Kysely storage)
@@ -18,7 +19,7 @@ Every command takes `--help`. The CLI never edits a file you already have and ne
 ## init
 
 ```bash
-npx fiducy init [--dry-run] [--skip-install] [--framework <name>] [--auth <name>]
+npx fiducy init [--widget <place>] [--show-code] [--dry-run] [--skip-install] [--framework <name>] [--auth <name>]
 ```
 
 Run it in the root of your app (where `package.json` is).
@@ -30,6 +31,7 @@ Run it in the root of your app (where `package.json` is).
 | Auth | `better-auth` (finds your `export const auth = betterAuth(...)`), `next-auth` (finds `export const { auth } = NextAuth(...)`), `@clerk/nextjs` |
 | Database | an exported Prisma client (`new PrismaClient`), Drizzle db (`drizzle(...)`) or Kysely instance (`new Kysely`), with the dialect from `schema.prisma` or `drizzle.config` |
 | Import style | your `tsconfig.json` paths, so it writes `@/lib/fiducy` when you use `@/*` |
+| Chat UI | `@assistant-ui/react`, or AI SDK `useChat` (`@ai-sdk/react`, `@ai-sdk/vue`, `@ai-sdk/svelte`) |
 
 What it writes, per framework:
 
@@ -43,16 +45,38 @@ What it writes, per framework:
 | Farm.js | `src/lib/fiducy.ts` | the integration for `farm.config.ts` |
 | Express, Hono, Node | `src/fiducy.ts` | the one line that mounts the handler |
 
-It also prints where to put the widget and how to call the model. Without a recognised auth, the server module gets a `readSignedInUserID` function that throws a clear error until you fill it in. Without a recognised database, it uses a local SQLite file (`.fiducy/keys.sqlite`), which you should replace before deploying.
+When it finishes, it lists the few things left as numbered steps (the lines for files you already have, where to put the widget, how to call the model), then the commands to run next. Add `--show-code` to see the code for each step. In a terminal it also copies a setup prompt for your coding agent to the clipboard, when a clipboard tool is available (`pbcopy`, `clip`, `wl-copy`, `xclip` or `xsel`). Without a recognised auth, the server module gets a `readSignedInUserID` function that throws a clear error until you fill it in. Without a recognised database, it uses a local SQLite file (`.fiducy/keys.sqlite`), which you should replace before deploying.
 
 | Flag | |
 | --- | --- |
-| `--dry-run` | Print every file and command, write nothing |
+| `--widget` | `chat`, `settings` or a route like `/account`. Skips the question |
+| `--show-code` | Print the code for each step left |
+| `--dry-run` | Print every file, command and step, write nothing |
 | `--skip-install` | Do not run your package manager |
 | `--framework` | `next`, `tanstack-start`, `react-router`, `sveltekit`, `nuxt`, `farmjs`, `express`, `hono` or `node` |
 | `--auth` | `better-auth`, `authjs`, `clerk` or `none` |
 
 Running it again is safe: files that exist are kept and reported.
+
+### Where the key box goes
+
+In a terminal, `init` asks where users add their key:
+
+| Choice | What you get |
+| --- | --- |
+| In the chat | With assistant-ui, the thread asks for the key as a message (`requestKey` and `fiducyToolkit` from `@fiducy/assistant-ui`, which it installs). With `useChat`, the key box shows under the messages when a request fails for a missing key. |
+| Settings page | The widget on your settings page. No settings page yet? Create one at `/settings`. |
+| A page you name | The widget on that route, for example `/account`. |
+
+The default is the chat when it finds a chat UI, otherwise the settings page. If you pick the chat and there is no chat UI, it falls back to the settings page and says so. Outside a terminal (CI, a coding agent), it uses the default, or pass `--widget`. The setup prompt tells your coding agent the same place, and never a header, nav bar or root layout.
+
+## prompt
+
+```bash
+npx fiducy prompt [--widget <place>] [--framework <name>] [--auth <name>]
+```
+
+Prints a setup prompt for your coding agent: which Fiducy files exist, where the key box goes, every edit left with its code, the commands to run in order (with your package manager, the pinned CLI version, and `drizzle-kit push` or `generate` + `migrate` to match your project), what `fiducy dev` does to your env, a check that says when it is done, and the guide for your framework. It writes nothing, so you can pipe it, for example `npx fiducy prompt | pbcopy`.
 
 ## dev
 

@@ -149,7 +149,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.2.0",
+        "@fiducy/sdk": "^0.3.0-beta.1",
         "ai": "7.0.139",
         "express": "5.3.0",
       },
@@ -165,8 +165,8 @@
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
         "@farm.js/core": "0.1.40",
-        "@fiducy/farm": "^0.2.0",
-        "@fiducy/sdk": "^0.2.0",
+        "@fiducy/farm": "^0.3.0-beta.1",
+        "@fiducy/sdk": "^0.3.0-beta.1",
         "ai": "7.0.139",
         "react": "19.2.7",
         "react-dom": "19.2.7",
@@ -180,7 +180,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.2.0",
+        "@fiducy/sdk": "^0.3.0-beta.1",
         "ai": "7.0.139",
         "next": "16.4.4",
         "react": "19.2.7",
@@ -197,7 +197,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.2.0",
+        "@fiducy/sdk": "^0.3.0-beta.1",
         "ai": "7.0.139",
         "nuxt": "4.6.4",
         "vue": "3.5.44",
@@ -208,7 +208,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.2.0",
+        "@fiducy/sdk": "^0.3.0-beta.1",
         "@react-router/node": "8.5.1",
         "ai": "7.0.139",
         "isbot": "5.1.36",
@@ -229,7 +229,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.2.0",
+        "@fiducy/sdk": "^0.3.0-beta.1",
         "ai": "7.0.139",
       },
       "devDependencies": {
@@ -245,7 +245,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.2.0",
+        "@fiducy/sdk": "^0.3.0-beta.1",
         "@tanstack/react-router": "1.170.46",
         "@tanstack/react-start": "1.169.4",
         "ai": "7.0.139",
@@ -262,24 +262,24 @@
     },
     "packages/assistant-ui": {
       "name": "@fiducy/assistant-ui",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.4",
       "devDependencies": {
         "@assistant-ui/react": "0.15.28",
-        "@fiducy/sdk": "0.2.0",
+        "@fiducy/sdk": "0.3.0-beta.3",
         "@types/react": "19.2.2",
         "ai": "7.0.139",
         "react": "19.2.7",
       },
       "peerDependencies": {
         "@assistant-ui/react": "^0.15.28",
-        "@fiducy/sdk": "^0.2.0",
+        "@fiducy/sdk": "^0.3.0-beta.3",
         "ai": "^7.0.139",
         "react": "^19.2.0",
       },
     },
     "packages/cli": {
       "name": "fiducy",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.4",
       "bin": {
         "fiducy": "./dist/index.js",
       },
@@ -287,34 +287,34 @@
         "jiti": "2.7.0",
       },
       "devDependencies": {
-        "@fiducy/core": "0.2.0",
+        "@fiducy/core": "0.3.0-beta.3",
         "@fiducy/gateway": "workspace:*",
-        "@fiducy/providers": "0.2.0",
-        "@fiducy/sdk": "0.2.0",
+        "@fiducy/providers": "0.3.0-beta.3",
+        "@fiducy/sdk": "0.3.0-beta.3",
         "@fiducy/testing": "0.1.0",
       },
     },
     "packages/core": {
       "name": "@fiducy/core",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.4",
     },
     "packages/farm": {
       "name": "@fiducy/farm",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.4",
       "devDependencies": {
         "@farm.js/core": "0.1.40",
-        "@fiducy/sdk": "0.2.0",
+        "@fiducy/sdk": "0.3.0-beta.3",
       },
       "peerDependencies": {
         "@farm.js/core": "^0.1.40",
-        "@fiducy/sdk": "^0.2.0",
+        "@fiducy/sdk": "^0.3.0-beta.3",
       },
     },
     "packages/providers": {
       "name": "@fiducy/providers",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.4",
       "dependencies": {
-        "@fiducy/core": "0.2.0",
+        "@fiducy/core": "0.3.0-beta.3",
       },
       "devDependencies": {
         "@fiducy/testing": "0.1.0",
@@ -322,10 +322,10 @@
     },
     "packages/sdk": {
       "name": "@fiducy/sdk",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.4",
       "dependencies": {
-        "@fiducy/core": "0.2.0",
-        "@fiducy/widget": "0.2.0",
+        "@fiducy/core": "0.3.0-beta.3",
+        "@fiducy/widget": "0.3.0-beta.3",
       },
       "devDependencies": {
         "@ai-sdk/anthropic": "4.0.79",
@@ -373,7 +373,7 @@
     },
     "packages/widget": {
       "name": "@fiducy/widget",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.4",
     },
   },
   "overrides": {

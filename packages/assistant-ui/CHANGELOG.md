@@ -1,5 +1,34 @@
 # @fiducy/assistant-ui
 
+## 0.3.0-beta.4
+
+### Patch Changes
+
+- [#105](https://github.com/fiducy-dev/fiducy/pull/105) [`c1a690c`](https://github.com/fiducy-dev/fiducy/commit/c1a690c908add0b808badeb8575aedd78935ce81) Thanks [@Benonii](https://github.com/Benonii)! - `fiducy init` asks where users add their key: in the chat, on the settings page, or on a page you name (`--widget chat|settings|/route`). It detects assistant-ui and AI SDK `useChat` to default to the chat, falls back to settings when there is no chat UI, and tells your coding agent never to put the key box in a header or layout. The model snippet now uses `createOpenAI(settings).responses(...)`, since OpenAI's current reasoning models refuse tool calls with reasoning on Chat Completions.
+- Updated dependencies []:
+  - @fiducy/sdk@0.3.0-beta.4
+
+## 0.3.0-beta.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fiducy/sdk@0.3.0-beta.3
+
+## 0.3.0-beta.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fiducy/sdk@0.3.0-beta.2
+
+## 0.3.0-beta.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fiducy/sdk@0.3.0-beta.1
+
 ## 0.3.0-beta.0
 
 ### Minor Changes

@@ -106,7 +106,7 @@ function svelteKitFiles(project: ProjectInfo, serverModulePath: string): Framewo
     const envPath = 'src/env.ts';
     if (existsSync(join(project.root, envPath))) {
       snippets.push({
-        title: 'declare the Fiducy variables, since SvelteKit 3 only loads declared ones',
+        title: 'declare the Fiducy env variables',
         file: envPath,
         code: variables
       });
@@ -153,7 +153,7 @@ function farmFiles(project: ProjectInfo, serverModulePath: string): FrameworkFil
     files: [],
     snippets: [
       {
-        title: 'mount the key routes',
+        title: 'add the Fiducy integration',
         file: 'farm.config.ts',
         code: `import { fiducy } from '@fiducy/farm';\n\n${importServer(project, 'farm.config.ts', serverModulePath)}\n\nexport default defineConfig({\n  integrations: {\n    byok: fiducy({ instance: fiducyServer })\n  }\n});`
       }
@@ -171,9 +171,9 @@ function nodeServerFiles(project: ProjectInfo, serverModulePath: string): Framew
     node: `import { toNodeHandler } from '@fiducy/sdk/node';\n\n${server}\n\nconst handleFiducy = toNodeHandler(fiducy);`
   };
   const titles: Record<string, string> = {
-    express: 'mount the key routes',
-    hono: 'mount the key routes',
-    node: 'send requests under /api/fiducy/ to handleFiducy (or pass a Web Request to fiducy.handler)'
+    express: 'mount /api/fiducy/*',
+    hono: 'mount /api/fiducy/*',
+    node: 'send /api/fiducy/* to handleFiducy'
   };
   return {
     files: [],
@@ -181,11 +181,14 @@ function nodeServerFiles(project: ProjectInfo, serverModulePath: string): Framew
       {
         title: titles[project.framework] ?? titles.node ?? '',
         file: 'your server entry',
-        code: codes[project.framework] ?? codes.node ?? ''
+        code: codes[project.framework] ?? codes.node ?? '',
+        detail: codes[project.framework]
+          ? undefined
+          : 'Or pass a Web Request straight to fiducy.handler.'
       }
     ],
     packages: [],
-    widget: { title: 'show the key widget', file: 'any page', code: ELEMENT_WIDGET }
+    widget: { title: 'show the key widget', file: 'any HTML page', code: ELEMENT_WIDGET }
   };
 }
 

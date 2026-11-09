@@ -1,5 +1,6 @@
 import { CodeTabs } from '@/components/CodeTabs';
 import { CopyAgentPrompt } from '@/components/CopyAgentPrompt';
+import { QuietLine } from '@/components/Emphasis';
 import { Faq } from '@/components/Faq';
 import { HeroHeadline } from '@/components/HeroHeadline';
 import { HeroStage } from '@/components/HeroStage';
@@ -68,7 +69,10 @@ export default function HomePage() {
 
           <section className={SECTION_CLASS}>
             <div className={SECTION_HEAD_CLASS}>
-              <h2 className={TITLE_CLASS}>A breach can't leak what you never stored</h2>
+              <h2 className={TITLE_CLASS}>
+                <QuietLine text="A breach can't leak" word="leak" />
+                <QuietLine text="what you never stored" word="never" />
+              </h2>
               <p className={DESCRIPTION_CLASS}>
                 Your app keeps a handle, not a key. The real key exists for one request inside a
                 sealed enclave, then it is gone.
@@ -81,7 +85,10 @@ export default function HomePage() {
             className={`${SECTION_CLASS} lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:items-start`}
           >
             <div className={SECTION_HEAD_CLASS}>
-              <h2 className={TITLE_CLASS}>Ship bring-your-own-key this week</h2>
+              <h2 className={TITLE_CLASS}>
+                <QuietLine text="Ship bring-your-own-key" />
+                <QuietLine text="this week" word="this week" />
+              </h2>
               <p className={DESCRIPTION_CLASS}>
                 No crypto to write and no key vault to run. Four small pieces drop into the app you
                 already have, and your model calls look the same as before.
@@ -95,7 +102,10 @@ export default function HomePage() {
 
           <section className={`${SECTION_CLASS} pb-0 max-md:pb-0`}>
             <div className={SECTION_HEAD_CLASS}>
-              <h2 className={TITLE_CLASS}>When something leaks, your users' keys don't</h2>
+              <h2 className={TITLE_CLASS}>
+                <QuietLine text="When something leaks," word="leaks" />
+                <QuietLine text="your users' keys don't" word="don't" />
+              </h2>
               <p className={DESCRIPTION_CLASS}>
                 Users don't have to take your word for it.{' '}
                 <code className="font-mono text-[0.95em] text-ink">GET /attestation</code> proves

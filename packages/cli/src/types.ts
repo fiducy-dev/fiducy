@@ -1,12 +1,36 @@
+import type { styleText } from 'node:util';
+
+export type StyleFormat = Parameters<typeof styleText>[0];
+
+export interface Style {
+  success: (text: string) => string;
+  warning: (text: string) => string;
+  failure: (text: string) => string;
+  heading: (text: string) => string;
+  path: (text: string) => string;
+  command: (text: string) => string;
+  muted: (text: string) => string;
+  accent: (text: string) => string;
+  link: (text: string) => string;
+  badge: (text: string) => string;
+  code: (block: string) => string;
+  prose: (text: string) => string;
+}
+
 export interface Output {
   info: (message: string) => void;
   error: (message: string) => void;
+  status?: (message: string) => void;
+  style: Style;
 }
+
+export type Ask = (question: string) => Promise<string>;
 
 export interface CommandContext {
   cwd: string;
   output: Output;
   environment: Record<string, string | undefined>;
+  ask?: Ask;
 }
 
 export type Command = (argv: string[], context: CommandContext) => Promise<number>;
@@ -47,6 +71,20 @@ export type AuthName = 'better-auth' | 'authjs' | 'clerk' | 'none';
 
 export type StorageName = 'prisma' | 'drizzle' | 'kysely' | 'sqlite';
 
+export type ChatStack = 'assistant-ui' | 'ai-sdk' | 'none';
+
+export type WidgetPlacement =
+  | { kind: 'chat'; chat: Exclude<ChatStack, 'none'> }
+  | { kind: 'settings' }
+  | { kind: 'route'; route: string };
+
+export type PlacementChoice = 'chat' | 'settings' | `/${string}`;
+
+export interface ResolvedPlacement {
+  placement: WidgetPlacement;
+  fellBack: boolean;
+}
+
 export interface PackageJSON {
   name?: string;
   dependencies?: Record<string, string>;
@@ -72,6 +110,7 @@ export interface ProjectInfo {
   auth: AuthName;
   authSource?: ImportPath;
   storage: StorageChoice;
+  chat: ChatStack;
   sourceDirectory: string;
   alias: AliasInfo | null;
   dependencies: Record<string, string>;
@@ -88,16 +127,47 @@ export interface PlannedFile {
 }
 
 export interface InitPlan {
+  placement: WidgetPlacement;
+  fiducyCommand: string;
   files: PlannedFile[];
-  snippets: Snippet[];
+  steps: Snippet[];
   packages: string[];
-  notes: string[];
+  warnings: string[];
+  commands: NextCommand[];
 }
 
 export interface Snippet {
   title: string;
   file: string;
-  code: string;
+  code?: string;
+  detail?: string;
+}
+
+export interface NextCommand {
+  command: string;
+  purpose: string;
+  followUp?: string;
+}
+
+export interface DrizzleSetup {
+  schema: string | null;
+  usesMigrations: boolean;
+}
+
+export interface PlacementSection {
+  steps: Snippet[];
+  packages: string[];
+}
+
+export interface PlanSection {
+  steps: Snippet[];
+  warnings: string[];
+  commands: NextCommand[];
+}
+
+export interface InstallResult {
+  ok: boolean;
+  log: string;
 }
 
 export interface TemplateInput {
