@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { CLI_VERSION } from '../src/constants.ts';
 import { createProject, packageWith, removeProjects, run } from './fixtures.ts';
 
 afterAll(removeProjects);
@@ -28,7 +29,7 @@ describe('fiducy init', () => {
     const route = read(root, 'src/app/api/fiducy/[...path]/route.ts');
     expect(route).toContain("import { fiducy } from '@/lib/fiducy';");
     expect(route).toContain('export const { GET, POST, DELETE } = toNextJsHandler(fiducy);');
-    expect(result.text).toContain('Install with: bun add @fiducy/sdk kysely');
+    expect(result.text).toContain(`Install with: bun add @fiducy/sdk@${CLI_VERSION} kysely`);
   });
 
   it('never overwrites an existing file', async () => {
