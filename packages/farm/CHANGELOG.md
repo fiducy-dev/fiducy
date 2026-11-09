@@ -1,5 +1,12 @@
 # @fiducy/farm
 
+## 0.3.0-beta.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fiducy/sdk@0.3.0-beta.2
+
 ## 0.3.0-beta.1
 
 ### Patch Changes

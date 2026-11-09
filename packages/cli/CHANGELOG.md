@@ -1,5 +1,11 @@
 # fiducy
 
+## 0.3.0-beta.2
+
+### Patch Changes
+
+- [#100](https://github.com/fiducy-dev/fiducy/pull/100) [`3136738`](https://github.com/fiducy-dev/fiducy/commit/313673828eb5e5dd6ec0a096098235c683be9f03) Thanks [@Benonii](https://github.com/Benonii)! - `fiducy init` installs the @fiducy/* packages at the same version as the CLI, so a beta CLI no longer pulls the older stable SDK.
+
 ## 0.3.0-beta.1
 
 ### Patch Changes
