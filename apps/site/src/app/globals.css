@@ -24,10 +24,10 @@
   --animate-fade-in: fade-in 1400ms var(--ease-out-expo) both;
   --animate-blink: blink 1.8s steps(2, jump-none) infinite;
   --animate-code-in: code-in 300ms var(--ease-out-expo);
-  --animate-leak-scroll: leak-scroll 18s linear infinite;
   --animate-marquee: marquee 16s linear infinite;
   --animate-leak-steal: leak-steal 6s var(--ease-out-expo) infinite;
   --animate-leak-last: leak-last 6s linear infinite;
+  --animate-leak-away: leak-away 6s linear infinite;
 
   @keyframes leak-steal {
     0%,
@@ -52,6 +52,18 @@
     100% {
       transform: none;
       opacity: 1;
+    }
+  }
+
+  @keyframes leak-away {
+    0%,
+    14%,
+    100% {
+      opacity: 1;
+    }
+    30%,
+    94% {
+      opacity: 0;
     }
   }
 
@@ -97,12 +109,6 @@
     from {
       opacity: 0.2;
       filter: blur(2px);
-    }
-  }
-
-  @keyframes leak-scroll {
-    to {
-      transform: var(--step);
     }
   }
 }

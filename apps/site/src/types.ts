@@ -5,35 +5,10 @@ import type { Vector2, WebGLRenderTarget } from 'three';
 
 export type Point = readonly [number, number, number];
 
-export interface BoxProps {
-  at: Point;
-  size: Point;
-  tone?: 'line' | 'solid';
-  children?: ReactNode;
-}
-
-export interface PlateProps {
-  at: Point;
-  size: readonly [number, number];
-  className?: string;
-}
-
 export interface LineProps {
   from: Point;
   to: Point;
   className?: string;
-}
-
-export interface TagProps {
-  at: Point;
-  children: ReactNode;
-  className?: string;
-}
-
-export interface IsoKeyProps {
-  at: Point;
-  tone?: BoxProps['tone'];
-  part?: 'whole' | 'bow' | 'tip';
 }
 
 export interface IsoSceneProps {
@@ -178,6 +153,30 @@ export interface CodeBlockProps {
 
 export interface ProviderLogoProps {
   name: string;
+}
+
+export interface RoundBoxProps {
+  at: Point;
+  size: Point;
+  radius?: number;
+  tone?: 'line' | 'solid';
+  className?: string;
+  children?: ReactNode;
+}
+
+export interface InsetProps {
+  at: Point;
+  size: readonly [number, number];
+  radius?: number;
+  className?: string;
+}
+
+export interface PrintProps {
+  at: Point;
+  face?: 'top' | 'front' | 'side';
+  size?: number;
+  className?: string;
+  children: ReactNode;
 }
 
 export interface CalloutProps {

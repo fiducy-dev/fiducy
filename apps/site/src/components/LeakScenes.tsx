@@ -1,12 +1,17 @@
 import { QuietLine } from '@/components/Emphasis';
 import { IsoScene } from '@/components/IsoScene';
 import { Callout } from '@/components/isoCallout';
-import { IsoKey, KEY_SHAFT_DEPTH, KEY_SHAFT_OFFSET } from '@/components/isoKey';
-import { KEY_SPLIT_AT, KEY_TIP_END } from '@/components/isoKey';
-import { Box, Line, Plate, offset } from '@/components/isometric';
-import { ISO_DETAIL, ISO_GHOST, ISO_LINE_STRONG } from '@/lib/isoStyles';
-import { ISO_SCREEN, ISO_SCROLL, ISO_SLOT } from '@/lib/isoStyles';
-import { ISO_RESULT, ISO_STEAL } from '@/lib/isoStyles';
+import { Inset, Print, RoundBox, SidePanel } from '@/components/isoSolids';
+import { Line, offset } from '@/components/isometric';
+import { ISO_DETAIL, ISO_DETAIL_FACE, ISO_GHOST, ISO_LINE_STRONG } from '@/lib/isoStyles';
+import {
+  ISO_PRINT_INVERSE,
+  ISO_PRINT_QUIET,
+  ISO_RESULT,
+  ISO_SCREEN,
+  ISO_STEAL,
+  ISO_WITH_PART
+} from '@/lib/isoStyles';
 import { DESCRIPTION_CLASS, LABEL_CLASS } from '@/lib/styles';
 
 import type { LeakCardProps, LeakScene } from '@/types';
@@ -16,37 +21,45 @@ function moves(variables: Record<string, string>): CSSProperties {
   return variables as CSSProperties;
 }
 
-const LOG_LINE_LENGTHS = [5.2, 3.6, 4.4, 2.8, 5.6, 3.2, 4.8, 2.4];
-const HANDLE_SLOTS: [number, number][] = [
-  [0.6, 0.7],
-  [2.4, 0.7],
-  [4.2, 0.7],
-  [0.6, 2.6],
-  [4.2, 2.6],
-  [0.6, 4.5],
-  [2.4, 4.5],
-  [4.2, 4.5]
+const DUMP_ROWS = ['kh_9f2c…', 'kh_41ab…', 'kh_7d0e…'];
+const LOG_LINES = [
+  'POST /api/chat 200',
+  'handle=kh_9f2c…',
+  'model=gpt-4o-mini',
+  'POST /api/chat 429',
+  'handle=kh_41ab…'
 ];
+const DISC_LEVELS = [0, 0.95, 1.9];
+const RACK_LEVELS = [0, 0.95, 1.9];
 
 function DatabaseScene() {
   return (
     <>
-      <Plate at={[-1.5, -1.5, 0]} size={[9, 9]} className={ISO_GHOST} />
-      {[0, 1.5, 3].map((z) => (
-        <Box key={z} at={[0, 0, z]} size={[6, 6, 1.1]}>
-          <Line from={[0.6, 6, z + 0.55]} to={[1.6, 6, z + 0.55]} className={ISO_DETAIL} />
-          <Line from={[6, 0.6, z + 0.55]} to={[6, 1.2, z + 0.55]} className={ISO_DETAIL} />
-        </Box>
+      <Inset at={[-0.6, -0.6, 0]} size={[9, 6.4]} radius={0.6} className={ISO_GHOST} />
+      {DISC_LEVELS.map((z) => (
+        <RoundBox key={z} at={[0, 0, z]} size={[3.6, 3.6, 0.75]} radius={1.8} />
       ))}
-      {HANDLE_SLOTS.map(([x, y]) => (
-        <Box key={`${x}-${y}`} at={[x, y, 4.1]} size={[1.2, 0.8, 0.25]} />
-      ))}
-      <Plate at={[2.4, 2.6, 4.1]} size={[1.2, 0.8]} className={ISO_GHOST} />
-      <g className={ISO_STEAL} style={moves({ '--to': offset(0, 0, 3.4) })}>
-        <Box at={[2.4, 2.6, 4.1]} size={[1.2, 0.8, 0.25]} tone="solid" />
+      <Print at={[1.75, 2.85, 2.65]}>app db</Print>
+      <g className={ISO_STEAL} style={moves({ '--to': offset(2.2, 1.2, 0) })}>
+        <RoundBox at={[4.2, 2.2, 0]} size={[3.6, 3, 0.14]} radius={0.2} />
+        <Print at={[4.75, 4.85, 0.14]} className={ISO_PRINT_QUIET}>
+          users
+        </Print>
+        <Line from={[5, 5, 0.14]} to={[5, 2.4, 0.14]} className={ISO_DETAIL} />
+        {DUMP_ROWS.map((row, index) => (
+          <Print key={row} at={[5.65 + index * 0.6, 4.85, 0.14]}>
+            {row}
+          </Print>
+        ))}
       </g>
-      <Callout at={[3, 3, 4.1]} to={[105, -30]} name="handle" value="kh_9f2c…" />
-      <Callout at={[6, 3, 2.05]} to={[105, 40]} name="api keys stored" value="0" />
+      <Callout at={[2.8, 1.2, 2.65]} to={[100, -28]} name="api keys" value="0" />
+      <Callout
+        at={[7.3, 3.5, 0.14]}
+        to={[100, 58]}
+        name="dump"
+        value="3 handles"
+        className={ISO_WITH_PART}
+      />
     </>
   );
 }
@@ -54,29 +67,27 @@ function DatabaseScene() {
 function LogsScene() {
   return (
     <>
-      <Box at={[0, 0, 0]} size={[8, 5.6, 0.8]} />
-      <Plate at={[0.5, 0.5, 0.8]} size={[7, 4.6]} className={ISO_SCREEN} />
-      <clipPath id="leak-log-screen">
-        <Plate at={[0.5, 0.5, 0.8]} size={[7, 4.6]} />
-      </clipPath>
-      <g clipPath="url(#leak-log-screen)">
-        <g
-          className={ISO_SCROLL}
-          style={moves({ '--step': offset(0, -LOG_LINE_LENGTHS.length * 0.55, 0) })}
-        >
-          {[...LOG_LINE_LENGTHS, ...LOG_LINE_LENGTHS].map((length, index) => {
-            const y = 1 + index * 0.55;
-            return (
-              <Line key={y} from={[1, y, 0.8]} to={[1 + length, y, 0.8]} className={ISO_DETAIL} />
-            );
-          })}
-        </g>
-        <g className={ISO_STEAL} style={moves({ '--to': offset(0, 3.6, 0) })}>
-          <Line from={[0.5, 0.8, 0.8]} to={[7.5, 0.8, 0.8]} className={ISO_LINE_STRONG} />
-        </g>
+      <Inset at={[-0.6, -0.8, 0]} size={[5.6, 8]} radius={0.6} className={ISO_GHOST} />
+      <RoundBox at={[0.35, -0.2, 0]} size={[3.8, 6.4, 0.35]} radius={0.3} />
+      <Inset at={[1.4, 0.4, 0.35]} size={[1.8, 5.2]} radius={0.15} className={ISO_DETAIL_FACE} />
+      <RoundBox at={[0, 0, 0.35]} size={[0.35, 6, 3.6]} radius={0.12} />
+      <SidePanel at={[0.35, 0.3, 0.65]} size={[5.4, 3]} className={ISO_SCREEN} />
+      {LOG_LINES.map((line, index) => (
+        <Print key={line} at={[0.35, 5.45, 3.2 - index * 0.5]} face="side" size={5.5}>
+          {line}
+        </Print>
+      ))}
+      <g className={ISO_STEAL} style={moves({ '--to': offset(0, 0, -2.2) })}>
+        <Line from={[0.35, 0.3, 3.45]} to={[0.35, 5.7, 3.45]} className={ISO_LINE_STRONG} />
       </g>
-      <Callout at={[2, 1.55, 0.8]} to={[128, -8]} name="handle" value="kh_9f2c…" />
-      <Callout at={[5, 3.5, 0.8]} to={[128, 48]} name="keys in logs" value="0" />
+      <Callout at={[0.35, 2.4, 2.75]} to={[100, -24]} name="app.log" value="0 keys" />
+      <Callout
+        at={[0.35, 2.4, 1.25]}
+        to={[100, 30]}
+        name="grep sk-"
+        value="0 matches"
+        className={ISO_RESULT}
+      />
     </>
   );
 }
@@ -84,46 +95,67 @@ function LogsScene() {
 function StorageScene() {
   return (
     <>
-      <Plate at={[-1, -1.2, 0]} size={[7.4, 4.2]} className={ISO_GHOST} />
-      <IsoKey at={[0, 0, 0]} part="bow" />
-      <Plate
-        at={[KEY_SPLIT_AT, KEY_SHAFT_OFFSET, 0]}
-        size={[KEY_TIP_END - KEY_SPLIT_AT, KEY_SHAFT_DEPTH]}
-        className={ISO_GHOST}
-      />
-      <Line
-        from={[KEY_SPLIT_AT, -0.3, 0.35]}
-        to={[KEY_SPLIT_AT, 2.3, 0.35]}
-        className={ISO_GHOST}
-      />
-      <g className={ISO_STEAL} style={moves({ '--to': offset(1.4, 2.4, 1.2) })}>
-        <IsoKey at={[0, 0, 0]} part="tip" tone="solid" />
+      <Inset at={[-0.6, -0.6, 0]} size={[9, 8.4]} radius={0.6} className={ISO_GHOST} />
+      {RACK_LEVELS.map((z) => (
+        <RoundBox key={z} at={[0, 0, z]} size={[4.4, 3.2, 0.8]} radius={0.25}>
+          <Line from={[0.4, 3.2, z + 0.4]} to={[1.6, 3.2, z + 0.4]} className={ISO_DETAIL} />
+        </RoundBox>
+      ))}
+      <Print at={[4.4, 3, 2.2]} face="side" size={5.5}>
+        fiducy store
+      </Print>
+      <RoundBox at={[2.6, 4.6, 0]} size={[1.8, 2.8, 0.12]} radius={0.2} />
+      <Print at={[3.65, 6.95, 0.12]}>share A</Print>
+      <g className={ISO_STEAL} style={moves({ '--to': offset(1.4, -0.8, 1.6) })}>
+        <RoundBox at={[6.4, 0.2, 1.4]} size={[1.8, 2.8, 0.12]} radius={0.2} tone="solid" />
+        <Print at={[7.45, 2.55, 1.52]} className={ISO_PRINT_INVERSE}>
+          share B
+        </Print>
       </g>
-      <Callout at={[0.8, 0.8, 0.3]} to={[96, -30]} name="half A" value="your handle" />
-      <Callout at={[4.1, 1.25, 0]} to={[96, 30]} name="half B shows" value="0 of 256 bits" />
+      <Callout
+        at={[6.8, 0.6, 1.52]}
+        to={[118, 16]}
+        name="share B"
+        value="0 of 256 bits"
+        className={ISO_WITH_PART}
+      />
+      <Callout at={[4, 5, 0.12]} to={[118, 70]} name="share A" value="your handle" />
     </>
   );
 }
 
-function EnclaveScene() {
+function AdminScene() {
   return (
     <>
-      <Plate at={[-1, -1, 0]} size={[6.5, 6.5]} className={ISO_GHOST} />
-      <Box at={[0, 0, 0]} size={[4.5, 4.5, 3.4]}>
-        <Plate at={[2.4, 1.9, 3.4]} size={[2, 0.8]} className={ISO_SLOT} />
-        <Line from={[0.5, 4.5, 2.8]} to={[2.2, 4.5, 2.8]} className={ISO_DETAIL} />
-        <Line from={[0.5, 4.5, 2.4]} to={[1.4, 4.5, 2.4]} className={ISO_DETAIL} />
-        <Line from={[4.5, 0.5, 2.8]} to={[4.5, 1.6, 2.8]} className={ISO_DETAIL} />
-      </Box>
-      <g className={ISO_STEAL} style={moves({ '--to': offset(0, 0, -1.9) })}>
-        <IsoKey at={[-0.8, 1.5, 5.6]} tone="solid" />
+      <Inset at={[-0.6, -0.6, 0]} size={[8.4, 9]} radius={0.6} className={ISO_GHOST} />
+      <RoundBox at={[0, 0, 0]} size={[4, 4, 2.6]} radius={0.4}>
+        <Inset at={[1.6, 1, 2.6]} size={[0.8, 2]} radius={0.15} className={ISO_DETAIL_FACE} />
+      </RoundBox>
+      <Print at={[4, 2.6, 1.1]} face="side" size={8}>
+        KMS
+      </Print>
+      <RoundBox at={[0.2, 4.6, 0]} size={[2.4, 3.6, 0.12]} radius={0.2} />
+      <Print at={[0.85, 7.85, 0.12]} size={5.5} className={ISO_PRINT_QUIET}>
+        key policy
+      </Print>
+      <Print at={[1.45, 7.85, 0.12]} size={5.5}>
+        Decrypt if
+      </Print>
+      <Print at={[2.05, 7.85, 0.12]} size={5.5}>
+        PCR0 = 7f3a…
+      </Print>
+      <g className={ISO_STEAL} style={moves({ '--to': offset(-4.55, 2.2, -1.05) })}>
+        <RoundBox at={[5.8, -1.4, 3.8]} size={[1.5, 2.4, 0.12]} radius={0.2} tone="solid" />
+        <Print at={[6.7, 0.7, 3.92]} className={ISO_PRINT_INVERSE}>
+          admin
+        </Print>
       </g>
-      <Callout at={[4.5, 2.25, 1.7]} to={[100, 45]} name="KMS key" value="locked to PCR0" />
+      <Callout at={[2.4, 8.05, 0.12]} to={[124, 82]} name="policy" value="PCR0 only" />
       <Callout
-        at={[3.4, 2.3, 3.4]}
-        to={[100, -24]}
-        name="admin"
-        value="Decrypt denied"
+        at={[2, 2, 2.6]}
+        to={[124, -32]}
+        name="kms:Decrypt"
+        value="AccessDenied"
         className={ISO_RESULT}
       />
     </>
@@ -133,8 +165,8 @@ function EnclaveScene() {
 const SCENES: LeakScene[] = [
   {
     label: 'Your database',
-    hint: 'A handle is stolen',
-    readout: 'handles stolen 1 · keys opened 0',
+    hint: 'The users table is dumped',
+    readout: 'rows dumped 3 · keys opened 0',
     title: 'If your database leaks,',
     quiet: 'attackers open 0 keys.',
     accent: '0',
@@ -143,8 +175,8 @@ const SCENES: LeakScene[] = [
   },
   {
     label: 'Your server logs',
-    hint: 'The logs are searched',
-    readout: 'grep sk- · 0 matches',
+    hint: 'Someone greps the logs',
+    readout: 'log lines 5 · keys 0',
     title: 'If your logs leak,',
     quiet: 'grep finds 0 keys in them.',
     accent: '0',
@@ -153,8 +185,8 @@ const SCENES: LeakScene[] = [
   },
   {
     label: "Fiducy's storage",
-    hint: 'Half a key is stolen',
-    readout: 'halves stolen 1 of 2',
+    hint: 'The key store is dumped',
+    readout: 'shares stolen 1 of 2',
     title: 'If Fiducy is breached,',
     quiet: 'half a key reveals 0 bits.',
     accent: '0',
@@ -164,13 +196,13 @@ const SCENES: LeakScene[] = [
   },
   {
     label: 'An AWS admin',
-    hint: 'An admin tries to decrypt',
-    readout: 'kms:Decrypt · AccessDenied',
+    hint: 'An admin calls Decrypt',
+    readout: 'PCR0 required · admin has none',
     title: 'Even an AWS admin',
     quiet: "decrypts 0 of your users' keys.",
     accent: '0',
     description: 'KMS unwraps only for the attested enclave image, and nothing is stored open.',
-    scene: <EnclaveScene />
+    scene: <AdminScene />
   }
 ];
 
