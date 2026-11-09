@@ -25,8 +25,8 @@ export function Faq() {
           Questions
         </p>
         <h2 id="faq-title" className={TITLE_CLASS}>
-          Before you hand over
-          <QuietLine text="your users' keys." />
+          <QuietLine text="Before you hand over" word="hand over" />
+          <QuietLine text="your users' keys." word="keys" />
         </h2>
         <p className={DESCRIPTION_CLASS}>
           Something else on your mind? The{' '}

@@ -6,7 +6,7 @@ export function Emphasis({ text, word }: EmphasisProps) {
   return (
     <>
       {text.slice(0, at)}
-      <span className="text-ink">{word}</span>
+      <span className="text-emphasis">{word}</span>
       {text.slice(at + word.length)}
     </>
   );

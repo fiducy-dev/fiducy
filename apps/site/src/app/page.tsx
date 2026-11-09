@@ -35,7 +35,9 @@ export default function HomePage() {
           <section className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 px-gutter py-16 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:py-20">
             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-7">
               <h1 className="grid text-[clamp(2.125rem,4.6vw,4rem)] leading-none font-bold tracking-[-0.05em] text-balance">
-                <span className="animate-rise-in">Users bring keys.</span>
+                <span className="animate-rise-in text-ink-quiet">
+                  <Emphasis text="Users bring keys." word="keys" />
+                </span>
                 <span className="animate-rise-in text-ink-quiet [animation-delay:120ms]">
                   <Emphasis text="You never hold them." word="never" />
                 </span>
@@ -74,7 +76,7 @@ export default function HomePage() {
           <section className={SECTION_CLASS}>
             <div className={SECTION_HEAD_CLASS}>
               <h2 className={TITLE_CLASS}>
-                A breach can't leak
+                <QuietLine text="A breach can't leak" word="leak" />
                 <QuietLine text="what you never stored" word="never" />
               </h2>
               <p className={DESCRIPTION_CLASS}>
@@ -90,8 +92,8 @@ export default function HomePage() {
           >
             <div className={SECTION_HEAD_CLASS}>
               <h2 className={TITLE_CLASS}>
-                Ship bring-your-own-key
-                <QuietLine text="this week" />
+                <QuietLine text="Ship bring-your-own-key" />
+                <QuietLine text="this week" word="this week" />
               </h2>
               <p className={DESCRIPTION_CLASS}>
                 No crypto to write and no key vault to run. Four small pieces drop into the app you
@@ -107,7 +109,7 @@ export default function HomePage() {
           <section className={`${SECTION_CLASS} pb-0 max-md:pb-0`}>
             <div className={SECTION_HEAD_CLASS}>
               <h2 className={TITLE_CLASS}>
-                When something leaks,
+                <QuietLine text="When something leaks," word="leaks" />
                 <QuietLine text="your users' keys don't" word="don't" />
               </h2>
               <p className={DESCRIPTION_CLASS}>
