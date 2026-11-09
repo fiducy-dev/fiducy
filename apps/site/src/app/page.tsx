@@ -58,7 +58,10 @@ export default function HomePage() {
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2 max-sm:[&>button]:w-full">
                     <CopyAgentPrompt />
                     <span className="text-xs text-ink-muted">
-                      Your coding agent sets it up. Secrets stay with you.
+                      Your coding agent sets it up.{' '}
+                      <a className="text-ink underline underline-offset-4" href="/setup">
+                        Tailor it to your stack
+                      </a>
                     </span>
                   </div>
                 </div>
