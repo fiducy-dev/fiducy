@@ -1,6 +1,6 @@
 import { DOCS_URL } from '../constants.ts';
 
-import type { AuthName, FrameworkName, StorageName } from '../types.ts';
+import type { AuthName, FrameworkName, StorageName, WidgetPlacement } from '../types.ts';
 
 const FRAMEWORK_NAMES: Record<FrameworkName, string> = {
   next: 'Next.js',
@@ -52,6 +52,9 @@ export function nameStorage(storage: StorageName): string {
   return STORAGE_NAMES[storage];
 }
 
-export function findGuideURL(framework: FrameworkName): string {
+export function findGuideURL(framework: FrameworkName, placement?: WidgetPlacement): string {
+  if (placement?.kind === 'chat' && placement.chat === 'assistant-ui') {
+    return `${DOCS_URL}/assistant-ui`;
+  }
   return `${DOCS_URL}/${DOCS_PAGES[framework]}`;
 }

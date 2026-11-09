@@ -24,13 +24,19 @@ export function packageWith(dependencies: Record<string, string>): string {
   return JSON.stringify({ name: 'existing-app', dependencies });
 }
 
-export async function run(root: string, argv: string[]) {
+export async function run(root: string, argv: string[], answers?: string[]) {
   const lines: string[] = [];
   const output = {
     info: (line: string) => lines.push(line),
     error: (line: string) => lines.push(line),
     style: createStyle(false)
   };
-  const code = await runCli(argv, { cwd: root, output, environment: {} });
+  const ask = answers
+    ? async (question: string) => {
+        lines.push(question);
+        return answers.shift() ?? '';
+      }
+    : undefined;
+  const code = await runCli(argv, { cwd: root, output, environment: {}, ask });
   return { code, text: lines.join('\n') };
 }

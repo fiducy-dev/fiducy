@@ -24,10 +24,13 @@ export interface Output {
   style: Style;
 }
 
+export type Ask = (question: string) => Promise<string>;
+
 export interface CommandContext {
   cwd: string;
   output: Output;
   environment: Record<string, string | undefined>;
+  ask?: Ask;
 }
 
 export type Command = (argv: string[], context: CommandContext) => Promise<number>;
@@ -68,6 +71,20 @@ export type AuthName = 'better-auth' | 'authjs' | 'clerk' | 'none';
 
 export type StorageName = 'prisma' | 'drizzle' | 'kysely' | 'sqlite';
 
+export type ChatStack = 'assistant-ui' | 'ai-sdk' | 'none';
+
+export type WidgetPlacement =
+  | { kind: 'chat'; chat: Exclude<ChatStack, 'none'> }
+  | { kind: 'settings' }
+  | { kind: 'route'; route: string };
+
+export type PlacementChoice = 'chat' | 'settings' | `/${string}`;
+
+export interface ResolvedPlacement {
+  placement: WidgetPlacement;
+  fellBack: boolean;
+}
+
 export interface PackageJSON {
   name?: string;
   dependencies?: Record<string, string>;
@@ -93,6 +110,7 @@ export interface ProjectInfo {
   auth: AuthName;
   authSource?: ImportPath;
   storage: StorageChoice;
+  chat: ChatStack;
   sourceDirectory: string;
   alias: AliasInfo | null;
   dependencies: Record<string, string>;
@@ -109,6 +127,7 @@ export interface PlannedFile {
 }
 
 export interface InitPlan {
+  placement: WidgetPlacement;
   files: PlannedFile[];
   steps: Snippet[];
   packages: string[];
@@ -126,6 +145,11 @@ export interface Snippet {
 export interface NextCommand {
   command: string;
   purpose: string;
+}
+
+export interface PlacementSection {
+  steps: Snippet[];
+  packages: string[];
 }
 
 export interface PlanSection {

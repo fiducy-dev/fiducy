@@ -6,20 +6,29 @@ import { UsageError, parseFlags, readBoolean, readString } from '../flags.ts';
 import { buildAgentPrompt } from '../project/agentPrompt.ts';
 import { detectProject } from '../project/detect.ts';
 import { describeInstall, installPackages } from '../project/install.ts';
+import { readPlacementChoice, resolvePlacement } from '../project/placement.ts';
 import { buildInitPlan } from '../project/plan.ts';
 import { withSpinner } from '../spinner.ts';
 import { isAuthName, isFrameworkName } from '../validators.ts';
 import { printAgentHint, printFile, printHeader, printInstall, printSteps } from './initReport.ts';
+import { printPlacement } from './initReport.ts';
+import { askPlacement } from './placementQuestion.ts';
 
-import type { CommandContext, InitPlan, Output, ProjectInfo } from '../types.ts';
+import type { CommandContext, InitPlan, Output, PlacementChoice } from '../types.ts';
+import type { ProjectInfo } from '../types.ts';
 
-export const INIT_HELP = `Usage: fiducy init [--show-code] [--dry-run] [--skip-install] [--framework next] [--auth better-auth]
+export const INIT_HELP = `Usage: fiducy init [--widget chat] [--show-code] [--dry-run] [--skip-install] [--framework next] [--auth better-auth]
 
 Adds Fiducy to the app in this folder. It detects your framework, package
 manager, auth and database, creates only new files (your server module and key
 route), installs @fiducy/sdk, and lists the few things left to wire up in files
 you already have. It never edits an existing file and never creates a new app.
+In a terminal it asks where users add their key; elsewhere it picks for you.
 
+  --widget         Where users add their key: chat, settings, or a route like
+                   /account. Default: chat if the app has assistant-ui or AI SDK
+                   useChat, otherwise settings. chat without a chat UI falls back
+                   to settings
   --show-code      Print the code for each thing left to do
   --dry-run        Show every file and step without writing or installing
   --skip-install   Do not run your package manager
@@ -31,7 +40,8 @@ const INIT_FLAGS = {
   'dry-run': { type: 'boolean' },
   'skip-install': { type: 'boolean' },
   framework: { type: 'string' },
-  auth: { type: 'string' }
+  auth: { type: 'string' },
+  widget: { type: 'string' }
 } as const;
 
 function applyOverrides(project: ProjectInfo, framework?: string, auth?: string): ProjectInfo {
@@ -55,7 +65,11 @@ export function prepareInit(argv: string[], { cwd, environment }: CommandContext
     readString(flags, 'framework'),
     readString(flags, 'auth')
   );
-  return { flags, project, plan: buildInitPlan(project) };
+  return { flags, project, choice: readPlacementChoice(readString(flags, 'widget')) };
+}
+
+export function planInit(project: ProjectInfo, choice: PlacementChoice | undefined): InitPlan {
+  return buildInitPlan(project, resolvePlacement(project, choice));
 }
 
 function printDryRun(project: ProjectInfo, plan: InitPlan, output: Output) {
@@ -89,9 +103,12 @@ async function installPlan(project: ProjectInfo, plan: InitPlan, skip: boolean, 
 }
 
 export async function runInit(argv: string[], context: CommandContext) {
-  const { output, cwd, environment } = context;
-  const { flags, project, plan } = prepareInit(argv, context);
+  const { output, cwd, environment, ask } = context;
+  const { flags, project, choice } = prepareInit(argv, context);
   printHeader(project, output);
+  const chosen = choice ?? (ask ? await askPlacement(ask, project, output) : undefined);
+  const plan = planInit(project, chosen);
+  printPlacement(plan.placement, output);
   if (readBoolean(flags, 'dry-run')) {
     printDryRun(project, plan, output);
     return 0;
