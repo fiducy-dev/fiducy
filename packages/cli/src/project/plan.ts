@@ -2,43 +2,33 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { buildFrameworkFiles } from './frameworkFiles.ts';
+import { buildPlacementSection } from './placementSteps.ts';
 import { buildServerModule, chooseServerModulePath, readExportName } from './serverModule.ts';
 
-import { CLI_VERSION } from '../constants.ts';
+import { CHAT_FALLBACK_WARNING, CLI_VERSION } from '../constants.ts';
 
-import type { InitPlan, ProjectInfo } from '../types.ts';
+import type { InitPlan, ProjectInfo, ResolvedPlacement } from '../types.ts';
 
-const MODEL_CALL = `import { respondToMissingKey } from '@fiducy/sdk/server';
-
-const settings = await fiducy.providerSettings('openai', { request });
-if (!settings.ok) return respondToMissingKey(settings);
-const model = createOpenAI(settings).chat('gpt-4o-mini');`;
-
-export function buildInitPlan(project: ProjectInfo): InitPlan {
+export function buildInitPlan(project: ProjectInfo, resolved: ResolvedPlacement): InitPlan {
+  const { placement, fellBack } = resolved;
   const hasSourceFolder = existsSync(join(project.root, 'src'));
   const serverModulePath = chooseServerModulePath(project, hasSourceFolder);
   const serverModule = buildServerModule(project, serverModulePath);
   const framework = buildFrameworkFiles(project, serverModulePath);
   const exportName = readExportName(project);
+  const placementSection = buildPlacementSection(project, placement, framework.widget, exportName);
   const packages = [
     ...(project.dependencies['@fiducy/sdk'] ? [] : ['@fiducy/sdk']),
     ...serverModule.packages,
-    ...framework.packages
+    ...framework.packages,
+    ...placementSection.packages
   ].map(pinFiducyPackage);
   return {
+    placement,
     files: [{ path: serverModulePath, contents: serverModule.contents }, ...framework.files],
-    steps: [
-      ...serverModule.steps,
-      ...framework.snippets,
-      framework.widget,
-      {
-        title: "call the model with the user's key",
-        file: 'your AI route',
-        code: MODEL_CALL.replace('fiducy.', `${exportName}.`)
-      }
-    ],
+    steps: [...serverModule.steps, ...framework.snippets, ...placementSection.steps],
     packages,
-    warnings: serverModule.warnings,
+    warnings: [...(fellBack ? [CHAT_FALLBACK_WARNING] : []), ...serverModule.warnings],
     commands: [
       ...serverModule.commands,
       { command: 'npx fiducy dev', purpose: 'runs a local gateway' }

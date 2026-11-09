@@ -38,13 +38,15 @@ const config = AuiConfig({
 ```ts
 import { frontendTools } from '@assistant-ui/react-ai-sdk';
 import { requestKey, withoutKeyRequests } from '@fiducy/assistant-ui/server';
+import { respondToMissingKey } from '@fiducy/sdk/server';
 
-const settings = await fiducy.providerSettings(provider, { userID });
-if (!settings) return requestKey({ provider }); // the key box opens in the thread
+const settings = await fiducy.providerSettings(provider, { request });
+if (!settings.ok && settings.reason === 'signed-out') return respondToMissingKey(settings);
+if (!settings.ok) return requestKey({ provider }); // the key box opens in the thread
 
 const tools = frontendTools(body.tools);
 const result = streamText({
-  model: createOpenAI(settings).chat('gpt-5-mini'),
+  model: createOpenAI(settings).responses('gpt-5-mini'),
   messages: await convertToModelMessages(withoutKeyRequests(body.messages), { tools }),
   tools
 });

@@ -102,7 +102,7 @@ export async function action({ request }: Route.ActionArgs) {
   const settings = await fiducy.providerSettings('openai', { request });
   if (!settings.ok) return respondToMissingKey(settings);
   const { messages } = await request.json();
-  const model = createOpenAI(settings).chat('gpt-4o-mini');
+  const model = createOpenAI(settings).responses('gpt-4o-mini');
   return streamText({ model, messages }).toUIMessageStreamResponse();
 }
 ```

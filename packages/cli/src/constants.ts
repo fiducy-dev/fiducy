@@ -13,6 +13,11 @@ export const MOCK_PROVIDER_PATH_PREFIX = '/v1/';
 export const PRIVATE_FILE_MODE = 0o600;
 export const PRIVATE_DIRECTORY_MODE = 0o700;
 export const DOCS_URL = 'https://fiducy.dev/docs';
+export const PLACEMENT_ROUTE_PATTERN = /^\/[\w\-./[\]$:]*$/;
+export const MAX_ROUTE_ATTEMPTS = 3;
+export const CHAT_FALLBACK_WARNING =
+  'No chat UI found (assistant-ui or AI SDK useChat), so the key box goes on the settings page.';
+export const REACT_FRAMEWORKS = ['next', 'tanstack-start', 'react-router', 'farmjs'];
 
 export const DEV_ORIGIN_HOSTS = ['localhost', '127.0.0.1'];
 export const DEV_ORIGIN_PORTS = [

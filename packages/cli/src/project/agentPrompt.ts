@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { findGuideURL, nameFramework } from './names.ts';
+import { describePlacement } from './placement.ts';
 
 import type { InitPlan, ProjectInfo, Snippet } from '../types.ts';
 
@@ -19,10 +20,11 @@ function describeFiles(project: ProjectInfo, plan: InitPlan): string[] {
 }
 
 export function buildAgentPrompt(project: ProjectInfo, plan: InitPlan): string {
-  const guide = findGuideURL(project.framework);
+  const guide = findGuideURL(project.framework, plan.placement);
   return [
     `Finish adding Fiducy (users bring their own AI keys, sealed in an enclave) to this ${nameFramework(project.framework)} app.`,
     ...describeFiles(project, plan),
+    `Put the key box ${describePlacement(plan.placement)}, and nowhere else. Never put it in a header, nav bar, sidebar or root layout.`,
     'Do these steps, editing only what each one names:',
     ...plan.steps.map(describeStep),
     ...plan.warnings.map((warning) => `Note: ${warning}`),

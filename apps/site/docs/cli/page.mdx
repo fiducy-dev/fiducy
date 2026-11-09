@@ -19,7 +19,7 @@ Every command takes `--help`. The CLI never edits a file you already have and ne
 ## init
 
 ```bash
-npx fiducy init [--show-code] [--dry-run] [--skip-install] [--framework <name>] [--auth <name>]
+npx fiducy init [--widget <place>] [--show-code] [--dry-run] [--skip-install] [--framework <name>] [--auth <name>]
 ```
 
 Run it in the root of your app (where `package.json` is).
@@ -31,6 +31,7 @@ Run it in the root of your app (where `package.json` is).
 | Auth | `better-auth` (finds your `export const auth = betterAuth(...)`), `next-auth` (finds `export const { auth } = NextAuth(...)`), `@clerk/nextjs` |
 | Database | an exported Prisma client (`new PrismaClient`), Drizzle db (`drizzle(...)`) or Kysely instance (`new Kysely`), with the dialect from `schema.prisma` or `drizzle.config` |
 | Import style | your `tsconfig.json` paths, so it writes `@/lib/fiducy` when you use `@/*` |
+| Chat UI | `@assistant-ui/react`, or AI SDK `useChat` (`@ai-sdk/react`, `@ai-sdk/vue`, `@ai-sdk/svelte`) |
 
 What it writes, per framework:
 
@@ -48,6 +49,7 @@ When it finishes, it lists the few things left as numbered steps (the lines for 
 
 | Flag | |
 | --- | --- |
+| `--widget` | `chat`, `settings` or a route like `/account`. Skips the question |
 | `--show-code` | Print the code for each step left |
 | `--dry-run` | Print every file, command and step, write nothing |
 | `--skip-install` | Do not run your package manager |
@@ -56,10 +58,22 @@ When it finishes, it lists the few things left as numbered steps (the lines for 
 
 Running it again is safe: files that exist are kept and reported.
 
+### Where the key box goes
+
+In a terminal, `init` asks where users add their key:
+
+| Choice | What you get |
+| --- | --- |
+| In the chat | With assistant-ui, the thread asks for the key as a message (`requestKey` and `fiducyToolkit` from `@fiducy/assistant-ui`, which it installs). With `useChat`, the key box shows under the messages when a request fails for a missing key. |
+| Settings page | The widget on your settings page. No settings page yet? Create one at `/settings`. |
+| A page you name | The widget on that route, for example `/account`. |
+
+The default is the chat when it finds a chat UI, otherwise the settings page. If you pick the chat and there is no chat UI, it falls back to the settings page and says so. Outside a terminal (CI, a coding agent), it uses the default, or pass `--widget`. The setup prompt tells your coding agent the same place, and never a header, nav bar or root layout.
+
 ## prompt
 
 ```bash
-npx fiducy prompt [--framework <name>] [--auth <name>]
+npx fiducy prompt [--widget <place>] [--framework <name>] [--auth <name>]
 ```
 
 Prints a setup prompt for your coding agent: which Fiducy files exist, every step left with its code, and the guide for your framework. It writes nothing, so you can pipe it, for example `npx fiducy prompt | pbcopy`.

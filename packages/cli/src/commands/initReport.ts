@@ -1,7 +1,9 @@
 import { CLI_VERSION } from '../constants.ts';
 import { findGuideURL, nameAuth, nameFramework, nameStorage } from '../project/names.ts';
+import { describePlacement } from '../project/placement.ts';
 
 import type { InitPlan, NextCommand, Output, ProjectInfo, Snippet } from '../types.ts';
+import type { WidgetPlacement } from '../types.ts';
 
 const MAX_TITLE_WIDTH = 40;
 
@@ -25,6 +27,10 @@ export function printHeader(project: ProjectInfo, output: Output) {
   output.info(
     `${style.success('✓')} Found ${stack} ${dot} ${auth} ${dot} ${describeStorage(project, output)}`
   );
+}
+
+export function printPlacement(placement: WidgetPlacement, { info, style }: Output) {
+  info(`${style.success('✓')} Key box goes ${style.heading(describePlacement(placement))}`);
 }
 
 export function printFile(path: string, created: boolean, { info, style }: Output) {
@@ -93,7 +99,9 @@ export function printSteps(
     info(
       `  ${style.muted('Code for each'.padEnd(16))}${style.command('npx fiducy init --show-code')}`
     );
-  info(`  ${style.muted('Full guide'.padEnd(16))}${style.link(findGuideURL(project.framework))}`);
+  info(
+    `  ${style.muted('Full guide'.padEnd(16))}${style.link(findGuideURL(project.framework, plan.placement))}`
+  );
   for (const warning of plan.warnings) info(`\n${style.warning('!')} ${style.prose(warning)}`);
   printCommands(plan.commands, output);
 }
