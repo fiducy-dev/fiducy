@@ -4,14 +4,14 @@ import type { PackageManager } from '../types.ts';
 
 const DOWNLOAD_RUNNERS: Record<PackageManager, string> = {
   npm: 'npx',
-  bun: 'bunx',
+  bun: 'bun x',
   pnpm: 'pnpm dlx',
   yarn: 'yarn dlx'
 };
 
 const LOCAL_RUNNERS: Record<PackageManager, string> = {
   npm: 'npx',
-  bun: 'bunx',
+  bun: 'bun x',
   pnpm: 'pnpm exec',
   yarn: 'yarn'
 };

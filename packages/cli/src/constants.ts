@@ -66,7 +66,7 @@ export const LOCKFILES: [string, string][] = [
   ['package-lock.json', 'npm']
 ];
 export const COMMAND_PATTERN =
-  /(?:npx|bunx|pnpm dlx|yarn dlx) fiducy(?:@[\w.-]+)? \w+(?: --[\w-]+(?: <[^>]+>)?)*|prisma migrate dev|drizzle-kit (?:migrate|generate|push)|https:\/\/\S+[^\s.,]/g;
+  /(?:npx|bun x|pnpm dlx|yarn dlx) fiducy(?:@[\w.-]+)? \w+(?: --[\w-]+(?: <[^>]+>)?)*|prisma migrate dev|drizzle-kit (?:migrate|generate|push)|https:\/\/\S+[^\s.,]/g;
 export const DRIZZLE_CONFIG_FILES = [
   'drizzle.config.ts',
   'drizzle.config.js',
