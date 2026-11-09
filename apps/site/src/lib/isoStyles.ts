@@ -16,7 +16,5 @@ export const ISO_WIRE_DOT = 'fill-ink stroke-none';
 export const ISO_CALLOUT = 'stroke-none font-mono text-[11px]';
 export const ISO_CALLOUT_NAME = 'fill-ink-muted';
 export const ISO_CALLOUT_VALUE = 'fill-ink';
-export const ISO_STEAL = 'animate-leak-steal motion-reduce:animate-none';
-export const ISO_WITH_PART = 'animate-leak-away motion-reduce:animate-none';
-export const ISO_RESULT =
-  'opacity-0 animate-leak-last motion-reduce:animate-none motion-reduce:opacity-100';
+export const ISO_LED = 'fill-ink stroke-none';
+export const ISO_FLASH = 'fill-ink stroke-none opacity-0';

@@ -184,7 +184,24 @@ export interface CalloutProps {
   to: readonly [number, number];
   name: string;
   value: string;
+  window?: readonly [number, number];
+}
+
+export interface DotProps {
+  at: Point;
+  radius?: number;
   className?: string;
+}
+
+export interface TimedProps {
+  frames?: Keyframe[];
+  children: ReactNode;
+}
+
+export interface AnimateProps {
+  frames: Keyframe[];
+  className?: string;
+  children: ReactNode;
 }
 
 export interface EmphasisProps {

@@ -1,25 +1,15 @@
+import { Animate } from '@/components/Animate';
 import { QuietLine } from '@/components/Emphasis';
 import { IsoScene } from '@/components/IsoScene';
 import { Callout } from '@/components/isoCallout';
-import { Inset, Print, RoundBox, SidePanel } from '@/components/isoSolids';
+import { Dot, Inset, Print, RoundBox, SidePanel } from '@/components/isoSolids';
 import { Line, offset } from '@/components/isometric';
-import { ISO_DETAIL, ISO_DETAIL_FACE, ISO_GHOST, ISO_LINE_STRONG } from '@/lib/isoStyles';
-import {
-  ISO_PRINT_INVERSE,
-  ISO_PRINT_QUIET,
-  ISO_RESULT,
-  ISO_SCREEN,
-  ISO_STEAL,
-  ISO_WITH_PART
-} from '@/lib/isoStyles';
+import { blink, motion, shown, track } from '@/lib/isoMotion';
+import { ISO_DETAIL, ISO_DETAIL_FACE, ISO_FLASH, ISO_GHOST, ISO_LED } from '@/lib/isoStyles';
+import { ISO_LINE_STRONG, ISO_PRINT_INVERSE, ISO_PRINT_QUIET, ISO_SCREEN } from '@/lib/isoStyles';
 import { DESCRIPTION_CLASS, LABEL_CLASS } from '@/lib/styles';
 
 import type { LeakCardProps, LeakScene } from '@/types';
-import type { CSSProperties } from 'react';
-
-function moves(variables: Record<string, string>): CSSProperties {
-  return variables as CSSProperties;
-}
 
 const DUMP_ROWS = ['kh_9f2c…', 'kh_41ab…', 'kh_7d0e…'];
 const LOG_LINES = [
@@ -32,33 +22,98 @@ const LOG_LINES = [
 const DISC_LEVELS = [0, 0.95, 1.9];
 const RACK_LEVELS = [0, 0.95, 1.9];
 
+const DUMP_FROM = offset(-3, -1.4, 1.2);
+const DUMP_AWAY = offset(2.6, 1.4, 0);
+const DUMP_MOTION = motion([
+  [300, DUMP_FROM, 0],
+  [1300, 'none', 1],
+  [5800, 'none', 1],
+  [7000, DUMP_AWAY, 0]
+]);
+const DUMP_ROW_FRAMES = DUMP_ROWS.map((_, index) =>
+  shown('opacity', [1400 + index * 350, 5800], [0, 1], 150)
+);
+const DISC_BLINK = blink(300, 1700);
+
+const LOG_LINE_FRAMES = LOG_LINES.map((_, index) =>
+  shown('opacity', [300 + index * 450, 7200], [0, 1], 120)
+);
+const PROMPT_FRAMES = shown('opacity', [2600, 7200], [0, 1], 120);
+const SCAN_MOTION = motion([
+  [2900, 'none', 0],
+  [3000, 'none', 1],
+  [4600, offset(0, 0, -2.6), 1],
+  [4700, offset(0, 0, -2.6), 0]
+]);
+
+const SHARE_INSIDE = offset(-2.4, 1.2, -0.4);
+const SHARE_AWAY = offset(1.6, -1, 1.8);
+const SHARE_MOTION = motion([
+  [500, SHARE_INSIDE, 0],
+  [1500, 'none', 1],
+  [5200, 'none', 1],
+  [6400, SHARE_AWAY, 0]
+]);
+const RACK_BLINK = blink(500, 1700);
+
+const BADGE_AT_SLOT = offset(-4.55, 2.2, -1.05);
+const BADGE_MOTION = motion([
+  [900, 'none', 1],
+  [2000, BADGE_AT_SLOT, 1],
+  [2300, BADGE_AT_SLOT, 1],
+  [3200, 'none', 1],
+  [4300, 'none', 1],
+  [5100, BADGE_AT_SLOT, 1],
+  [5400, BADGE_AT_SLOT, 1],
+  [6300, 'none', 1]
+]);
+const SLOT_FLASH = track('opacity', [
+  [2000, 0],
+  [2100, 1],
+  [2500, 0],
+  [5100, 0],
+  [5200, 1],
+  [5600, 0]
+]);
+const KMS_BLINK = blink(2000, 2600, 150);
+
 function DatabaseScene() {
   return (
     <>
       <Inset at={[-0.6, -0.6, 0]} size={[9, 6.4]} radius={0.6} className={ISO_GHOST} />
       {DISC_LEVELS.map((z) => (
-        <RoundBox key={z} at={[0, 0, z]} size={[3.6, 3.6, 0.75]} radius={1.8} />
+        <RoundBox key={z} at={[0, 0, z]} size={[3.6, 3.6, 0.75]} radius={1.8}>
+          <Animate frames={DISC_BLINK}>
+            <Dot at={[3.3, 2.3, z + 0.38]} className={ISO_LED} />
+          </Animate>
+        </RoundBox>
       ))}
       <Print at={[1.75, 2.85, 2.65]}>app db</Print>
-      <g className={ISO_STEAL} style={moves({ '--to': offset(2.2, 1.2, 0) })}>
+      <Animate frames={DUMP_MOTION}>
         <RoundBox at={[4.2, 2.2, 0]} size={[3.6, 3, 0.14]} radius={0.2} />
         <Print at={[4.75, 4.85, 0.14]} className={ISO_PRINT_QUIET}>
           users
         </Print>
         <Line from={[5, 5, 0.14]} to={[5, 2.4, 0.14]} className={ISO_DETAIL} />
         {DUMP_ROWS.map((row, index) => (
-          <Print key={row} at={[5.65 + index * 0.6, 4.85, 0.14]}>
-            {row}
-          </Print>
+          <Animate key={row} frames={DUMP_ROW_FRAMES[index] ?? []}>
+            <Print at={[5.65 + index * 0.6, 4.85, 0.14]}>{row}</Print>
+          </Animate>
         ))}
-      </g>
-      <Callout at={[2.8, 1.2, 2.65]} to={[100, -28]} name="api keys" value="0" />
+      </Animate>
+      <Callout
+        at={[2.8, 1.2, 2.65]}
+        to={[100, -28]}
+        name="api keys"
+        value="0"
+        window={[200, 7400]}
+      />
       <Callout
         at={[7.3, 3.5, 0.14]}
         to={[100, 58]}
         name="dump"
         value="3 handles"
-        className={ISO_WITH_PART}
+        window={[2600, 5600]}
       />
     </>
   );
@@ -73,20 +128,33 @@ function LogsScene() {
       <RoundBox at={[0, 0, 0.35]} size={[0.35, 6, 3.6]} radius={0.12} />
       <SidePanel at={[0.35, 0.3, 0.65]} size={[5.4, 3]} className={ISO_SCREEN} />
       {LOG_LINES.map((line, index) => (
-        <Print key={line} at={[0.35, 5.45, 3.2 - index * 0.5]} face="side" size={5.5}>
-          {line}
-        </Print>
+        <Animate key={line} frames={LOG_LINE_FRAMES[index] ?? []}>
+          <Print at={[0.35, 5.45, 3.2 - index * 0.5]} face="side" size={5.5}>
+            {line}
+          </Print>
+        </Animate>
       ))}
-      <g className={ISO_STEAL} style={moves({ '--to': offset(0, 0, -2.2) })}>
+      <Animate frames={PROMPT_FRAMES}>
+        <Print at={[0.35, 5.45, 0.7]} face="side" size={5.5}>
+          $ grep sk- app.log
+        </Print>
+      </Animate>
+      <Animate frames={SCAN_MOTION}>
         <Line from={[0.35, 0.3, 3.45]} to={[0.35, 5.7, 3.45]} className={ISO_LINE_STRONG} />
-      </g>
-      <Callout at={[0.35, 2.4, 2.75]} to={[100, -24]} name="app.log" value="0 keys" />
+      </Animate>
+      <Callout
+        at={[0.35, 2.4, 2.75]}
+        to={[100, -24]}
+        name="app.log"
+        value="0 keys"
+        window={[800, 7200]}
+      />
       <Callout
         at={[0.35, 2.4, 1.25]}
         to={[100, 30]}
         name="grep sk-"
         value="0 matches"
-        className={ISO_RESULT}
+        window={[4700, 7200]}
       />
     </>
   );
@@ -99,6 +167,9 @@ function StorageScene() {
       {RACK_LEVELS.map((z) => (
         <RoundBox key={z} at={[0, 0, z]} size={[4.4, 3.2, 0.8]} radius={0.25}>
           <Line from={[0.4, 3.2, z + 0.4]} to={[1.6, 3.2, z + 0.4]} className={ISO_DETAIL} />
+          <Animate frames={RACK_BLINK}>
+            <Dot at={[3.7, 3.2, z + 0.4]} className={ISO_LED} />
+          </Animate>
         </RoundBox>
       ))}
       <Print at={[4.4, 3, 2.2]} face="side" size={5.5}>
@@ -106,20 +177,26 @@ function StorageScene() {
       </Print>
       <RoundBox at={[2.6, 4.6, 0]} size={[1.8, 2.8, 0.12]} radius={0.2} />
       <Print at={[3.65, 6.95, 0.12]}>share A</Print>
-      <g className={ISO_STEAL} style={moves({ '--to': offset(1.4, -0.8, 1.6) })}>
+      <Animate frames={SHARE_MOTION}>
         <RoundBox at={[6.4, 0.2, 1.4]} size={[1.8, 2.8, 0.12]} radius={0.2} tone="solid" />
         <Print at={[7.45, 2.55, 1.52]} className={ISO_PRINT_INVERSE}>
           share B
         </Print>
-      </g>
+      </Animate>
+      <Callout
+        at={[4, 5, 0.12]}
+        to={[118, 70]}
+        name="share A"
+        value="your handle"
+        window={[300, 7400]}
+      />
       <Callout
         at={[6.8, 0.6, 1.52]}
         to={[118, 16]}
         name="share B"
         value="0 of 256 bits"
-        className={ISO_WITH_PART}
+        window={[1700, 5200]}
       />
-      <Callout at={[4, 5, 0.12]} to={[118, 70]} name="share A" value="your handle" />
     </>
   );
 }
@@ -130,6 +207,12 @@ function AdminScene() {
       <Inset at={[-0.6, -0.6, 0]} size={[8.4, 9]} radius={0.6} className={ISO_GHOST} />
       <RoundBox at={[0, 0, 0]} size={[4, 4, 2.6]} radius={0.4}>
         <Inset at={[1.6, 1, 2.6]} size={[0.8, 2]} radius={0.15} className={ISO_DETAIL_FACE} />
+        <Animate frames={SLOT_FLASH}>
+          <Inset at={[1.6, 1, 2.6]} size={[0.8, 2]} radius={0.15} className={ISO_FLASH} />
+        </Animate>
+        <Animate frames={KMS_BLINK}>
+          <Dot at={[4, 0.6, 2.2]} className={ISO_LED} />
+        </Animate>
       </RoundBox>
       <Print at={[4, 2.6, 1.1]} face="side" size={8}>
         KMS
@@ -144,19 +227,25 @@ function AdminScene() {
       <Print at={[2.05, 7.85, 0.12]} size={5.5}>
         PCR0 = 7f3a…
       </Print>
-      <g className={ISO_STEAL} style={moves({ '--to': offset(-4.55, 2.2, -1.05) })}>
+      <Animate frames={BADGE_MOTION}>
         <RoundBox at={[5.8, -1.4, 3.8]} size={[1.5, 2.4, 0.12]} radius={0.2} tone="solid" />
         <Print at={[6.7, 0.7, 3.92]} className={ISO_PRINT_INVERSE}>
           admin
         </Print>
-      </g>
-      <Callout at={[2.4, 8.05, 0.12]} to={[124, 82]} name="policy" value="PCR0 only" />
+      </Animate>
+      <Callout
+        at={[2.4, 8.05, 0.12]}
+        to={[124, 82]}
+        name="policy"
+        value="PCR0 only"
+        window={[300, 7400]}
+      />
       <Callout
         at={[2, 2, 2.6]}
         to={[124, -32]}
         name="kms:Decrypt"
         value="AccessDenied"
-        className={ISO_RESULT}
+        window={[2200, 7000]}
       />
     </>
   );

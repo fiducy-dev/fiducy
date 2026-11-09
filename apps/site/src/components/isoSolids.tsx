@@ -1,7 +1,7 @@
 import { project } from '@/components/isometric';
 import { ISO_PRINT, ISO_SOLID_FACES } from '@/lib/isoStyles';
 
-import type { InsetProps, Point, PrintProps, RoundBoxProps } from '@/types';
+import type { DotProps, InsetProps, Point, PrintProps, RoundBoxProps } from '@/types';
 
 type Flat = readonly [number, number];
 
@@ -145,4 +145,9 @@ export function SidePanel({ at: [x, y, z], size: [width, height], className }: I
       ])}
     />
   );
+}
+
+export function Dot({ at, radius = 1.2, className }: DotProps) {
+  const [left, top] = project(at);
+  return <circle className={className} cx={left} cy={top} r={radius} />;
 }
