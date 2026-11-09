@@ -1,4 +1,4 @@
-import { REACT_FRAMEWORKS } from '../constants.ts';
+import { MODEL_CALL_DETAIL, REACT_FRAMEWORKS } from '../constants.ts';
 
 import type { PlacementSection, ProjectInfo, Snippet, WidgetPlacement } from '../types.ts';
 
@@ -49,6 +49,7 @@ function modelStep(exportName: string): Snippet {
   return {
     title: "call the model with the user's key",
     file: 'your AI route',
+    detail: MODEL_CALL_DETAIL,
     code: MODEL_CALL.replace('fiducy.', `${exportName}.`)
   };
 }
@@ -59,7 +60,7 @@ function assistantUISection(project: ProjectInfo, exportName: string): Placement
       {
         title: 'ask for a key in the chat route',
         file: 'your chat route',
-        detail: 'Keep your other imports and options; only these lines change.',
+        detail: `Keep your other imports and options. ${MODEL_CALL_DETAIL}`,
         code: ASSISTANT_UI_ROUTE.replace('fiducy.', `${exportName}.`)
       },
       {

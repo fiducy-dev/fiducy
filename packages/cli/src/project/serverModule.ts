@@ -2,8 +2,9 @@ import { join, relative } from 'node:path';
 
 import { DOCS_URL, SQLITE_FALLBACK_PATH } from '../constants.ts';
 import { toRelativeSpecifier } from './detect.ts';
+import { drizzleCommands, fiducyMigrate, prismaCommands } from './storageCommands.ts';
 
-import type { ImportPath, NextCommand, PlanSection, ProjectInfo } from '../types.ts';
+import type { ImportPath, PlanSection, ProjectInfo } from '../types.ts';
 
 const SERVER_MODULE_PATHS: Record<string, string> = {
   'tanstack-start': 'src/lib/fiducy.ts',
@@ -48,7 +49,6 @@ interface Section extends PlanSection {
 }
 
 const NO_GUIDANCE = { steps: [], warnings: [], commands: [] };
-const FIDUCY_MIGRATE: NextCommand = { command: 'npx fiducy migrate', purpose: 'creates the table' };
 
 function describeStorage(project: ProjectInfo, modulePath: string): Section {
   const { storage } = project;
@@ -63,10 +63,7 @@ function describeStorage(project: ProjectInfo, modulePath: string): Section {
       options: [`storage: prismaStorage(${source.exportName}, { provider: '${storage.dialect}' })`],
       packages: [],
       ...NO_GUIDANCE,
-      commands: [
-        { command: 'npx fiducy generate', purpose: 'adds the Prisma model' },
-        { command: 'npx prisma migrate dev', purpose: 'creates the table' }
-      ]
+      commands: prismaCommands(project)
     };
   }
   if (storage.name === 'drizzle' && source) {
@@ -81,10 +78,7 @@ function describeStorage(project: ProjectInfo, modulePath: string): Section {
       ],
       packages: [],
       ...NO_GUIDANCE,
-      commands: [
-        { command: 'npx fiducy generate', purpose: 'writes the Drizzle table' },
-        { command: 'npx drizzle-kit migrate', purpose: 'creates it' }
-      ]
+      commands: drizzleCommands(project)
     };
   }
   if (storage.name === 'kysely' && source) {
@@ -97,7 +91,7 @@ function describeStorage(project: ProjectInfo, modulePath: string): Section {
       options: [`storage: kyselyStorage(${source.exportName})`],
       packages: [],
       ...NO_GUIDANCE,
-      commands: [FIDUCY_MIGRATE]
+      commands: [fiducyMigrate(project)]
     };
   }
   return {
@@ -113,7 +107,7 @@ function describeStorage(project: ProjectInfo, modulePath: string): Section {
     warnings: [
       `Handles go in ${SQLITE_FALLBACK_PATH} for now. Swap in your real database before you deploy: ${DOCS_URL}/storage`
     ],
-    commands: [FIDUCY_MIGRATE]
+    commands: [fiducyMigrate(project)]
   };
 }
 

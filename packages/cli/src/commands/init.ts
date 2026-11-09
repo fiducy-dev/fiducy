@@ -120,6 +120,6 @@ export async function runInit(argv: string[], context: CommandContext) {
   printSteps(project, plan, readBoolean(flags, 'show-code'), output);
   const copied =
     output.status !== undefined && copyToClipboard(buildAgentPrompt(project, plan), environment);
-  printAgentHint(copied, output);
+  printAgentHint(copied, plan, output);
   return 0;
 }
