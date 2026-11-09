@@ -115,6 +115,50 @@ export interface InfoPageProps {
   visual: InfoVisualProps;
 }
 
+export type SetupQuestionID = 'framework' | 'auth' | 'storage' | 'chat' | 'providers';
+
+export type SetupStepID = SetupQuestionID | 'review';
+
+export type SetupAnswers = Record<SetupQuestionID, string[]>;
+
+export interface SetupOption {
+  id: string;
+  label: string;
+  detail: string;
+  docs?: string;
+}
+
+export interface SetupQuestion {
+  id: SetupQuestionID;
+  step: string;
+  title: string;
+  helper: string;
+  options: SetupOption[];
+  isMultiple?: boolean;
+}
+
+export interface SetupQuestionProps {
+  question: SetupQuestion;
+  chosen: string[];
+  onChoose: (optionID: string) => void;
+}
+
+export interface SetupRailProps {
+  current: number;
+  answers: SetupAnswers;
+  onJump: (index: number) => void;
+}
+
+export interface SetupReviewProps {
+  answers: SetupAnswers;
+  onJump: (index: number) => void;
+}
+
+export interface CopyFieldProps {
+  value: string;
+  event: string;
+}
+
 export interface FaqItem {
   question: string;
   answer: string;
@@ -197,48 +241,4 @@ export interface ShaderBoxProps {
   height: number;
   viewWidth: number;
   viewHeight: number;
-}
-
-export type SetupQuestionID = 'framework' | 'auth' | 'storage' | 'chat' | 'providers';
-
-export type SetupStepID = SetupQuestionID | 'review';
-
-export type SetupAnswers = Record<SetupQuestionID, string[]>;
-
-export interface SetupOption {
-  id: string;
-  label: string;
-  detail: string;
-  docs?: string;
-}
-
-export interface SetupQuestion {
-  id: SetupQuestionID;
-  step: string;
-  title: string;
-  helper: string;
-  options: SetupOption[];
-  isMultiple?: boolean;
-}
-
-export interface SetupQuestionProps {
-  question: SetupQuestion;
-  chosen: string[];
-  onChoose: (optionID: string) => void;
-}
-
-export interface SetupRailProps {
-  current: number;
-  answers: SetupAnswers;
-  onJump: (index: number) => void;
-}
-
-export interface SetupReviewProps {
-  answers: SetupAnswers;
-  onJump: (index: number) => void;
-}
-
-export interface CopyFieldProps {
-  value: string;
-  event: string;
 }
