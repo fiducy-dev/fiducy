@@ -3,6 +3,8 @@ import type { Group, LineSegments, MeshBasicMaterial } from 'three';
 import type { Object3D, OrthographicCamera, PerspectiveCamera, Scene } from 'three';
 import type { Vector2, WebGLRenderTarget } from 'three';
 
+import type { DOCS_ICONS } from '@/lib/docsIcons';
+
 export type Point = readonly [number, number, number];
 
 export interface LineProps {
@@ -221,3 +223,12 @@ export interface ShaderBoxProps {
   viewWidth: number;
   viewHeight: number;
 }
+
+export type DocsIcon = keyof typeof DOCS_ICONS;
+
+export type DocsNavItem = {
+  label: string;
+  icon: DocsIcon;
+  slug?: string;
+  children?: DocsNavItem[];
+};

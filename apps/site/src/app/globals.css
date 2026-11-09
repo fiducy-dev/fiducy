@@ -73,6 +73,76 @@ html:root {
   letter-spacing: -0.03em;
 }
 
+#nd-docs-layout a[href="/"]:not(article a)::after {
+  content: "/ DOCS";
+  margin-inline-start: 0.75rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+#nd-docs-layout a[href="/"]:not(article a) {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[href],
+:is(#nd-sidebar, #nd-sidebar-mobile) [data-radix-scroll-area-viewport] button[aria-controls] {
+  font-size: 0.8125rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active="true"] {
+  color: var(--color-fd-foreground);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > button[aria-controls] {
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-fd-border);
+  border-radius: 0;
+  padding: 0.625rem 1.5rem 0.625rem 1rem !important;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-fd-foreground);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > button[aria-controls]
+  svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > div[id]
+  > div
+  > div
+  > button[aria-controls] {
+  padding-left: 2rem !important;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > div[id]
+  > div
+  > div
+  > div[id] {
+  margin-left: 1.5rem;
+}
+
 :root {
   --destructive-foreground: #a1121b;
   --info: var(--color-blue-500);
