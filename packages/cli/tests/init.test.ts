@@ -39,7 +39,7 @@ describe('fiducy init', () => {
     });
     const result = await run(root, ['init', '--skip-install']);
     expect(read(root, 'lib/fiducy.ts')).toBe('export const mine = true;\n');
-    expect(result.text).toContain('Kept your existing lib/fiducy.ts');
+    expect(result.text).toContain('Kept lib/fiducy.ts (already there)');
     expect(existsSync(join(root, 'app/api/fiducy/[...path]/route.ts'))).toBe(true);
   });
 
@@ -90,7 +90,7 @@ describe('fiducy init', () => {
       'package.json': packageWith({ '@sveltejs/kit': '2.20.0' }),
       'src/hooks.server.ts': 'export const handle = ({ event, resolve }) => resolve(event);\n'
     });
-    const result = await run(root, ['init', '--skip-install']);
+    const result = await run(root, ['init', '--skip-install', '--show-code']);
     expect(read(root, 'src/lib/server/fiducy.ts')).toContain(
       "import { env } from '$env/dynamic/private';"
     );
@@ -104,7 +104,7 @@ describe('fiducy init', () => {
       'package.json': packageWith({ express: '5.1.0' }),
       'src/server.ts': ''
     });
-    const result = await run(root, ['init', '--skip-install']);
+    const result = await run(root, ['init', '--skip-install', '--show-code']);
     const serverModule = read(root, 'src/fiducy.ts');
     expect(serverModule).toContain('async function readSignedInUserID');
     expect(serverModule).toContain('getUserID: readSignedInUserID');
@@ -132,7 +132,7 @@ describe('fiducy init', () => {
       'package.json': packageWith({ '@react-router/dev': '7.9.0' }),
       'app/routes.ts': "export default [index('routes/home.tsx')];\n"
     });
-    const configResult = await run(config, ['init', '--skip-install']);
+    const configResult = await run(config, ['init', '--skip-install', '--show-code']);
     expect(existsSync(join(config, 'app/routes/fiducy.ts'))).toBe(true);
     expect(configResult.text).toContain("route('api/fiducy/*', 'routes/fiducy.ts'),");
 
@@ -146,7 +146,7 @@ describe('fiducy init', () => {
 
   it('prints the Farm integration and installs @fiducy/farm', async () => {
     const root = createProject({ 'package.json': packageWith({ '@farm.js/core': '0.1.49' }) });
-    const result = await run(root, ['init', '--skip-install']);
+    const result = await run(root, ['init', '--skip-install', '--show-code']);
     expect(read(root, 'src/lib/fiducy.ts')).toContain('export const fiducyServer = createFiducy');
     expect(result.text).toContain('byok: fiducy({ instance: fiducyServer })');
     expect(result.text).toContain('@fiducy/farm');
@@ -159,5 +159,38 @@ describe('fiducy init', () => {
     const bad = await run(root, ['init', '--framework', 'rails']);
     expect(bad.code).toBe(1);
     expect(bad.text).toContain('--framework rails is not supported (yet)');
+  });
+
+  it('lists the steps left without code, then the next commands', async () => {
+    const root = createProject({
+      'package.json': packageWith({ express: '5.1.0' }),
+      'src/server.ts': ''
+    });
+    const result = await run(root, ['init', '--skip-install']);
+    expect(result.text).toContain('4 things left');
+    expect(result.text).toContain('1.  Fill in readSignedInUserID');
+    expect(result.text).toContain('in src/fiducy.ts');
+    expect(result.text).toContain('npx fiducy init --show-code');
+    expect(result.text).toContain('https://fiducy.dev/docs/frameworks/express');
+    expect(result.text).toContain('npx fiducy migrate  creates the table');
+    expect(result.text).toContain('Run npx fiducy prompt');
+    expect(result.text).not.toContain('toNodeHandler(fiducy)');
+  });
+});
+
+describe('fiducy prompt', () => {
+  it('prints the steps with code and the markdown guide, and writes nothing', async () => {
+    const root = createProject({ 'package.json': packageWith({ next: '16.4.4' }) });
+    const result = await run(root, ['prompt']);
+    expect(result.code).toBe(0);
+    expect(result.text).toContain('Run `npx fiducy init` first');
+    expect(result.text).toContain("import { FiducyKey } from '@fiducy/sdk/react';");
+    expect(result.text).toContain('Guide: https://fiducy.dev/docs/frameworks/next.md');
+    expect(existsSync(join(root, 'lib'))).toBe(false);
+    await run(root, ['init', '--skip-install']);
+    const after = await run(root, ['prompt']);
+    expect(after.text).toContain(
+      'already created: lib/fiducy.ts, app/api/fiducy/[...path]/route.ts'
+    );
   });
 });

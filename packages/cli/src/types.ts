@@ -10,6 +10,9 @@ export interface Style {
   path: (text: string) => string;
   command: (text: string) => string;
   muted: (text: string) => string;
+  accent: (text: string) => string;
+  link: (text: string) => string;
+  badge: (text: string) => string;
   code: (block: string) => string;
   prose: (text: string) => string;
 }
@@ -17,6 +20,7 @@ export interface Style {
 export interface Output {
   info: (message: string) => void;
   error: (message: string) => void;
+  status?: (message: string) => void;
   style: Style;
 }
 
@@ -106,15 +110,33 @@ export interface PlannedFile {
 
 export interface InitPlan {
   files: PlannedFile[];
-  snippets: Snippet[];
+  steps: Snippet[];
   packages: string[];
-  notes: string[];
+  warnings: string[];
+  commands: NextCommand[];
 }
 
 export interface Snippet {
   title: string;
   file: string;
-  code: string;
+  code?: string;
+  detail?: string;
+}
+
+export interface NextCommand {
+  command: string;
+  purpose: string;
+}
+
+export interface PlanSection {
+  steps: Snippet[];
+  warnings: string[];
+  commands: NextCommand[];
+}
+
+export interface InstallResult {
+  ok: boolean;
+  log: string;
 }
 
 export interface TemplateInput {
