@@ -2,6 +2,7 @@ import { join } from 'node:path';
 
 import { DEV_HOST, PRIVATE_FILE_MODE } from '../constants.ts';
 import { createDevGatewayHandler, listDevOrigins } from '../dev/gateway.ts';
+import { describeExposedSecret } from '../dev/secretGuard.ts';
 import { PortInUseError, serveOnLocalhost } from '../dev/server.ts';
 import { loadDevState } from '../dev/state.ts';
 import { readEnvironmentFiles } from '../environment.ts';
@@ -117,6 +118,11 @@ function waitForStop(gateway: DevGateway) {
 
 export async function runDev(argv: string[], { cwd, output }: CommandContext): Promise<number> {
   const options = readDevOptions(argv);
+  const exposedSecret = describeExposedSecret(cwd);
+  if (exposedSecret) {
+    output.error(exposedSecret);
+    return 1;
+  }
   let gateway: DevGateway;
   try {
     gateway = await startDevGateway(cwd, options, output);

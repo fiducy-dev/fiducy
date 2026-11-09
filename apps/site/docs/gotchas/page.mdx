@@ -16,7 +16,7 @@ Most of what used to go wrong is now handled for you: `init` writes the files, `
 
 **SvelteKit can't find the env at all.** SvelteKit keeps `.env` out of `process.env`. Pass its env module: `createFiducy({ env, ... })` with `import * as env from '$app/env/private'` (SvelteKit 3, which also needs the names declared in `src/env.ts`) or `import { env } from '$env/dynamic/private'` (SvelteKit 2). See [SvelteKit](/docs/frameworks/sveltekit).
 
-**"NEXT_PUBLIC_FIDUCY_APP_SECRET is a public env var."** Fiducy refuses to run when the app secret is in a variable your bundler ships to the browser (`NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`, `NUXT_PUBLIC_`, `EXPO_PUBLIC_`, `REACT_APP_`). Rename it to plain `FIDUCY_APP_SECRET`, and rotate the secret in the dashboard if that build was ever deployed. The widget needs no public variables.
+**"NEXT_PUBLIC_FIDUCY_APP_SECRET is a public env var."** Fiducy refuses to run when the app secret is in a variable your bundler ships to the browser (`NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`, `NUXT_PUBLIC_`, `EXPO_PUBLIC_`, `REACT_APP_`). Rename it to plain `FIDUCY_APP_SECRET`, and rotate the secret in the dashboard if that build was ever deployed. The widget needs no public variables. `fiducy dev` refuses to start while that name is in your env files, `createFiducy` throws as soon as your server loads it (so production builds fail), and most dev servers (Next, Vite, SvelteKit, Nuxt) load it on the first request.
 
 **Build-time env.** The env is read the first time Fiducy is used, not when the module loads, so `next build` does not need the values unless a page calls Fiducy while prerendering.
 

@@ -35,6 +35,15 @@ export const ENVIRONMENT_FILES = [
   '.env.development.local'
 ];
 
+export const PUBLIC_ENVIRONMENT_PREFIXES = [
+  'NEXT_PUBLIC_',
+  'VITE_',
+  'PUBLIC_',
+  'NUXT_PUBLIC_',
+  'EXPO_PUBLIC_',
+  'REACT_APP_'
+];
+
 export const CONFIG_FILE_NAMES = ['fiducy.ts', 'fiducy.js', 'fiducy.mts', 'fiducy.mjs'];
 export const CONFIG_DIRECTORIES = [
   '',
