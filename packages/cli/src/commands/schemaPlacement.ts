@@ -21,9 +21,12 @@ function placeDrizzleSchema(root: string, file: GeneratedSchemaFile): SchemaPlac
   const apply = usesMigrations
     ? 'drizzle-kit generate and drizzle-kit migrate'
     : 'drizzle-kit push';
-  const hint = isFile
-    ? `Your drizzle.config schema is ${schema}: add export * from './fiducy-schema' to it, then run ${apply}.`
-    : `It sits in your Drizzle schema folder, so ${apply} will pick it up.`;
+  const exported = isFile && (readText(join(root, cleaned)) ?? '').includes("'./fiducy-schema'");
+  const hint = exported
+    ? `${schema} already exports it, so run ${apply}.`
+    : isFile
+      ? `Your drizzle.config schema is ${schema}: add export * from './fiducy-schema' to it, then run ${apply}.`
+      : `It sits in your Drizzle schema folder, so ${apply} will pick it up.`;
   return { path, hint };
 }
 

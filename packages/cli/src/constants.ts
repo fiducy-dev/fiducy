@@ -120,3 +120,11 @@ export const DRIZZLE_CONFIG_FILES = [
   'drizzle.config.mjs'
 ];
 export const DRIZZLE_DEFAULT_OUT = 'drizzle';
+
+export const GENERATED_SCHEMA_MODULE = 'fiducy-schema';
+
+export const DRIZZLE_PROVIDER_DIALECTS: Record<string, 'postgres' | 'mysql' | 'sqlite'> = {
+  pg: 'postgres',
+  mysql: 'mysql',
+  sqlite: 'sqlite'
+};
