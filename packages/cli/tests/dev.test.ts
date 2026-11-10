@@ -4,7 +4,7 @@ import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 
 import { SAMPLE_API_KEY } from '@fiducy/testing';
-import { startDevGateway } from '../src/commands/dev.ts';
+import { reportEnvironment, startDevGateway } from '../src/commands/dev.ts';
 import { serveOnLocalhost } from '../src/dev/server.ts';
 import { createStyle } from '../src/style.ts';
 import { createProject, removeProjects } from './fixtures.ts';
@@ -41,6 +41,34 @@ function chat(url: string, appSecret: string, handle: string) {
 }
 
 describe('fiducy dev', () => {
+  it('adds missing env lines, swaps stale dev values and leaves real ones alone', () => {
+    const lines = [
+      'FIDUCY_GATEWAY_URL=http://localhost:3438',
+      'FIDUCY_APP_ID=app_dev_new',
+      'FIDUCY_APP_SECRET=fsk_dev_new'
+    ];
+    const root = createProject({ '.env': 'EXAMPLE_SESSION_SECRET=kept' });
+    const printed: string[] = [];
+    reportEnvironment(root, lines, { ...silent, info: (line) => printed.push(line) });
+    expect(readFileSync(join(root, '.env'), 'utf8')).toBe(
+      `EXAMPLE_SESSION_SECRET=kept\n${lines.join('\n')}\n`
+    );
+    expect(printed.join('\n')).toContain(
+      'added FIDUCY_GATEWAY_URL, FIDUCY_APP_ID, FIDUCY_APP_SECRET to .env'
+    );
+
+    const stale = createProject({
+      '.env.local':
+        'FIDUCY_GATEWAY_URL=http://localhost:3438\nFIDUCY_APP_ID=app_dev_old\nFIDUCY_APP_SECRET=fsk_dev_old\nOTHER=1\n'
+    });
+    reportEnvironment(stale, lines, silent);
+    expect(readFileSync(join(stale, '.env.local'), 'utf8')).toBe(`${lines.join('\n')}\nOTHER=1\n`);
+
+    const real = createProject({ '.env': 'FIDUCY_APP_ID=app_live\n' });
+    reportEnvironment(real, lines, silent);
+    expect(readFileSync(join(real, '.env'), 'utf8')).toBe('FIDUCY_APP_ID=app_live\n');
+  });
+
   it('keeps its secrets private and its keys across restarts', async () => {
     const root = createProject({});
     const port = choosePort();
