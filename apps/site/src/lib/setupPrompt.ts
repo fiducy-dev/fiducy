@@ -4,6 +4,7 @@ import { NOT_SURE, SETUP_QUESTIONS } from '@/lib/setupOptions';
 import type { SetupAnswers, SetupOption, SetupQuestionID } from '@/types';
 
 const DOCS_BASE = 'https://fiducy.dev/docs';
+const CLI = 'npx fiducy@beta';
 const INIT_FLAGS: SetupQuestionID[] = ['framework', 'auth', 'widget'];
 
 function chosenOptions(answers: SetupAnswers, id: SetupQuestionID): SetupOption[] {
@@ -22,7 +23,7 @@ export function buildInitCommand(answers: SetupAnswers): string {
     if (!value || value === NOT_SURE || value === 'none') return [];
     return [`--${id} ${value}`];
   });
-  return ['npx fiducy init', ...flags].join(' ');
+  return [`${CLI} init`, ...flags].join(' ');
 }
 
 export function listDocsPages(answers: SetupAnswers): string[] {
@@ -50,6 +51,7 @@ export function buildSetupPrompt(answers: SetupAnswers): string {
 ${describeStack(answers)}
 ${noAuth}
 In step 2, run init as: ${buildInitCommand(answers)}
+Run every fiducy command below as ${CLI} (for example ${CLI} init --dry-run), because the plain fiducy package on npm is an older beta.
 Pages for this stack:
 ${pages.join('\n') || '- none, use the general pages below'}
 
