@@ -24,3 +24,4 @@ packages/sdk/tests/storage/.fiducy_test_*
 examples/.cli-init-*
 packages/cli/tests/.projects
 .vscode
+examples/*/.data

@@ -1,15 +1,16 @@
 import { join } from 'node:path';
 
-import { DEV_HOST, PRIVATE_FILE_MODE } from '../constants.ts';
+import { DEV_HOST } from '../constants.ts';
+import { syncEnvironment } from '../dev/environmentSync.ts';
 import { createDevGatewayHandler, listDevOrigins } from '../dev/gateway.ts';
 import { PortInUseError, serveOnLocalhost } from '../dev/server.ts';
 import { loadDevState } from '../dev/state.ts';
-import { readEnvironmentFiles } from '../environment.ts';
-import { readText, writeNewFile } from '../files.ts';
+import { readText } from '../files.ts';
 import { UsageError, parseFlags, readBoolean, readString, readStrings } from '../flags.ts';
 import { isOrigin, isPort } from '../validators.ts';
 
 import type { CommandContext, DevGateway, DevOptions, DevState, Output } from '../types.ts';
+import type { EnvironmentSync } from '../types.ts';
 
 export const DEV_HELP = `Usage: fiducy dev [--port 3438] [--origin http://localhost:5173] [--mock]
 
@@ -52,37 +53,38 @@ function isEnvironmentIgnored(root: string): boolean {
   return lines.some((line) => ['.env', '.env*', '.env.*', '*.env', '/.env'].includes(line));
 }
 
-function reportEnvironment(root: string, lines: string[], output: Output) {
-  const current = readEnvironmentFiles(root);
+function describeChanges(sync: EnvironmentSync): string {
+  const parts = [
+    ...sync.replaced.map((change) => `updated ${change.name} in ${change.file}`),
+    ...(sync.added.length > 0 ? [`added ${sync.added.join(', ')} to .env`] : [])
+  ];
+  return parts.join('; ');
+}
+
+export function reportEnvironment(root: string, lines: string[], output: Output) {
   const expected = Object.fromEntries(lines.map((line) => line.split('=', 2) as [string, string]));
-  const missing = Object.keys(expected).filter((name) => current[name] === undefined);
-  const different = Object.keys(expected).filter(
-    (name) => current[name] !== undefined && current[name] !== expected[name]
-  );
-  if (missing.length === Object.keys(expected).length) {
-    const created = writeNewFile(join(root, '.env'), `${lines.join('\n')}\n`, PRIVATE_FILE_MODE);
-    if (created) {
-      output.info(
-        `${output.style.success('Wrote')} ${output.style.path('.env')} with the dev gateway settings. Restart your dev server to load it.`
-      );
-      if (!isEnvironmentIgnored(root))
-        output.info(output.style.warning('Add .env to your .gitignore.'));
-      return;
-    }
-  }
-  if (missing.length === 0 && different.length === 0) {
+  const sync = syncEnvironment(root, expected);
+  if (sync.status === 'current') {
     output.info(output.style.success('Your env files already point at this dev gateway.'));
+    return;
+  }
+  if (sync.status === 'updated') {
+    output.info(
+      `${output.style.success('Env')} ${describeChanges(sync)}. Restart your dev server to load it.`
+    );
+    if (!isEnvironmentIgnored(root))
+      output.info(output.style.warning('Add .env to your .gitignore.'));
     return;
   }
   output.info(
     output.style.heading('Add these lines to your server env file, then restart your dev server:')
   );
   output.info(output.style.code(lines.join('\n')));
-  if (different.length > 0) {
-    output.info(
-      output.style.warning(`Your env files have different values for ${different.join(', ')}.`)
-    );
-  }
+  output.info(
+    output.style.warning(
+      `Your env files set ${sync.foreign.join(', ')} to values from another gateway. Fiducy left them alone.`
+    )
+  );
 }
 
 export async function startDevGateway(
