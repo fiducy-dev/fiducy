@@ -247,6 +247,21 @@ html:root {
   }
 }
 
+@utility hatch-frame {
+  border-style: dashed;
+  border-color: var(--hatch-edge);
+  background-image: var(--hatch);
+}
+
+:root {
+  --hatch: repeating-linear-gradient(
+    -45deg,
+    color-mix(in oklab, currentColor 16%, transparent) 0 1px,
+    transparent 1px 6px
+  );
+  --hatch-edge: color-mix(in oklab, currentColor 40%, transparent);
+}
+
 /* Docs code tabs: the selected tab gets the code title's hatch, not an underline. */
 .fd-code-group [role="tab"] {
   border: 0 !important;
@@ -261,11 +276,24 @@ html:root {
 
 .fd-code-group [role="tab"][data-state="active"] {
   color: var(--color-fd-foreground);
-  background-image: repeating-linear-gradient(
-    -45deg,
-    color-mix(in oklab, var(--color-fd-foreground) 16%, transparent) 0 1px,
-    transparent 1px 6px
-  );
+  background-image: var(--hatch);
+  outline: 1px dashed var(--hatch-edge);
+  outline-offset: -1px;
+}
+
+/* Docs hovers: the same hatch and dashed edge as the selected code tab. */
+:is([class*="hover:bg-fd-accent"]:not(aside a[data-active], aside button[aria-controls]), .fd-page-nav-card):hover {
+  background: var(--hatch) !important;
+}
+
+:is([class*="hover:bg-fd-accent"][class~="border"], .fd-page-nav-card):hover {
+  border-style: dashed;
+  border-color: var(--hatch-edge);
+}
+
+[class*="hover:bg-fd-accent"]:not([class~="border"], aside a[data-active], aside button[aria-controls]):hover {
+  outline: 1px dashed var(--hatch-edge);
+  outline-offset: -1px;
 }
 
 .fd-code-group [role="tab"]:focus-visible {
