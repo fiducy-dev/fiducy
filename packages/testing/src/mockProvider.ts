@@ -76,6 +76,25 @@ function answerResponse(body: string): Response {
   });
 }
 
+export const GEMINI_STREAM_CHUNKS = [
+  'data: {"candidates":[{"content":{"role":"model","parts":[{"text":"Hi from"}]},"index":0}]}\r\n\r\n',
+  'data: {"candidates":[{"content":{"role":"model","parts":[{"text":" Gemini"}]},"finishReason":"STOP","index":0}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":4,"totalTokenCount":7}}\r\n\r\n'
+];
+
+function answerGemini(path: string): Response {
+  if (path.endsWith(':streamGenerateContent')) return streamChunks(GEMINI_STREAM_CHUNKS);
+  return Response.json({
+    candidates: [
+      {
+        content: { role: 'model', parts: [{ text: 'Hello' }] },
+        finishReason: 'STOP',
+        index: 0
+      }
+    ],
+    usageMetadata: { promptTokenCount: 3, candidatesTokenCount: 1, totalTokenCount: 4 }
+  });
+}
+
 function answerInvalidKey(): Response {
   const message = `Incorrect API key provided: sk-proj-a81f****9c2e. Received ${SAMPLE_API_KEY}`;
   return Response.json({ error: { message } }, { status: 401 });
@@ -85,6 +104,7 @@ export function answerMockProviderRequest(path: string, body: string): Response 
   if (path.endsWith('/v1/chat/completions')) return answerChatCompletion(body);
   if (path.endsWith('/v1/responses')) return answerResponse(body);
   if (path.endsWith('/v1/messages')) return streamChunks(ANTHROPIC_STREAM_CHUNKS);
+  if (/^\/v1beta\/models\/[^/]+:(stream)?[gG]enerateContent$/.test(path)) return answerGemini(path);
   if (path.endsWith('/v1/invalid-key')) return answerInvalidKey();
   return new Response('not found', { status: 404 });
 }
