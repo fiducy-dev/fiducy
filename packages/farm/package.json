@@ -1,6 +1,6 @@
 {
   "name": "@fiducy/farm",
-  "version": "0.3.0-beta.4",
+  "version": "0.3.0-beta.5",
   "description": "Farm.js integration for Fiducy: mounts the key routes in one line",
   "license": "Apache-2.0",
   "repository": {
@@ -30,10 +30,10 @@
   },
   "peerDependencies": {
     "@farm.js/core": "^0.1.40",
-    "@fiducy/sdk": "^0.3.0-beta.4"
+    "@fiducy/sdk": "^0.3.0-beta.5"
   },
   "devDependencies": {
     "@farm.js/core": "0.1.40",
-    "@fiducy/sdk": "0.3.0-beta.4"
+    "@fiducy/sdk": "0.3.0-beta.5"
   }
 }

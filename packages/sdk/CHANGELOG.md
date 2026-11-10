@@ -1,5 +1,14 @@
 # @fiducy/sdk
 
+## 0.3.0-beta.5
+
+### Patch Changes
+
+- [#111](https://github.com/fiducy-dev/fiducy/pull/111) [`25889e5`](https://github.com/fiducy-dev/fiducy/commit/25889e5ba43a6f69bbc36e4e0a0df827d6d8d2d3) Thanks [@Benonii](https://github.com/Benonii)! - Refuse a public app secret before anything runs. `createFiducy` now throws as soon as it is called when `FIDUCY_APP_SECRET` sits in a public env var (`NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`, `NUXT_PUBLIC_`, `EXPO_PUBLIC_`, `REACT_APP_`), instead of waiting for the first request, and `fiducy dev` refuses to start while one of those names is in your env files.
+- Updated dependencies []:
+  - @fiducy/core@0.3.0-beta.5
+  - @fiducy/widget@0.3.0-beta.5
+
 ## 0.3.0-beta.4
 
 ### Patch Changes
