@@ -1,6 +1,7 @@
 import { createUIMessageStream, createUIMessageStreamResponse } from 'ai';
 
 import { CONNECT_KEY_TOOL, PROVIDER_LABELS, SERVER_TOOL_CALL_PREFIX } from './constants.ts';
+import { writeKeyRequest } from './keyRequestStream.ts';
 
 import type { UIMessage } from 'ai';
 import type { KeyRequestOptions } from './types.ts';
@@ -22,21 +23,7 @@ function isServerKeyRequest(part: UIMessage['parts'][number]): boolean {
 export function requestKey({ provider, message }: KeyRequestOptions): Response {
   const text = message ?? `Connect your ${PROVIDER_LABELS[provider]} key to keep going.`;
   const stream = createUIMessageStream({
-    execute: ({ writer }) => {
-      writer.write({ type: 'start' });
-      writer.write({ type: 'start-step' });
-      writer.write({ type: 'text-start', id: 'fiducy-key-request' });
-      writer.write({ type: 'text-delta', id: 'fiducy-key-request', delta: text });
-      writer.write({ type: 'text-end', id: 'fiducy-key-request' });
-      writer.write({
-        type: 'tool-input-available',
-        toolCallId: `${SERVER_TOOL_CALL_PREFIX}${crypto.randomUUID()}`,
-        toolName: CONNECT_KEY_TOOL,
-        input: { provider }
-      });
-      writer.write({ type: 'finish-step' });
-      writer.write({ type: 'finish' });
-    }
+    execute: ({ writer }) => writeKeyRequest(writer, provider, text)
   });
   return createUIMessageStreamResponse({ stream });
 }
@@ -52,4 +39,6 @@ export function withoutKeyRequests<T extends UIMessage>(messages: T[]): T[] {
 }
 
 export { CONNECT_KEY_TOOL } from './constants.ts';
+export { streamWithKeyRequests } from './keyRequestStream.ts';
 export type { ConnectKeyArgs, ConnectKeyResult, KeyRequestOptions } from './types.ts';
+export type { KeyRequestStreamOptions } from './types.ts';

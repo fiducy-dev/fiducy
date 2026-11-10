@@ -30,7 +30,7 @@ In `app/api/chat/route.ts`, look up the user's key before calling the model. Lin
 ```ts title="app/api/chat/route.ts"
 import { createOpenAI } from '@ai-sdk/openai'; // Fiducy
 import { frontendTools } from '@assistant-ui/ai-sdk';
-import { requestKey, withoutKeyRequests } from '@fiducy/assistant-ui/server'; // Fiducy
+import { requestKey, streamWithKeyRequests, withoutKeyRequests } from '@fiducy/assistant-ui/server'; // Fiducy
 import { respondToMissingKey } from '@fiducy/sdk/server'; // Fiducy
 import { convertToModelMessages, streamText } from 'ai';
 
@@ -51,13 +51,15 @@ export async function POST(req: Request) {
     system,
     tools: aiSDKTools
   });
-  return result.toUIMessageStreamResponse();
+  // Fiducy: replaces result.toUIMessageStreamResponse()
+  return streamWithKeyRequests({ provider: 'openai', stream: result.stream, tools: aiSDKTools });
 }
 ```
 
 - `createOpenAI(settings)` replaces the template's `openai` import, so the call goes through your gateway with the user's key.
 - `requestKey` answers with a short message and a `connect_api_key` call, without calling a model.
 - `withoutKeyRequests` drops those turns before the next model call, so the model answers the user's original question.
+- `streamWithKeyRequests` streams the answer. If the saved key is gone (revoked, or a reset dev gateway), the thread shows the key box instead of an error, and the message is answered once a key is saved. Pass `onError` to word other errors your way.
 - If you switch models per request, pass the provider of the chosen model, for example `'anthropic'` for Claude.
 
 ## 3. Register the key tool in the thread

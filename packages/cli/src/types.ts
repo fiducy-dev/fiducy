@@ -48,6 +48,13 @@ export interface DevOptions {
   mock: boolean;
 }
 
+export interface EnvironmentSync {
+  status: 'current' | 'updated' | 'conflict';
+  foreign: string[];
+  added: string[];
+  replaced: { name: string; file: string }[];
+}
+
 export interface DevGateway {
   url: string;
   state: DevState;
