@@ -1,5 +1,16 @@
 # @fiducy/assistant-ui
 
+## 0.3.0-beta.5
+
+### Minor Changes
+
+- [#109](https://github.com/fiducy-dev/fiducy/pull/109) [`6651043`](https://github.com/fiducy-dev/fiducy/commit/6651043adf3a3c1fab03fbc061fad1d6485ab7e6) Thanks [@Benonii](https://github.com/Benonii)! - `fiducy dev` now keeps your env files in step with the dev gateway. It adds missing `FIDUCY_*` lines to an existing `.env`, and it replaces stale dev values (`app_dev_…`, `fsk_dev_…`, a localhost gateway URL) after you reset `.fiducy/`. Values from a real gateway are left alone. `@fiducy/assistant-ui/server` adds `streamWithKeyRequests`: when a saved key turns out to be gone mid-chat, the thread shows the key box instead of an error.
+
+### Patch Changes
+
+- Updated dependencies [[`25889e5`](https://github.com/fiducy-dev/fiducy/commit/25889e5ba43a6f69bbc36e4e0a0df827d6d8d2d3)]:
+  - @fiducy/sdk@0.3.0-beta.5
+
 ## 0.3.0-beta.4
 
 ### Patch Changes

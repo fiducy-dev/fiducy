@@ -1,5 +1,12 @@
 # @fiducy/providers
 
+## 0.3.0-beta.5
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fiducy/core@0.3.0-beta.5
+
 ## 0.3.0-beta.4
 
 ### Patch Changes

@@ -1,5 +1,9 @@
 # @fiducy/core
 
+## 0.3.0-beta.5
+
+No changes in this release.
+
 ## 0.3.0-beta.4
 
 No changes in this release.

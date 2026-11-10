@@ -1,5 +1,17 @@
 # fiducy
 
+## 0.3.0-beta.5
+
+### Patch Changes
+
+- [#109](https://github.com/fiducy-dev/fiducy/pull/109) [`6651043`](https://github.com/fiducy-dev/fiducy/commit/6651043adf3a3c1fab03fbc061fad1d6485ab7e6) Thanks [@Benonii](https://github.com/Benonii)! - `fiducy dev` now keeps your env files in step with the dev gateway. It adds missing `FIDUCY_*` lines to an existing `.env`, and it replaces stale dev values (`app_dev_…`, `fsk_dev_…`, a localhost gateway URL) after you reset `.fiducy/`. Values from a real gateway are left alone. `@fiducy/assistant-ui/server` adds `streamWithKeyRequests`: when a saved key turns out to be gone mid-chat, the thread shows the key box instead of an error.
+
+- [#114](https://github.com/fiducy-dev/fiducy/pull/114) [`dddb144`](https://github.com/fiducy-dev/fiducy/commit/dddb14413cca65113edfd0eec1ba22052e0604fb) Thanks [@Benonii](https://github.com/Benonii)! - `fiducy init` writes code for the AI provider your app already uses (`@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google` for Gemini, or `@openrouter/ai-sdk-provider`) instead of always OpenAI: the model call, the key box provider and the assistant-ui key request all follow it, and the agent prompt names every provider it found. `fiducy dev --mock` now also answers Gemini and OpenRouter calls.
+
+- [#111](https://github.com/fiducy-dev/fiducy/pull/111) [`25889e5`](https://github.com/fiducy-dev/fiducy/commit/25889e5ba43a6f69bbc36e4e0a0df827d6d8d2d3) Thanks [@Benonii](https://github.com/Benonii)! - Refuse a public app secret before anything runs. `createFiducy` now throws as soon as it is called when `FIDUCY_APP_SECRET` sits in a public env var (`NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`, `NUXT_PUBLIC_`, `EXPO_PUBLIC_`, `REACT_APP_`), instead of waiting for the first request, and `fiducy dev` refuses to start while one of those names is in your env files.
+
+- [#112](https://github.com/fiducy-dev/fiducy/pull/112) [`c2a3f19`](https://github.com/fiducy-dev/fiducy/commit/c2a3f19e47cea750d39044f2d140750a40301701) Thanks [@Benonii](https://github.com/Benonii)! - `fiducy generate` works again after you delete `fiducy-schema.ts`. Your app imports that file, so loading it failed with "Cannot find module './fiducy-schema'"; generate now falls back to the dialect in drizzle.config and rewrites the table. When your schema file already exports it, the hint says so instead of asking you to add it.
+
 ## 0.3.0-beta.4
 
 ### Minor Changes
