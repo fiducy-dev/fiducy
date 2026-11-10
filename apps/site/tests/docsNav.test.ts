@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test';
 import { readdirSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
-import { DOCS_ICONS } from '@/lib/docsIcons';
 import { DOCS_NAV } from '@/lib/docsNav';
 
 import type { DocsNavItem } from '@/types';
@@ -28,9 +27,5 @@ describe('docs sidebar', () => {
 
   test('links every docs page exactly once', () => {
     expect([...linked].sort()).toEqual(pageSlugs(DOCS_DIR).sort());
-  });
-
-  test('uses only known icons', () => {
-    for (const item of items) expect(DOCS_ICONS[item.icon]).toBeString();
   });
 });

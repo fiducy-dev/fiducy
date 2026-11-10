@@ -1,55 +1,46 @@
-import type { DocsIcon, DocsNavItem } from '@/types';
+import type { DocsNavItem } from '@/types';
 
-const page = (label: string, icon: DocsIcon, slug: string): DocsNavItem => ({ label, icon, slug });
-const group = (label: string, icon: DocsIcon, children: DocsNavItem[]): DocsNavItem => ({
-  label,
-  icon,
-  children
-});
+const page = (label: string, slug: string): DocsNavItem => ({ label, slug });
+const group = (label: string, children: DocsNavItem[]): DocsNavItem => ({ label, children });
 
 export const DOCS_NAV: DocsNavItem[] = [
-  group('Start', 'start', [
-    page('Introduction', 'intro', ''),
-    page('Quickstart', 'quickstart', 'quickstart'),
-    page('How it works', 'flow', 'how-it-works')
+  group('Start', [
+    page('Introduction', ''),
+    page('Quickstart', 'quickstart'),
+    page('How it works', 'how-it-works')
   ]),
-  group('Core', 'core', [
-    page('Server SDK', 'server', 'server'),
-    group('Key widget', 'widget', [
-      page('Overview', 'overview', 'widget'),
-      page('React', 'react', 'widget/react'),
-      page('Vue', 'vue', 'widget/vue'),
-      page('Svelte', 'svelte', 'widget/svelte'),
-      page('Solid', 'solid', 'widget/solid')
+  group('Connect your app', [
+    page('Server SDK', 'server'),
+    group('Frameworks', [
+      page('Overview', 'frameworks'),
+      page('Next.js', 'frameworks/next'),
+      page('TanStack Start', 'frameworks/tanstack-start'),
+      page('React Router', 'frameworks/react-router'),
+      page('SvelteKit', 'frameworks/sveltekit'),
+      page('Nuxt', 'frameworks/nuxt'),
+      page('Express and Node', 'frameworks/express'),
+      page('Farm.js', 'frameworks/farm')
     ]),
-    group('Storage', 'storage', [
-      page('Overview', 'overview', 'storage'),
-      page('SQL databases', 'sql', 'storage/sql'),
-      page('Drizzle', 'drizzle', 'storage/drizzle'),
-      page('Prisma', 'prisma', 'storage/prisma')
-    ]),
-    page('Migrate existing keys', 'migrate', 'migrate')
+    page('assistant-ui', 'assistant-ui'),
+    page('CLI', 'cli')
   ]),
-  group('Integrations', 'integrations', [
-    group('Frameworks', 'frameworks', [
-      page('Overview', 'overview', 'frameworks'),
-      page('Next.js', 'next', 'frameworks/next'),
-      page('TanStack Start', 'tanstack', 'frameworks/tanstack-start'),
-      page('React Router', 'router', 'frameworks/react-router'),
-      page('SvelteKit', 'svelte', 'frameworks/sveltekit'),
-      page('Nuxt', 'nuxt', 'frameworks/nuxt'),
-      page('Express and Node', 'node', 'frameworks/express'),
-      page('Farm.js', 'farm', 'frameworks/farm')
-    ]),
-    page('assistant-ui', 'assistant', 'assistant-ui')
+  group('Key widget', [
+    page('Overview', 'widget'),
+    page('React', 'widget/react'),
+    page('Vue', 'widget/vue'),
+    page('Svelte', 'widget/svelte'),
+    page('Solid', 'widget/solid')
   ]),
-  group('Operate', 'operate', [
-    page('Self-hosting', 'selfhost', 'self-hosting'),
-    page('Security', 'security', 'security'),
-    page('Gotchas', 'gotchas', 'gotchas')
+  group('Storage', [
+    page('Overview', 'storage'),
+    page('SQL databases', 'storage/sql'),
+    page('Drizzle', 'storage/drizzle'),
+    page('Prisma', 'storage/prisma'),
+    page('Migrate existing keys', 'migrate')
   ]),
-  group('Reference', 'reference', [
-    page('Gateway API', 'api', 'gateway-api'),
-    page('CLI', 'terminal', 'cli')
-  ])
+  group('Gateway and self-hosting', [
+    page('Self-hosting', 'self-hosting'),
+    page('Gateway API', 'gateway-api')
+  ]),
+  group('Security', [page('Security model', 'security'), page('Gotchas', 'gotchas')])
 ];
