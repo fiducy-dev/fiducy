@@ -45,10 +45,13 @@ function answerChatCompletion(body: string): Response {
   return Response.json(
     {
       id: 'chatcmpl-0',
+      object: 'chat.completion',
+      created: 1767225600,
+      model: 'gpt-4o-mini',
       choices: [
         { index: 0, message: { role: 'assistant', content: 'Hello' }, finish_reason: 'stop' }
       ],
-      usage: { prompt_tokens: 9, completion_tokens: 3 }
+      usage: { prompt_tokens: 9, completion_tokens: 3, total_tokens: 12 }
     },
     { headers: { 'set-cookie': 'tracking=1' } }
   );

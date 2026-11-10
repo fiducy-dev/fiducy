@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText, streamText } from 'ai';
 
 import { SAMPLE_API_KEY, SAMPLE_HANDLE } from '@fiducy/testing';
@@ -81,6 +82,16 @@ describe('provider settings for the AI SDK', () => {
     expect(result.text).toBe('Hello');
     const forwarded = harness.mockProvider.recordedRequests.at(-1);
     expect(forwarded?.path).toBe('/api/v1/chat/completions');
+    expect(forwarded?.headers.get('authorization')).toBe(`Bearer ${SAMPLE_API_KEY}`);
+  });
+
+  it('generates text with the OpenRouter provider package', async () => {
+    const handle = await storeHandle(DESK_APP.appID);
+    const settings = createClient(DESK_APP.appSecret).providerSettings('openrouter', handle);
+    const openrouter = createOpenRouter(settings);
+    const result = await generateText({ model: openrouter('openai/gpt-4o-mini'), prompt: 'Hi' });
+    expect(result.text).toBe('Hello');
+    const forwarded = harness.mockProvider.recordedRequests.at(-1);
     expect(forwarded?.headers.get('authorization')).toBe(`Bearer ${SAMPLE_API_KEY}`);
   });
 });

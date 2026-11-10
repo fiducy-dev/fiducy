@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { readText } from '../files.ts';
+import { readPrimaryProvider, withProvider } from './providers.ts';
 import { readExportName, toImportSpecifier } from './serverModule.ts';
 
 import type { PlannedFile, ProjectInfo, Snippet } from '../types.ts';
@@ -203,5 +204,8 @@ const BUILDERS: Record<string, (project: ProjectInfo, path: string) => Framework
 
 export function buildFrameworkFiles(project: ProjectInfo, serverModulePath: string) {
   const builder = BUILDERS[project.framework] ?? nodeServerFiles;
-  return builder(project, serverModulePath);
+  const built = builder(project, serverModulePath);
+  const provider = readPrimaryProvider(project);
+  const adapt = (snippet: Snippet) => ({ ...snippet, code: withProvider(snippet.code, provider) });
+  return { ...built, snippets: built.snippets.map(adapt), widget: adapt(built.widget) };
 }

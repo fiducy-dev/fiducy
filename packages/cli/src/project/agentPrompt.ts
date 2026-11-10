@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { findGuideURL, nameFramework } from './names.ts';
 import { describePlacement } from './placement.ts';
+import { describeProviderKeys } from './providers.ts';
 
 import type { InitPlan, NextCommand, ProjectInfo, Snippet, WidgetPlacement } from '../types.ts';
 
@@ -43,7 +44,7 @@ export function buildAgentPrompt(project: ProjectInfo, plan: InitPlan): string {
     ...plan.steps.map(describeStep),
     ...plan.warnings.map((warning) => `Note: ${warning}`),
     ['Then run, in order:', ...plan.commands.map(describeCommand)].join('\n'),
-    "Model calls now use each user's own key, so the app's own provider key (for example OPENAI_API_KEY) no longer pays for them. Remove it once nothing else reads it.",
+    `Model calls now use each user's own key, so the app's own provider env vars (${describeProviderKeys(project)}) no longer pay for them. Remove each once nothing else reads it.`,
     describeCheck(plan.placement),
     `Guide: ${guide}.md`
   ].join('\n\n');
