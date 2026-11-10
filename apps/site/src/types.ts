@@ -154,6 +154,10 @@ export interface SetupReviewProps {
   onJump: (index: number) => void;
 }
 
+export interface PromptEditorProps {
+  prompt: string;
+}
+
 export interface CopyFieldProps {
   value: string;
   event: string;
