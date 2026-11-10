@@ -91,7 +91,7 @@ export interface InfoPageProps {
   visual: InfoVisualProps;
 }
 
-export type SetupQuestionID = 'framework' | 'auth' | 'storage' | 'chat' | 'providers';
+export type SetupQuestionID = 'framework' | 'auth' | 'storage' | 'chat' | 'widget' | 'providers';
 
 export type SetupStepID = SetupQuestionID | 'review';
 
@@ -128,6 +128,10 @@ export interface SetupRailProps {
 export interface SetupReviewProps {
   answers: SetupAnswers;
   onJump: (index: number) => void;
+}
+
+export interface PromptEditorProps {
+  prompt: string;
 }
 
 export interface CopyFieldProps {

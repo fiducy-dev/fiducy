@@ -1,8 +1,8 @@
 'use client';
 
 import { CopyField } from '@/components/CopyField';
+import { PromptEditor } from '@/components/PromptEditor';
 import { Button } from '@/components/ui/button';
-import { useCopied } from '@/components/useCopied';
 import { SETUP_QUESTIONS } from '@/lib/setupOptions';
 import { buildInitCommand, buildSetupPrompt, describeAnswer } from '@/lib/setupPrompt';
 import { listDocsPages } from '@/lib/setupPrompt';
@@ -39,22 +39,22 @@ function Summary({ answers, onJump }: SetupReviewProps) {
 }
 
 export function SetupReview({ answers, onJump }: SetupReviewProps) {
-  const prompt = buildSetupPrompt(answers);
-  const { isCopied, copy } = useCopied('copy_setup_prompt');
-
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-6">
       <div className="grid gap-1.5">
         <h2 className="text-lg font-semibold tracking-[-0.02em]">Hand it to your agent</h2>
         <p className="text-sm text-ink-muted">
           Paste the prompt into Claude Code, Cursor or Codex, opened in your app's folder. It runs
-          the command below, wires the rest, and never asks you for a secret.
+          init, wires the rest, and never asks you for a secret.
         </p>
       </div>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
-        <Button size="lg" onClick={() => copy(prompt)} aria-live="polite" className="max-sm:w-full">
-          {isCopied ? 'Prompt copied' : 'Copy prompt for your agent'}
-        </Button>
+        <PromptEditor prompt={buildSetupPrompt(answers)} />
+        <div className="flex items-center gap-3 text-xs text-ink-quiet" aria-hidden="true">
+          <span className="h-px flex-1 bg-frame" />
+          or run the command yourself
+          <span className="h-px flex-1 bg-frame" />
+        </div>
         <CopyField value={buildInitCommand(answers)} event="copy_setup_command" />
       </div>
       <Summary answers={answers} onJump={onJump} />

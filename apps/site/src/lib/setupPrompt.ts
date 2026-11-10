@@ -5,7 +5,7 @@ import type { SetupAnswers, SetupOption, SetupQuestionID } from '@/types';
 
 const DOCS_BASE = 'https://fiducy.dev/docs';
 const CLI = 'npx fiducy@beta';
-const INIT_FLAGS: SetupQuestionID[] = ['framework', 'auth'];
+const INIT_FLAGS: SetupQuestionID[] = ['framework', 'auth', 'widget'];
 
 function chosenOptions(answers: SetupAnswers, id: SetupQuestionID): SetupOption[] {
   const options = SETUP_QUESTIONS.find((question) => question.id === id)?.options ?? [];
@@ -51,9 +51,9 @@ export function buildSetupPrompt(answers: SetupAnswers): string {
 ${describeStack(answers)}
 ${noAuth}
 In step 2, run init as: ${buildInitCommand(answers)}
-Run every fiducy command below as ${CLI} (for example ${CLI} init --dry-run), because the plain fiducy package on npm is an older beta.
+Every fiducy command below uses fiducy@beta, because the plain fiducy package on npm is an older beta. If the app uses pnpm, yarn or bun, run them with pnpm dlx, yarn dlx or bun x instead of npx.
 Pages for this stack:
 ${pages.join('\n') || '- none, use the general pages below'}
 
-${AGENT_SETUP_PROMPT}`;
+${AGENT_SETUP_PROMPT.replaceAll('npx fiducy ', `${CLI} `)}`;
 }

@@ -17,6 +17,7 @@ const INITIAL_ANSWERS: SetupAnswers = {
   auth: [],
   storage: [],
   chat: [],
+  widget: [],
   providers: ['openai']
 };
 
