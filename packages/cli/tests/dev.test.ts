@@ -4,7 +4,8 @@ import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 
 import { SAMPLE_API_KEY } from '@fiducy/testing';
-import { reportEnvironment, startDevGateway } from '../src/commands/dev.ts';
+import { reportEnvironment, runDev, startDevGateway } from '../src/commands/dev.ts';
+import { describeExposedSecret } from '../src/dev/secretGuard.ts';
 import { serveOnLocalhost } from '../src/dev/server.ts';
 import { createStyle } from '../src/style.ts';
 import { createProject, removeProjects } from './fixtures.ts';
@@ -164,5 +165,22 @@ describe('fiducy dev', () => {
       String(port)
     );
     await taken.close();
+  });
+});
+
+describe('fiducy dev refuses a public app secret', () => {
+  it('names the variable and the file, and does not start', async () => {
+    const root = createProject({ '.env.local': 'NEXT_PUBLIC_FIDUCY_APP_SECRET=fsk_dev_x\n' });
+    const errors: string[] = [];
+    const output: Output = { ...silent, error: (message) => errors.push(message) };
+    const code = await runDev([], { cwd: root, output, environment: {} });
+    expect(code).toBe(1);
+    expect(errors[0]).toContain('NEXT_PUBLIC_FIDUCY_APP_SECRET in .env.local is a public env var');
+    expect(errors[0]).not.toContain('fsk_dev_x');
+  });
+
+  it('starts when the secret has its private name', () => {
+    const root = createProject({ '.env': 'FIDUCY_APP_SECRET=fsk_dev_x\nVITE_APP_NAME=demo\n' });
+    expect(describeExposedSecret(root)).toBeNull();
   });
 });
