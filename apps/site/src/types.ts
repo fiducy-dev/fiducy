@@ -3,6 +3,12 @@ import type { Group, LineSegments, MeshBasicMaterial } from 'three';
 import type { Object3D, OrthographicCamera, PerspectiveCamera, Scene } from 'three';
 import type { Vector2, WebGLRenderTarget } from 'three';
 
+export type DocsNavItem = {
+  label: string;
+  slug?: string;
+  children?: DocsNavItem[];
+};
+
 export type Point = readonly [number, number, number];
 
 export interface LineProps {

@@ -73,6 +73,107 @@ html:root {
   letter-spacing: -0.03em;
 }
 
+#nd-docs-layout a[href="/"]:not(article a) {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-fd-foreground);
+}
+
+#nd-docs-layout a[href="/"]:not(article a)::after {
+  content: "docs";
+  margin-inline-start: -0.3rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[href],
+:is(#nd-sidebar, #nd-sidebar-mobile) [data-radix-scroll-area-viewport] button[aria-controls] {
+  font-size: 0.8125rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) [data-radix-scroll-area-viewport] > div {
+  counter-reset: docs-section;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) [data-radix-scroll-area-viewport] > div > div {
+  border-style: dashed !important;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > button[aria-controls] {
+  counter-increment: docs-section;
+  gap: 0.625rem;
+  margin-top: 0.5rem;
+  border-radius: 0;
+  padding: 0.5rem 1.25rem 0.5rem 1rem !important;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-fd-muted-foreground);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > button[aria-controls]::before {
+  content: counter(docs-section, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-fd-foreground);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > button[aria-controls]
+  svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > div[id]
+  > div
+  > div
+  > button[aria-controls] {
+  padding-left: 2rem !important;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > div[id]
+  > div
+  > div
+  > div[id] {
+  margin-left: 1.25rem;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active="true"] {
+  font-weight: 500;
+  color: var(--color-fd-foreground) !important;
+  background: transparent !important;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active="true"]::before {
+  top: 50% !important;
+  bottom: auto !important;
+  width: 5px !important;
+  height: 5px !important;
+  translate: -2px -50%;
+  background: var(--color-fd-foreground) !important;
+}
+
 :root {
   --destructive-foreground: #a1121b;
   --info: var(--color-blue-500);
