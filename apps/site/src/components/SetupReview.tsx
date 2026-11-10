@@ -51,11 +51,13 @@ export function SetupReview({ answers, onJump }: SetupReviewProps) {
           the command below, wires the rest, and never asks you for a secret.
         </p>
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
-        <Button size="lg" onClick={() => copy(prompt)} aria-live="polite" className="max-sm:w-full">
-          {isCopied ? 'Prompt copied' : 'Copy prompt for your agent'}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="min-w-0 sm:flex-1">
+          <CopyField value={buildInitCommand(answers)} event="copy_setup_command" />
+        </div>
+        <Button onClick={() => copy(prompt)} aria-live="polite" className="shrink-0 max-sm:h-10">
+          {isCopied ? 'Prompt copied' : 'Copy prompt'}
         </Button>
-        <CopyField value={buildInitCommand(answers)} event="copy_setup_command" />
       </div>
       <Summary answers={answers} onJump={onJump} />
       <div className="grid gap-2">
