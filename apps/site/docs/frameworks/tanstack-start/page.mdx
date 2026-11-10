@@ -80,7 +80,10 @@ export const KeySettings = () => <FiducyKey provider="openai" />;
 
 ## Model route
 
-```ts title="src/routes/api/chat.ts"
+<CodeGroup>
+
+```ts title="OpenAI"
+// src/routes/api/chat.ts
 import { createOpenAI } from '@ai-sdk/openai';
 import { respondToMissingKey } from '@fiducy/sdk/server';
 import { createFileRoute } from '@tanstack/react-router';
@@ -102,6 +105,80 @@ export const Route = createFileRoute('/api/chat')({
   }
 });
 ```
+
+```ts title="Anthropic"
+// src/routes/api/chat.ts
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { createFileRoute } from '@tanstack/react-router';
+import { streamText } from 'ai';
+
+import { fiducy } from '@/lib/fiducy';
+
+export const Route = createFileRoute('/api/chat')({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const settings = await fiducy.providerSettings('anthropic', { request });
+        if (!settings.ok) return respondToMissingKey(settings);
+        const { messages } = await request.json();
+        const model = createAnthropic(settings)('claude-sonnet-4-5');
+        return streamText({ model, messages }).toUIMessageStreamResponse();
+      }
+    }
+  }
+});
+```
+
+```ts title="Gemini"
+// src/routes/api/chat.ts
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { createFileRoute } from '@tanstack/react-router';
+import { streamText } from 'ai';
+
+import { fiducy } from '@/lib/fiducy';
+
+export const Route = createFileRoute('/api/chat')({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const settings = await fiducy.providerSettings('gemini', { request });
+        if (!settings.ok) return respondToMissingKey(settings);
+        const { messages } = await request.json();
+        const model = createGoogleGenerativeAI(settings)('gemini-2.5-flash');
+        return streamText({ model, messages }).toUIMessageStreamResponse();
+      }
+    }
+  }
+});
+```
+
+```ts title="OpenRouter"
+// src/routes/api/chat.ts
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { createFileRoute } from '@tanstack/react-router';
+import { streamText } from 'ai';
+
+import { fiducy } from '@/lib/fiducy';
+
+export const Route = createFileRoute('/api/chat')({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const settings = await fiducy.providerSettings('openrouter', { request });
+        if (!settings.ok) return respondToMissingKey(settings);
+        const { messages } = await request.json();
+        const model = createOpenRouter(settings)('openai/gpt-4o-mini');
+        return streamText({ model, messages }).toUIMessageStreamResponse();
+      }
+    }
+  }
+});
+```
+
+</CodeGroup>
 
 ## Notes
 

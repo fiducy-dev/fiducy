@@ -95,7 +95,10 @@ export const KeySettings = () => <FiducyKey provider="openai" />;
 
 ## Model route
 
-```ts title="src/app/api/chat/route.ts"
+<CodeGroup>
+
+```ts title="OpenAI"
+// src/app/api/chat/route.ts
 import { createOpenAI } from '@ai-sdk/openai';
 import { respondToMissingKey } from '@fiducy/sdk/server';
 import { streamText } from 'ai';
@@ -110,5 +113,58 @@ export async function POST(request: Request) {
   return streamText({ model, messages }).toUIMessageStreamResponse();
 }
 ```
+
+```ts title="Anthropic"
+// src/app/api/chat/route.ts
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducyServer } from '@/lib/fiducy';
+
+export async function POST(request: Request) {
+  const settings = await fiducyServer.providerSettings('anthropic', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createAnthropic(settings)('claude-sonnet-4-5');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+}
+```
+
+```ts title="Gemini"
+// src/app/api/chat/route.ts
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducyServer } from '@/lib/fiducy';
+
+export async function POST(request: Request) {
+  const settings = await fiducyServer.providerSettings('gemini', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createGoogleGenerativeAI(settings)('gemini-2.5-flash');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+}
+```
+
+```ts title="OpenRouter"
+// src/app/api/chat/route.ts
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducyServer } from '@/lib/fiducy';
+
+export async function POST(request: Request) {
+  const settings = await fiducyServer.providerSettings('openrouter', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createOpenRouter(settings)('openai/gpt-4o-mini');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+}
+```
+
+</CodeGroup>
 
 Put the three `FIDUCY_` values in `.env`; Farm loads it for server code.

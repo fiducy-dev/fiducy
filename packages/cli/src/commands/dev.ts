@@ -21,7 +21,7 @@ saved keys survive restarts.
 
   --port     Port for the gateway (default 3438, remembered after the first run)
   --origin   Extra origin allowed to embed the key widget (repeatable)
-  --mock     Answer OpenAI and Anthropic calls with a fake model, so no real key is spent`;
+  --mock     Answer OpenAI, Anthropic, Gemini and OpenRouter calls with a fake model, so no real key is spent`;
 
 function readDevOptions(argv: string[]): DevOptions {
   const flags = parseFlags(argv, {

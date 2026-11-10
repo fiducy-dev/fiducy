@@ -149,7 +149,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.1",
+        "@fiducy/sdk": "^0.3.0-beta.4",
         "ai": "7.0.139",
         "express": "5.3.0",
       },
@@ -165,8 +165,8 @@
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
         "@farm.js/core": "0.1.40",
-        "@fiducy/farm": "^0.3.0-beta.1",
-        "@fiducy/sdk": "^0.3.0-beta.1",
+        "@fiducy/farm": "^0.3.0-beta.4",
+        "@fiducy/sdk": "^0.3.0-beta.4",
         "ai": "7.0.139",
         "react": "19.2.7",
         "react-dom": "19.2.7",
@@ -180,7 +180,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.1",
+        "@fiducy/sdk": "^0.3.0-beta.4",
         "ai": "7.0.139",
         "next": "16.4.4",
         "react": "19.2.7",
@@ -197,7 +197,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.1",
+        "@fiducy/sdk": "^0.3.0-beta.4",
         "ai": "7.0.139",
         "nuxt": "4.6.4",
         "vue": "3.5.44",
@@ -208,7 +208,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.1",
+        "@fiducy/sdk": "^0.3.0-beta.4",
         "@react-router/node": "8.5.1",
         "ai": "7.0.139",
         "isbot": "5.1.36",
@@ -229,7 +229,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.1",
+        "@fiducy/sdk": "^0.3.0-beta.4",
         "ai": "7.0.139",
       },
       "devDependencies": {
@@ -245,7 +245,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.1",
+        "@fiducy/sdk": "^0.3.0-beta.4",
         "@tanstack/react-router": "1.170.46",
         "@tanstack/react-start": "1.169.4",
         "ai": "7.0.139",
@@ -265,14 +265,14 @@
       "version": "0.3.0-beta.4",
       "devDependencies": {
         "@assistant-ui/react": "0.15.28",
-        "@fiducy/sdk": "0.3.0-beta.3",
+        "@fiducy/sdk": "0.3.0-beta.4",
         "@types/react": "19.2.2",
         "ai": "7.0.139",
         "react": "19.2.7",
       },
       "peerDependencies": {
         "@assistant-ui/react": "^0.15.28",
-        "@fiducy/sdk": "^0.3.0-beta.3",
+        "@fiducy/sdk": "^0.3.0-beta.4",
         "ai": "^7.0.139",
         "react": "^19.2.0",
       },
@@ -287,10 +287,10 @@
         "jiti": "2.7.0",
       },
       "devDependencies": {
-        "@fiducy/core": "0.3.0-beta.3",
+        "@fiducy/core": "0.3.0-beta.4",
         "@fiducy/gateway": "workspace:*",
-        "@fiducy/providers": "0.3.0-beta.3",
-        "@fiducy/sdk": "0.3.0-beta.3",
+        "@fiducy/providers": "0.3.0-beta.4",
+        "@fiducy/sdk": "0.3.0-beta.4",
         "@fiducy/testing": "0.1.0",
       },
     },
@@ -303,18 +303,18 @@
       "version": "0.3.0-beta.4",
       "devDependencies": {
         "@farm.js/core": "0.1.40",
-        "@fiducy/sdk": "0.3.0-beta.3",
+        "@fiducy/sdk": "0.3.0-beta.4",
       },
       "peerDependencies": {
         "@farm.js/core": "^0.1.40",
-        "@fiducy/sdk": "^0.3.0-beta.3",
+        "@fiducy/sdk": "^0.3.0-beta.4",
       },
     },
     "packages/providers": {
       "name": "@fiducy/providers",
       "version": "0.3.0-beta.4",
       "dependencies": {
-        "@fiducy/core": "0.3.0-beta.3",
+        "@fiducy/core": "0.3.0-beta.4",
       },
       "devDependencies": {
         "@fiducy/testing": "0.1.0",
@@ -324,14 +324,16 @@
       "name": "@fiducy/sdk",
       "version": "0.3.0-beta.4",
       "dependencies": {
-        "@fiducy/core": "0.3.0-beta.3",
-        "@fiducy/widget": "0.3.0-beta.3",
+        "@fiducy/core": "0.3.0-beta.4",
+        "@fiducy/widget": "0.3.0-beta.4",
       },
       "devDependencies": {
         "@ai-sdk/anthropic": "4.0.79",
+        "@ai-sdk/google": "4.0.95",
         "@ai-sdk/openai": "4.0.93",
         "@fiducy/testing": "0.1.0",
         "@libsql/client": "0.18.0",
+        "@openrouter/ai-sdk-provider": "3.1.0",
         "@prisma/adapter-libsql": "7.10.1",
         "@prisma/adapter-mariadb": "7.10.1",
         "@prisma/adapter-pg": "7.10.1",
@@ -985,6 +987,8 @@
     "@oozcitak/url": ["@oozcitak/url@3.0.0", "", { "dependencies": { "@oozcitak/infra": "^2.0.2", "@oozcitak/util": "^10.0.0" } }, "sha512-ZKfET8Ak1wsLAiLWNfFkZc/BraDccuTJKR6svTYc7sVjbR+Iu0vtXdiDMY4o6jaFl5TW2TlS7jbLl4VovtAJWQ=="],
 
     "@oozcitak/util": ["@oozcitak/util@10.0.0", "", {}, "sha512-hAX0pT/73190NLqBPPWSdBVGtbY6VOhWYK3qqHqtXQ1gK7kS2yz4+ivsN07hpJ6I3aeMtKP6J6npsEKOAzuTLA=="],
+
+    "@openrouter/ai-sdk-provider": ["@openrouter/ai-sdk-provider@3.1.0", "", { "peerDependencies": { "ai": "^7.0.0", "zod": "^3.25.76 || ^4.1.8" } }, "sha512-BQy1TA9fKrh47s9ivsO6FY5QimN7GUF0i8Qon3pkxQclEgShso0dClpcWn8OIyPLEZZPFaFKgI8TW4S/O0p0Dw=="],
 
     "@opentelemetry/api": ["@opentelemetry/api@1.9.1", "", {}, "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="],
 
@@ -3363,6 +3367,8 @@
     "ast-walker-scope/@babel/types": ["@babel/types@8.1.0", "", { "dependencies": { "@babel/helper-string-parser": "^8.0.8", "@babel/helper-validator-identifier": "^8.0.6" } }, "sha512-8V8aSTDx012YPmDQF30vrokyxVFdRAU2YBS2VzrnfLAGkP8floVnjckwgFcD0Jrvf6GWMSRdCrYVsk3tyMwZRg=="],
 
     "ast-walker-scope/ast-kit": ["ast-kit@3.0.0", "", { "dependencies": { "@babel/parser": "^8.0.0", "estree-walker": "^3.0.3", "pathe": "^2.0.3" } }, "sha512-8OG92q3R35qjC/4i6BLBMg8IB+fClWu/1PEwg2Z9Rn+BuNaiEgJzpzn+pxWOdHJWDCAwu2JP0wCDTozAM4QirQ=="],
+
+    "better-auth/@better-auth/core": ["@better-auth/core@1.7.16", "", { "dependencies": { "@standard-schema/spec": "^1.1.0", "zod": "^4.5.4" }, "peerDependencies": { "@better-auth/utils": "^0.4.2 || ^0.5.0", "@better-fetch/fetch": "1.3.3", "@opentelemetry/api": "^1.9.0", "better-call": "1.4.5", "jose": "^6.1.0", "kysely": "^0.28.5 || ^0.29.0", "nanostores": "^1.0.1" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-dwVAtEAEpjPsCV/TqOKRHreWyuiqvja+TnTTAuVbi3P0afM0+b1+ga+RTXNjVE86Q4HRwRg45Ek3txFrY8/1DA=="],
 
     "better-auth/better-call": ["better-call@1.4.5", "", { "dependencies": { "@better-auth/utils": "^0.5.0", "@better-fetch/fetch": "^1.3.1", "rou3": "^0.9.1", "set-cookie-parser": "^3.1.2" }, "peerDependencies": { "zod": "^4.0.0" }, "optionalPeers": ["zod"] }, "sha512-GVOWfn3pjEfUXn6GrfGf2h7tPAqj1oMLFBWBEswJrSkDKcLk6TIcjV0zexibcZZ0c5N1mkLMsPFopXWzWj/gDQ=="],
 

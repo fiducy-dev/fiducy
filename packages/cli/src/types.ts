@@ -80,6 +80,15 @@ export type StorageName = 'prisma' | 'drizzle' | 'kysely' | 'sqlite';
 
 export type ChatStack = 'assistant-ui' | 'ai-sdk' | 'none';
 
+export type AIProvider = 'openai' | 'anthropic' | 'gemini' | 'openrouter';
+
+export interface ProviderCode {
+  label: string;
+  factory: string;
+  model: string;
+  apiKeyName: string;
+}
+
 export type WidgetPlacement =
   | { kind: 'chat'; chat: Exclude<ChatStack, 'none'> }
   | { kind: 'settings' }
@@ -118,6 +127,7 @@ export interface ProjectInfo {
   authSource?: ImportPath;
   storage: StorageChoice;
   chat: ChatStack;
+  providers: AIProvider[];
   sourceDirectory: string;
   alias: AliasInfo | null;
   dependencies: Record<string, string>;

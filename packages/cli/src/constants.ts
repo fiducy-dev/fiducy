@@ -9,7 +9,7 @@ export const DEFAULT_DEV_PORT = 3438;
 export const DEV_HOST = '127.0.0.1';
 export const DEV_APP_NAME = 'Your app';
 export const DEV_MONTHLY_REQUEST_LIMIT = 1000000;
-export const MOCK_PROVIDER_PATH_PREFIX = '/v1/';
+export const MOCK_PROVIDER_PATH_PREFIXES = ['/v1/', '/v1beta/', '/api/v1/'];
 export const PRIVATE_FILE_MODE = 0o600;
 export const PRIVATE_DIRECTORY_MODE = 0o700;
 export const DOCS_URL = 'https://fiducy.dev/docs';
@@ -20,8 +20,41 @@ export const DEV_VALUE_PATTERNS: Record<string, RegExp> = {
   FIDUCY_APP_ID: /^app_dev_/,
   FIDUCY_APP_SECRET: /^fsk_dev_/
 };
-export const MODEL_CALL_DETAIL =
-  "Keep the app's model, request variable and API style; only build the provider from createOpenAI(settings). Use .responses(...), not .chat(...): on Chat Completions, current OpenAI reasoning models (GPT-5.4 and later, all GPT-6) refuse tool calls unless reasoning is off, and some refuse tools entirely. Responses works for every OpenAI model.";
+export const OPENAI_RESPONSES_NOTE =
+  'Use .responses(...), not .chat(...): on Chat Completions, current OpenAI reasoning models (GPT-5.4 and later, all GPT-6) refuse tool calls unless reasoning is off, and some refuse tools entirely. Responses works for every OpenAI model.';
+export const AI_PROVIDERS = ['openai', 'anthropic', 'gemini', 'openrouter'] as const;
+export const PROVIDER_PACKAGES: [string, (typeof AI_PROVIDERS)[number]][] = [
+  ['@ai-sdk/openai', 'openai'],
+  ['@ai-sdk/anthropic', 'anthropic'],
+  ['@ai-sdk/google', 'gemini'],
+  ['@openrouter/ai-sdk-provider', 'openrouter']
+];
+export const PROVIDER_CODE = {
+  openai: {
+    label: 'OpenAI',
+    factory: 'createOpenAI(settings)',
+    model: "createOpenAI(settings).responses('gpt-4o-mini')",
+    apiKeyName: 'OPENAI_API_KEY'
+  },
+  anthropic: {
+    label: 'Anthropic',
+    factory: 'createAnthropic(settings)',
+    model: "createAnthropic(settings)('claude-sonnet-4-5')",
+    apiKeyName: 'ANTHROPIC_API_KEY'
+  },
+  gemini: {
+    label: 'Gemini',
+    factory: 'createGoogleGenerativeAI(settings)',
+    model: "createGoogleGenerativeAI(settings)('gemini-2.5-flash')",
+    apiKeyName: 'GOOGLE_GENERATIVE_AI_API_KEY'
+  },
+  openrouter: {
+    label: 'OpenRouter',
+    factory: 'createOpenRouter(settings)',
+    model: "createOpenRouter(settings)('openai/gpt-4o-mini')",
+    apiKeyName: 'OPENROUTER_API_KEY'
+  }
+} as const;
 export const DEV_GATEWAY_NOTE =
   'keep it running in the background. With no Fiducy env vars yet it writes them to .env; otherwise it prints the lines to add. Restart the dev server after env changes';
 export const CHAT_FALLBACK_WARNING =

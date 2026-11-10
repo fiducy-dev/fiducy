@@ -110,7 +110,10 @@ The import needs a bundler or dev server (the example uses Vite in middleware mo
 
 ## Model route
 
-```ts title="src/server.ts"
+<CodeGroup>
+
+```ts title="OpenAI"
+// src/server.ts
 import { createOpenAI } from '@ai-sdk/openai';
 import { sendWebResponse, toWebRequest } from '@fiducy/sdk/node';
 import { respondToMissingKey } from '@fiducy/sdk/server';
@@ -124,6 +127,56 @@ app.post('/api/chat', express.json(), async (request, response) => {
   await sendWebResponse(result.toUIMessageStreamResponse(), response);
 });
 ```
+
+```ts title="Anthropic"
+// src/server.ts
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { sendWebResponse, toWebRequest } from '@fiducy/sdk/node';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+app.post('/api/chat', express.json(), async (request, response) => {
+  const settings = await fiducy.providerSettings('anthropic', { request: toWebRequest(request) });
+  if (!settings.ok) return sendWebResponse(respondToMissingKey(settings), response);
+  const model = createAnthropic(settings)('claude-sonnet-4-5');
+  const result = streamText({ model, messages: request.body.messages });
+  await sendWebResponse(result.toUIMessageStreamResponse(), response);
+});
+```
+
+```ts title="Gemini"
+// src/server.ts
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { sendWebResponse, toWebRequest } from '@fiducy/sdk/node';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+app.post('/api/chat', express.json(), async (request, response) => {
+  const settings = await fiducy.providerSettings('gemini', { request: toWebRequest(request) });
+  if (!settings.ok) return sendWebResponse(respondToMissingKey(settings), response);
+  const model = createGoogleGenerativeAI(settings)('gemini-2.5-flash');
+  const result = streamText({ model, messages: request.body.messages });
+  await sendWebResponse(result.toUIMessageStreamResponse(), response);
+});
+```
+
+```ts title="OpenRouter"
+// src/server.ts
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { sendWebResponse, toWebRequest } from '@fiducy/sdk/node';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+app.post('/api/chat', express.json(), async (request, response) => {
+  const settings = await fiducy.providerSettings('openrouter', { request: toWebRequest(request) });
+  if (!settings.ok) return sendWebResponse(respondToMissingKey(settings), response);
+  const model = createOpenRouter(settings)('openai/gpt-4o-mini');
+  const result = streamText({ model, messages: request.body.messages });
+  await sendWebResponse(result.toUIMessageStreamResponse(), response);
+});
+```
+
+</CodeGroup>
 
 `sendWebResponse` streams the body and keeps every `set-cookie` header.
 

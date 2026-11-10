@@ -98,6 +98,32 @@ describe('fiducy dev', () => {
     await second.close();
   });
 
+  it('answers Gemini and OpenRouter calls with --mock', async () => {
+    const gateway = await startDevGateway(
+      createProject({}),
+      { port: choosePort(), origins: [], mock: true },
+      silent
+    );
+    const { data } = await storeKey(gateway.url, gateway.state.appID);
+    const headers = {
+      'content-type': 'application/json',
+      authorization: `Bearer ${gateway.state.appSecret}`,
+      'x-key-handle': data.handle
+    };
+    const gemini = await fetch(
+      `${gateway.url}/gemini/v1beta/models/gemini-2.5-flash:generateContent`,
+      { method: 'POST', headers, body: JSON.stringify({ contents: [] }) }
+    );
+    const openrouter = await fetch(`${gateway.url}/openrouter/api/v1/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ model: 'openai/gpt-4o-mini', messages: [] })
+    });
+    expect(gemini.status).toBe(200);
+    expect(openrouter.status).toBe(200);
+    await gateway.close();
+  });
+
   it('listens on loopback only', async () => {
     const root = createProject({});
     const gateway = await startDevGateway(

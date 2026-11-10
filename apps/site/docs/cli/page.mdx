@@ -32,6 +32,7 @@ Run it in the root of your app (where `package.json` is).
 | Database | an exported Prisma client (`new PrismaClient`), Drizzle db (`drizzle(...)`) or Kysely instance (`new Kysely`), with the dialect from `schema.prisma` or `drizzle.config` |
 | Import style | your `tsconfig.json` paths, so it writes `@/lib/fiducy` when you use `@/*` |
 | Chat UI | `@assistant-ui/react`, or AI SDK `useChat` (`@ai-sdk/react`, `@ai-sdk/vue`, `@ai-sdk/svelte`) |
+| AI provider | `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google` (Gemini) or `@openrouter/ai-sdk-provider`; the code it prints uses the first one found, and names the others. None installed: OpenAI |
 
 What it writes, per framework:
 

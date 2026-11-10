@@ -131,7 +131,10 @@ See [Svelte](/docs/widget/svelte) for events.
 
 ## Model route
 
-```ts title="src/routes/api/chat/+server.ts"
+<CodeGroup>
+
+```ts title="OpenAI"
+// src/routes/api/chat/+server.ts
 import { createOpenAI } from '@ai-sdk/openai';
 import { respondToMissingKey } from '@fiducy/sdk/server';
 import { streamText } from 'ai';
@@ -148,5 +151,64 @@ export const POST: RequestHandler = async ({ request }) => {
   return streamText({ model, messages }).toUIMessageStreamResponse();
 };
 ```
+
+```ts title="Anthropic"
+// src/routes/api/chat/+server.ts
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '#lib/server/fiducy';
+
+import type { RequestHandler } from './$types';
+
+export const POST: RequestHandler = async ({ request }) => {
+  const settings = await fiducy.providerSettings('anthropic', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createAnthropic(settings)('claude-sonnet-4-5');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+};
+```
+
+```ts title="Gemini"
+// src/routes/api/chat/+server.ts
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '#lib/server/fiducy';
+
+import type { RequestHandler } from './$types';
+
+export const POST: RequestHandler = async ({ request }) => {
+  const settings = await fiducy.providerSettings('gemini', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createGoogleGenerativeAI(settings)('gemini-2.5-flash');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+};
+```
+
+```ts title="OpenRouter"
+// src/routes/api/chat/+server.ts
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '#lib/server/fiducy';
+
+import type { RequestHandler } from './$types';
+
+export const POST: RequestHandler = async ({ request }) => {
+  const settings = await fiducy.providerSettings('openrouter', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createOpenRouter(settings)('openai/gpt-4o-mini');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+};
+```
+
+</CodeGroup>
 
 SvelteKit 3 replaced `$lib` with `#lib` (a `package.json` `imports` entry, `"#lib/*": "./src/lib/*"`). On SvelteKit 2, import from `$lib/server/fiducy`.

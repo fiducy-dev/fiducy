@@ -5,6 +5,7 @@ import { findSourceAlias } from '../config/aliases.ts';
 import { LOCKFILES, SOURCE_EXTENSIONS, SOURCE_SEARCH_DEPTH } from '../constants.ts';
 import { SOURCE_SEARCH_DIRECTORIES, SOURCE_SEARCH_IGNORED } from '../constants.ts';
 import { readPackageJSON, readText } from '../files.ts';
+import { detectProviders } from './providers.ts';
 
 import type { AuthName, ChatStack, FoundExport, FrameworkName } from '../types.ts';
 import type { PackageManager } from '../types.ts';
@@ -172,6 +173,7 @@ export function detectProject(root: string, userAgent?: string): ProjectInfo {
       : undefined,
     storage: detectStorage(root, files, dependencies),
     chat: CHAT_PACKAGES.find(([name]) => dependencies[name])?.[1] ?? 'none',
+    providers: detectProviders(dependencies),
     sourceDirectory,
     alias: findSourceAlias(root, sourceDirectory === 'server' ? '' : sourceDirectory),
     dependencies
