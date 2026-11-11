@@ -14,11 +14,24 @@ Parameters:
     Description: >-
       PCR0 of the enclave image. Only an enclave with this hash can decrypt with the key. Changed
       only by pin.sh, run by the key custodian role with MFA
+  GitHubRepository:
+    Type: String
+    Default: fiducy-dev/fiducy
+    Description: owner/name of the repository whose aws-production environment may assume the deployer role
+  GitHubOIDCProviderArn:
+    Type: String
+    Default: ''
+    Description: >-
+      ARN of an existing GitHub OIDC provider in this account. Leave empty to create one; an
+      account can only hold one for token.actions.githubusercontent.com
   KeyCustodianUserArns:
     Type: CommaDelimitedList
     Description: >-
       ARNs of the IAM users allowed to assume the key custodian role, each with MFA. Name people,
       not the whole account, so an IAM admin cannot hand themselves the role
+
+Conditions:
+  CreateGitHubOIDCProvider: !Equals [!Ref GitHubOIDCProviderArn, '']
 
 Resources:
   DeployBucket:
@@ -131,6 +144,86 @@ Resources:
                 Resource: !Sub 'arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript'
               - Effect: Allow
                 Action: [ssm:GetCommandInvocation, ssm:DescribeInstanceInformation]
+                Resource: '*'
+
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateGitHubOIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  # GitHub Actions assumes this role with a short-lived OIDC token from a job in the repository's
+  # aws-production environment (required reviewers, main only), so no AWS key is stored anywhere
+  # and no other workflow on main can borrow it. It can ship a release and build on the
+  # host. It cannot touch the key policy, IAM, or the stack's deletion, and it cannot assume the
+  # custodian role (no MFA).
+  DeployerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-deployer'
+      Description: Assumed by GitHub Actions from main to upload a release and build it on the host
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateGitHubOIDCProvider
+                - !Ref GitHubOIDCProvider
+                - !Ref GitHubOIDCProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubRepository}:environment:aws-production'
+      Policies:
+        - PolicyName: fiducy-deployer
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:GetTemplate
+                  - cloudformation:GetTemplateSummary
+                Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*'
+              - Effect: Allow
+                Action: cloudformation:GetTemplateSummary
+                Resource: '*'
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject]
+                Resource: !Sub '${DeployBucket.Arn}/*'
+              - Effect: Allow
+                Action: [ssm:GetParameter, ssm:PutParameter]
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/fiducy/gateway-token'
+              - Effect: Allow
+                Action: ssm:SendCommand
+                Resource:
+                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Host}'
+                  - !Sub 'arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript'
+              - Effect: Allow
+                Action: [ssm:GetCommandInvocation, ssm:DescribeInstanceInformation]
+                Resource: '*'
+              - Effect: Deny
+                Action:
+                  - kms:PutKeyPolicy
+                  - kms:ScheduleKeyDeletion
+                  - kms:DisableKey
+                  - kms:CreateGrant
+                  - kms:Decrypt
+                  - iam:*
+                  - sts:AssumeRole
+                  - cloudformation:DeleteStack
+                  - ec2:TerminateInstances
                 Resource: '*'
 
   WrappingKey:
@@ -254,3 +347,9 @@ Outputs:
     Value: !Ref DeployBucket
   KeysTableName:
     Value: !Ref KeysTable
+  DeployerRoleArn:
+    Description: Set this as the AWS_DEPLOY_ROLE_ARN repository variable in GitHub
+    Value: !GetAtt DeployerRole.Arn
+  KeyCustodianRoleArn:
+    Description: The role to assume, with MFA, before running pin.sh
+    Value: !GetAtt KeyCustodianRole.Arn

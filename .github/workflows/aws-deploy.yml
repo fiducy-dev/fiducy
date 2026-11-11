@@ -1,8 +1,10 @@
-name: AWS prototype
+name: AWS deploy
 
+# Run this from main. The deployer role only trusts OIDC tokens from jobs in the aws-production
+# environment, which should require a reviewer and allow only main. There are no
+# AWS keys in this repository's secrets, and the run can never change which enclave image the KMS
+# key trusts: a new image stops at "built, not yet trusted" until a custodian runs infra/aws/pin.sh.
 on:
-  push:
-    branches: [phase-7-enclave]
   workflow_dispatch:
     inputs:
       rotate_token:
@@ -14,27 +16,39 @@ concurrency:
   group: aws-prototype
   cancel-in-progress: false
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-24.04
+    environment: aws-production
     timeout-minutes: 75
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       FIDUCY_CONTROL_PLANE_URL: ${{ vars.FIDUCY_CONTROL_PLANE_URL }}
       FIDUCY_DEMO_URL: ${{ vars.FIDUCY_DEMO_URL }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Check AWS credentials
-        id: credentials
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Check configuration
+        id: configuration
+        env:
+          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
         run: |
-          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$FIDUCY_CONTROL_PLANE_URL" ]; then
-            echo "AWS secrets or FIDUCY_CONTROL_PLANE_URL are not set yet. Skipping the deploy." >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$AWS_DEPLOY_ROLE_ARN" ] || [ -z "$FIDUCY_CONTROL_PLANE_URL" ]; then
+            echo "Set the AWS_DEPLOY_ROLE_ARN and FIDUCY_CONTROL_PLANE_URL repository variables first. Skipping the deploy." >> "$GITHUB_STEP_SUMMARY"
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
+      - name: Assume the deployer role
+        if: steps.configuration.outputs.ready == 'true'
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: github-deploy-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
       - name: Deploy
-        if: steps.credentials.outputs.ready == 'true'
+        if: steps.configuration.outputs.ready == 'true'
         run: bash infra/aws/deploy.sh ${{ inputs.rotate_token == true && '--rotate-token' || '' }}
