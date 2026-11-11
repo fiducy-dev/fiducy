@@ -1,8 +1,8 @@
 version: v1
 name: fiducy-gateway
-target: fiducy-enclave:latest
+target: fiducy-enclave:${FIDUCY_RELEASE_COMMIT}
 sources:
-  app: fiducy-gateway-app:latest
+  app: fiducy-gateway-app:${FIDUCY_RELEASE_COMMIT}
   odyn: public.ecr.aws/s2t1d4c6/enclaver-io/odyn@sha256:76ea70290e9b42e02f21c9fbad205a23d4a77e840f41e8541708e7a1c262b8ba
   sleeve: public.ecr.aws/s2t1d4c6/enclaver-io/enclaver-wrapper-base@sha256:50d210beeca6d569247e5802a42ca641de4877648d925c8ec6fe77a8a05e08af
 defaults:

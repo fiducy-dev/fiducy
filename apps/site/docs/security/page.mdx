@@ -33,7 +33,8 @@ Today the enclave image is built on your host during the deploy, so `PCR0` ident
 | Your database leaks | Attacker gets handles. Useless without the enclave and your app secret |
 | Fiducy's storage leaks | Attacker gets records. Useless without the handles |
 | Your server logs leak | Only handles and the app secret appear; rotate the secret |
-| Someone with AWS admin on the gateway account | Cannot decrypt stored keys through KMS: it refuses `Decrypt` without the enclave's attestation and refuses `ReEncrypt` always. An admin can still rewrite the key policy, which shows in CloudTrail as `PutKeyPolicy`; watch for it |
+| Someone with AWS admin on the gateway account | Cannot decrypt stored keys through KMS: it refuses `Decrypt` without the enclave's attestation and refuses `ReEncrypt` always. Cannot rewrite the key policy either: only the key custodian role, assumed with MFA, and the account root user may. The attempt shows in CloudTrail as a denied `PutKeyPolicy` |
+| A stolen deploy credential or GitHub token | Can build and upload a new enclave image, but the key keeps trusting the old hash until a custodian pins the new one by hand. The host never starts an image that was not pinned |
 
 ## Limits
 
