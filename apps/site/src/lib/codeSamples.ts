@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   if (!settings.ok) return respondToMissingKey(settings);
 
   const { messages } = await request.json();
-  const result = streamText({ model: createOpenAI(settings).chat('gpt-4o-mini'), messages });
+  const result = streamText({ model: createOpenAI(settings).responses('gpt-4o-mini'), messages });
   return result.toUIMessageStreamResponse();
 }`
   }

@@ -37,21 +37,23 @@ const config = AuiConfig({
 
 ```ts
 import { frontendTools } from '@assistant-ui/react-ai-sdk';
-import { requestKey, withoutKeyRequests } from '@fiducy/assistant-ui/server';
+import { requestKey, streamWithKeyRequests, withoutKeyRequests } from '@fiducy/assistant-ui/server';
+import { respondToMissingKey } from '@fiducy/sdk/server';
 
-const settings = await fiducy.providerSettings(provider, { userID });
-if (!settings) return requestKey({ provider }); // the key box opens in the thread
+const settings = await fiducy.providerSettings(provider, { request });
+if (!settings.ok && settings.reason === 'signed-out') return respondToMissingKey(settings);
+if (!settings.ok) return requestKey({ provider }); // the key box opens in the thread
 
 const tools = frontendTools(body.tools);
 const result = streamText({
-  model: createOpenAI(settings).chat('gpt-5-mini'),
+  model: createOpenAI(settings).responses('gpt-5-mini'),
   messages: await convertToModelMessages(withoutKeyRequests(body.messages), { tools }),
   tools
 });
-return result.toUIMessageStreamResponse();
+return streamWithKeyRequests({ provider, stream: result.stream, tools });
 ```
 
-`requestKey` answers with a short message and a `connect_api_key` call, without calling a model. `withoutKeyRequests` removes those turns before the next model call, so the model answers the user's original question.
+`requestKey` answers with a short message and a `connect_api_key` call, without calling a model. `streamWithKeyRequests` does the same mid-chat when a saved key turns out to be gone, instead of showing an error. `withoutKeyRequests` removes those turns before the next model call, so the model answers the user's original question.
 
 ## Styling
 

@@ -1,15 +1,17 @@
 import { join } from 'node:path';
 
-import { DEV_HOST, PRIVATE_FILE_MODE } from '../constants.ts';
+import { DEV_HOST } from '../constants.ts';
+import { syncEnvironment } from '../dev/environmentSync.ts';
 import { createDevGatewayHandler, listDevOrigins } from '../dev/gateway.ts';
+import { describeExposedSecret } from '../dev/secretGuard.ts';
 import { PortInUseError, serveOnLocalhost } from '../dev/server.ts';
 import { loadDevState } from '../dev/state.ts';
-import { readEnvironmentFiles } from '../environment.ts';
-import { readText, writeNewFile } from '../files.ts';
+import { readText } from '../files.ts';
 import { UsageError, parseFlags, readBoolean, readString, readStrings } from '../flags.ts';
 import { isOrigin, isPort } from '../validators.ts';
 
 import type { CommandContext, DevGateway, DevOptions, DevState, Output } from '../types.ts';
+import type { EnvironmentSync } from '../types.ts';
 
 export const DEV_HELP = `Usage: fiducy dev [--port 3438] [--origin http://localhost:5173] [--mock]
 
@@ -19,7 +21,7 @@ saved keys survive restarts.
 
   --port     Port for the gateway (default 3438, remembered after the first run)
   --origin   Extra origin allowed to embed the key widget (repeatable)
-  --mock     Answer OpenAI and Anthropic calls with a fake model, so no real key is spent`;
+  --mock     Answer OpenAI, Anthropic, Gemini and OpenRouter calls with a fake model, so no real key is spent`;
 
 function readDevOptions(argv: string[]): DevOptions {
   const flags = parseFlags(argv, {
@@ -52,30 +54,38 @@ function isEnvironmentIgnored(root: string): boolean {
   return lines.some((line) => ['.env', '.env*', '.env.*', '*.env', '/.env'].includes(line));
 }
 
-function reportEnvironment(root: string, lines: string[], output: Output) {
-  const current = readEnvironmentFiles(root);
+function describeChanges(sync: EnvironmentSync): string {
+  const parts = [
+    ...sync.replaced.map((change) => `updated ${change.name} in ${change.file}`),
+    ...(sync.added.length > 0 ? [`added ${sync.added.join(', ')} to .env`] : [])
+  ];
+  return parts.join('; ');
+}
+
+export function reportEnvironment(root: string, lines: string[], output: Output) {
   const expected = Object.fromEntries(lines.map((line) => line.split('=', 2) as [string, string]));
-  const missing = Object.keys(expected).filter((name) => current[name] === undefined);
-  const different = Object.keys(expected).filter(
-    (name) => current[name] !== undefined && current[name] !== expected[name]
-  );
-  if (missing.length === Object.keys(expected).length) {
-    const created = writeNewFile(join(root, '.env'), `${lines.join('\n')}\n`, PRIVATE_FILE_MODE);
-    if (created) {
-      output.info('Wrote .env with the dev gateway settings. Restart your dev server to load it.');
-      if (!isEnvironmentIgnored(root)) output.info('Add .env to your .gitignore.');
-      return;
-    }
-  }
-  if (missing.length === 0 && different.length === 0) {
-    output.info('Your env files already point at this dev gateway.');
+  const sync = syncEnvironment(root, expected);
+  if (sync.status === 'current') {
+    output.info(output.style.success('Your env files already point at this dev gateway.'));
     return;
   }
-  output.info('Add these lines to your server env file, then restart your dev server:');
-  for (const line of lines) output.info(`  ${line}`);
-  if (different.length > 0) {
-    output.info(`Your env files have different values for ${different.join(', ')}.`);
+  if (sync.status === 'updated') {
+    output.info(
+      `${output.style.success('Env')} ${describeChanges(sync)}. Restart your dev server to load it.`
+    );
+    if (!isEnvironmentIgnored(root))
+      output.info(output.style.warning('Add .env to your .gitignore.'));
+    return;
   }
+  output.info(
+    output.style.heading('Add these lines to your server env file, then restart your dev server:')
+  );
+  output.info(output.style.code(lines.join('\n')));
+  output.info(
+    output.style.warning(
+      `Your env files set ${sync.foreign.join(', ')} to values from another gateway. Fiducy left them alone.`
+    )
+  );
 }
 
 export async function startDevGateway(
@@ -110,6 +120,11 @@ function waitForStop(gateway: DevGateway) {
 
 export async function runDev(argv: string[], { cwd, output }: CommandContext): Promise<number> {
   const options = readDevOptions(argv);
+  const exposedSecret = describeExposedSecret(cwd);
+  if (exposedSecret) {
+    output.error(exposedSecret);
+    return 1;
+  }
   let gateway: DevGateway;
   try {
     gateway = await startDevGateway(cwd, options, output);
@@ -120,13 +135,16 @@ export async function runDev(argv: string[], { cwd, output }: CommandContext): P
     );
     return 1;
   }
+  const mode = options.mock ? output.style.warning(' with a fake model (--mock)') : '';
   output.info(
-    `Fiducy dev gateway on ${gateway.url}${options.mock ? ' with a fake model (--mock)' : ''}`
+    `${output.style.heading('Fiducy dev gateway')} on ${output.style.path(gateway.url)}${mode}`
   );
   reportEnvironment(cwd, buildEnvironmentLines(gateway.state, gateway.url), output);
   output.info(
-    'Widget origins: localhost and 127.0.0.1 on common dev ports. Add others with --origin.'
+    output.style.muted(
+      'Widget origins: localhost and 127.0.0.1 on common dev ports. Add others with --origin.'
+    )
   );
-  output.info('Keys stay in .fiducy/ until you delete it. Ctrl+C to stop.');
+  output.info(output.style.muted('Keys stay in .fiducy/ until you delete it. Ctrl+C to stop.'));
   return waitForStop(gateway);
 }
