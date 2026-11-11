@@ -75,6 +75,8 @@ It shows the commit the host built and when, asks you to type the first characte
 
 The host keeps running the last pinned image through reboots and crashes. A build that nobody pinned sits on disk and is never started.
 
+Turn on MFA for the AWS account root user too (IAM console, Security credentials). The root user is the one principal besides the custodian role that can change what the key trusts, and the stack cannot require MFA for it. Lock its password and MFA device away and never create access keys for it.
+
 ## Deploy from your machine
 
 ```bash
