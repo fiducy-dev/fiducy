@@ -30,8 +30,24 @@ Parameters:
       ARNs of the IAM users allowed to assume the key custodian role, each with MFA. Name people,
       not the whole account, so an IAM admin cannot hand themselves the role
 
+  AlertEmail:
+    Type: String
+    Default: ''
+    Description: >-
+      Where to send an email when someone touches the key policy, the roles, the host, the table
+      or the stack, or when a Decrypt is refused. Empty turns the alerts off
+  CreateAuditTrail:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: >-
+      Create a CloudTrail trail so the alert rules receive API calls. Set to false when the account
+      already has a trail that records management events
+
 Conditions:
   CreateGitHubOIDCProvider: !Equals [!Ref GitHubOIDCProviderArn, '']
+  SendAlerts: !Not [!Equals [!Ref AlertEmail, '']]
+  CreateAuditTrail: !And [!Condition SendAlerts, !Equals [!Ref CreateAuditTrail, 'true']]
 
 Resources:
   DeployBucket:
@@ -335,6 +351,307 @@ Resources:
     Properties:
       Domain: vpc
       InstanceId: !Ref Host
+
+  # Alerts. Every rule below matches CloudTrail management events, which cost nothing to record
+  # once (the trail) and nothing to match (EventBridge). The email is the point: Zeabur learned
+  # about its breach from a user, and these are the calls that precede one here.
+  AuditBucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateAuditTrail
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-old-logs
+            Status: Enabled
+            ExpirationInDays: 90
+
+  AuditBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: CreateAuditTrail
+    Properties:
+      Bucket: !Ref AuditBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: NoDeletingAuditLogs
+            Effect: Deny
+            Principal: '*'
+            Action: [s3:DeleteObject, s3:DeleteObjectVersion, s3:PutLifecycleConfiguration]
+            Resource: [!GetAtt AuditBucket.Arn, !Sub '${AuditBucket.Arn}/*']
+            Condition:
+              StringNotLike:
+                aws:userid: [!Ref AWS::AccountId]
+          - Effect: Allow
+            Principal: { Service: cloudtrail.amazonaws.com }
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt AuditBucket.Arn
+            Condition:
+              StringEquals:
+                aws:SourceArn: !Sub 'arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AWS::StackName}-audit'
+          - Effect: Allow
+            Principal: { Service: cloudtrail.amazonaws.com }
+            Action: s3:PutObject
+            Resource: !Sub '${AuditBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+                aws:SourceArn: !Sub 'arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AWS::StackName}-audit'
+
+  AuditTrail:
+    Type: AWS::CloudTrail::Trail
+    Condition: CreateAuditTrail
+    DependsOn: AuditBucketPolicy
+    Properties:
+      TrailName: !Sub '${AWS::StackName}-audit'
+      S3BucketName: !Ref AuditBucket
+      IsLogging: true
+      IsMultiRegionTrail: true
+      IncludeGlobalServiceEvents: true
+      EnableLogFileValidation: true
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: SendAlerts
+    Properties:
+      DisplayName: Fiducy gateway alerts
+      Subscription:
+        - { Protocol: email, Endpoint: !Ref AlertEmail }
+
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Condition: SendAlerts
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: events.amazonaws.com }
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-*'
+          # Whoever gets these emails is decided like the key: only the custodian role (MFA) or the
+          # root user may change the subscription, the topic or its policy. Anyone else, an IAM admin
+          # or a stack update run by the deploy credentials included, is refused, so an attacker
+          # cannot quietly point the alerts at themselves before touching the key.
+          - Sid: OnlyTheCustodianChangesWhoIsAlerted
+            Effect: Deny
+            Principal: '*'
+            Action:
+              - sns:Subscribe
+              - sns:Unsubscribe
+              - sns:SetSubscriptionAttributes
+              - sns:SetTopicAttributes
+              - sns:AddPermission
+              - sns:RemovePermission
+              - sns:DeleteTopic
+            Resource: !Ref AlertTopic
+            Condition:
+              StringNotLike:
+                aws:userid:
+                  - !Sub '${KeyCustodianRole.RoleId}:*'
+                  - !Ref AWS::AccountId
+
+  KeyChangeAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-key-change'
+      Description: Someone tried to change what the wrapping key trusts, disable it or delete it
+      EventPattern:
+        source: [aws.kms]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName: [PutKeyPolicy, ScheduleKeyDeletion, DisableKey, CreateGrant, UpdateKeyDescription]
+          resources:
+            ARN: [!GetAtt WrappingKey.Arn]
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+              address: $.detail.sourceIPAddress
+            InputTemplate: '"Fiducy: <name> on the wrapping key by <who> from <address> at <time>. Only pin.sh run by the custodian should do this."'
+
+  DecryptRefusedAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-decrypt-refused'
+      Description: KMS refused a Decrypt with the wrapping key, so something other than the trusted enclave asked
+      EventPattern:
+        source: [aws.kms]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName: [Decrypt]
+          errorCode: [{ exists: true }]
+          resources:
+            ARN: [!GetAtt WrappingKey.Arn]
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+              error: $.detail.errorCode
+            InputTemplate: '"Fiducy: KMS refused a Decrypt from <who> at <time> (<error>). The trusted enclave never gets this. A rogue enclave, the host or an admin tried to open a key."'
+
+  RoleChangeAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-role-change'
+      Description: One of the stack's roles was changed (delivered in us-east-1 only, where IAM events land)
+      EventPattern:
+        source: [aws.iam]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName:
+            - CreateRole
+            - UpdateAssumeRolePolicy
+            - PutRolePolicy
+            - DeleteRolePolicy
+            - AttachRolePolicy
+            - DetachRolePolicy
+            - DeleteRole
+          requestParameters:
+            roleName: [!Ref KeyCustodianRole, !Ref DeployerRole, !Ref HostRole]
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+              role: $.detail.requestParameters.roleName
+            InputTemplate: '"Fiducy: <name> on role <role> by <who> at <time>. Only a stack update from an admin should do this."'
+
+  AlertTamperAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-alert-tamper'
+      Description: Someone tried to silence these alerts by stopping the trail, the rules or the topic
+      EventPattern:
+        detail-type: [AWS API Call via CloudTrail]
+        source: [aws.cloudtrail, aws.events, aws.sns]
+        detail:
+          eventName:
+            - StopLogging
+            - DeleteTrail
+            - UpdateTrail
+            - PutEventSelectors
+            - PutAdvancedEventSelectors
+            - DisableRule
+            - DeleteRule
+            - RemoveTargets
+            - PutRule
+            - Subscribe
+            - Unsubscribe
+            - SetSubscriptionAttributes
+            - DeleteTopic
+            - SetTopicAttributes
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+              address: $.detail.sourceIPAddress
+            InputTemplate: '"Fiducy: <name> by <who> from <address> at <time>. This can switch off the alerts that watch the key. If it was not you, treat it as an incident."'
+
+  HostChangeAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-host-change'
+      Description: An instance profile was attached or swapped, or the gateway host was changed or terminated
+      EventPattern:
+        source: [aws.ec2]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName:
+            - AssociateIamInstanceProfile
+            - ReplaceIamInstanceProfileAssociation
+            - ModifyInstanceAttribute
+            - TerminateInstances
+            - StopInstances
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+              address: $.detail.sourceIPAddress
+            InputTemplate: '"Fiducy: <name> by <who> from <address> at <time>. Check it was you."'
+
+  TableChangeAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-table-change'
+      Description: The sealed records table was deleted, had its protection changed, or lost its backups
+      EventPattern:
+        source: [aws.dynamodb]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName: [DeleteTable, UpdateTable, UpdateContinuousBackups]
+          requestParameters:
+            tableName: [!Ref KeysTable]
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+            InputTemplate: '"Fiducy: <name> on the sealed records table by <who> at <time>."'
+
+  StackChangeAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-stack-change'
+      Description: The stack was updated or deleted
+      EventPattern:
+        source: [aws.cloudformation]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName: [ExecuteChangeSet, UpdateStack, DeleteStack]
+          requestParameters:
+            stackName:
+              - !Ref AWS::StackName
+              - { prefix: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/' }
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+            InputTemplate: '"Fiducy: <name> on the gateway stack by <who> at <time>. A deploy from CI or a pin by the custodian is expected; anything else is not."'
 
 Outputs:
   InstanceId:

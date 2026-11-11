@@ -30,6 +30,7 @@ deploy_stack() {
     overrides+=("KeyCustodianUserArns=${FIDUCY_KEY_CUSTODIAN_USER_ARNS:?Set FIDUCY_KEY_CUSTODIAN_USER_ARNS to the IAM user ARNs (comma separated) that may pin enclave images}")
     log "Creating stack $STACK_NAME with AMI $ami"
   fi
+  [ -z "${FIDUCY_ALERT_EMAIL:-}" ] || overrides+=("AlertEmail=$FIDUCY_ALERT_EMAIL")
   aws cloudformation deploy --stack-name "$STACK_NAME" --template-file "$TEMPLATE" \
     --capabilities CAPABILITY_NAMED_IAM --no-fail-on-empty-changeset \
     ${overrides[@]:+--parameter-overrides "${overrides[@]}"}
