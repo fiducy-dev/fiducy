@@ -7,7 +7,8 @@
   --font-sans: "Geist Variable", system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, Menlo, monospace;
 
-  --color-ink: #000000;
+  --color-ink: #080808;
+  --color-emphasis: #080808;
   --color-ink-body: #333333;
   --color-ink-muted: #5e5e5e;
   --color-ink-quiet: #8a8a8a;
@@ -23,63 +24,7 @@
   --animate-fade-in: fade-in 1400ms var(--ease-out-expo) both;
   --animate-blink: blink 1.8s steps(2, jump-none) infinite;
   --animate-code-in: code-in 300ms var(--ease-out-expo);
-  --animate-leak-scroll: leak-scroll 18s linear infinite;
   --animate-marquee: marquee 16s linear infinite;
-  --animate-leak-steal: leak-steal 6s var(--ease-out-expo) infinite;
-  --animate-leak-first: leak-first 6s linear infinite;
-  --animate-leak-last: leak-last 6s linear infinite;
-
-  @keyframes leak-steal {
-    0%,
-    12% {
-      transform: none;
-      opacity: 1;
-    }
-    35%,
-    58% {
-      transform: var(--to);
-      opacity: 1;
-    }
-    74%,
-    88% {
-      transform: var(--to);
-      opacity: 0;
-    }
-    94% {
-      transform: none;
-      opacity: 0;
-    }
-    100% {
-      transform: none;
-      opacity: 1;
-    }
-  }
-
-  @keyframes leak-first {
-    0%,
-    23.9%,
-    66%,
-    100% {
-      opacity: 0;
-    }
-    24%,
-    65.9% {
-      opacity: 1;
-    }
-  }
-
-  @keyframes leak-last {
-    0%,
-    69.9%,
-    96%,
-    100% {
-      opacity: 0;
-    }
-    70%,
-    95.9% {
-      opacity: 1;
-    }
-  }
 
   @keyframes marquee {
     to {
@@ -112,12 +57,6 @@
       filter: blur(2px);
     }
   }
-
-  @keyframes leak-scroll {
-    to {
-      transform: var(--step);
-    }
-  }
 }
 
 html:root {
@@ -132,6 +71,107 @@ html:root {
 #nd-docs-layout h2,
 #nd-docs-layout h3 {
   letter-spacing: -0.03em;
+}
+
+#nd-docs-layout a[href="/"]:not(article a) {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-fd-foreground);
+}
+
+#nd-docs-layout a[href="/"]:not(article a)::after {
+  content: "docs";
+  margin-inline-start: -0.3rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[href],
+:is(#nd-sidebar, #nd-sidebar-mobile) [data-radix-scroll-area-viewport] button[aria-controls] {
+  font-size: 0.8125rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) [data-radix-scroll-area-viewport] > div {
+  counter-reset: docs-section;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) [data-radix-scroll-area-viewport] > div > div {
+  border-style: dashed !important;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > button[aria-controls] {
+  counter-increment: docs-section;
+  gap: 0.625rem;
+  margin-top: 0.5rem;
+  border-radius: 0;
+  padding: 0.5rem 1.25rem 0.5rem 1rem !important;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-fd-muted-foreground);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > button[aria-controls]::before {
+  content: counter(docs-section, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-fd-foreground);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > button[aria-controls]
+  svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > div[id]
+  > div
+  > div
+  > button[aria-controls] {
+  padding-left: 2rem !important;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  > div
+  > div
+  > div[id]
+  > div
+  > div
+  > div[id] {
+  margin-left: 1.25rem;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active="true"] {
+  font-weight: 500;
+  color: var(--color-fd-foreground) !important;
+  background: transparent !important;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active="true"]::before {
+  top: 50% !important;
+  bottom: auto !important;
+  width: 5px !important;
+  height: 5px !important;
+  translate: -2px -50%;
+  background: var(--color-fd-foreground) !important;
 }
 
 :root {
@@ -207,6 +247,21 @@ html:root {
   }
 }
 
+@utility hatch-frame {
+  border-style: dashed;
+  border-color: var(--hatch-edge);
+  background-image: var(--hatch);
+}
+
+:root {
+  --hatch: repeating-linear-gradient(
+    -45deg,
+    color-mix(in oklab, currentColor 16%, transparent) 0 1px,
+    transparent 1px 6px
+  );
+  --hatch-edge: color-mix(in oklab, currentColor 40%, transparent);
+}
+
 /* Docs code tabs: the selected tab gets the code title's hatch, not an underline. */
 .fd-code-group [role="tab"] {
   border: 0 !important;
@@ -221,11 +276,31 @@ html:root {
 
 .fd-code-group [role="tab"][data-state="active"] {
   color: var(--color-fd-foreground);
-  background-image: repeating-linear-gradient(
-    -45deg,
-    color-mix(in oklab, var(--color-fd-foreground) 16%, transparent) 0 1px,
-    transparent 1px 6px
-  );
+  background-image: var(--hatch);
+  outline: 1px dashed var(--hatch-edge);
+  outline-offset: -1px;
+}
+
+/* Docs hovers: the same hatch and dashed edge as the selected code tab. */
+:is(
+    [class*="hover:bg-fd-accent"]:not(aside a[data-active], aside button[aria-controls]),
+    .fd-page-nav-card
+  ):hover {
+  background: var(--hatch) !important;
+}
+
+:is([class*="hover:bg-fd-accent"][class~="border"], .fd-page-nav-card):hover {
+  border-style: dashed;
+  border-color: var(--hatch-edge);
+}
+
+[class*="hover:bg-fd-accent"]:not(
+    [class~="border"],
+    aside a[data-active],
+    aside button[aria-controls]
+  ):hover {
+  outline: 1px dashed var(--hatch-edge);
+  outline-offset: -1px;
 }
 
 .fd-code-group [role="tab"]:focus-visible {

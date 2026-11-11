@@ -2,37 +2,46 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { buildFrameworkFiles } from './frameworkFiles.ts';
+import { buildPlacementSection } from './placementSteps.ts';
+import { runFiducy } from './runners.ts';
 import { buildServerModule, chooseServerModulePath, readExportName } from './serverModule.ts';
 
-import type { InitPlan, ProjectInfo } from '../types.ts';
+import { CHAT_FALLBACK_WARNING, CLI_VERSION, DEV_GATEWAY_NOTE } from '../constants.ts';
 
-const MODEL_CALL = `const settings = await fiducy.providerSettings('openai', { request });
-if (!settings.ok) return respondToMissingKey(settings);
-const model = createOpenAI(settings).chat('gpt-4o-mini');`;
+import type { InitPlan, ProjectInfo, ResolvedPlacement } from '../types.ts';
 
-export function buildInitPlan(project: ProjectInfo): InitPlan {
+export function buildInitPlan(project: ProjectInfo, resolved: ResolvedPlacement): InitPlan {
+  const { placement, fellBack } = resolved;
   const hasSourceFolder = existsSync(join(project.root, 'src'));
   const serverModulePath = chooseServerModulePath(project, hasSourceFolder);
   const serverModule = buildServerModule(project, serverModulePath);
   const framework = buildFrameworkFiles(project, serverModulePath);
   const exportName = readExportName(project);
+  const placementSection = buildPlacementSection(project, placement, framework.widget, exportName);
   const packages = [
     ...(project.dependencies['@fiducy/sdk'] ? [] : ['@fiducy/sdk']),
     ...serverModule.packages,
-    ...framework.packages
-  ];
+    ...framework.packages,
+    ...placementSection.packages
+  ].map(pinFiducyPackage);
   return {
+    placement,
+    fiducyCommand: runFiducy(project.packageManager, '').trim(),
     files: [{ path: serverModulePath, contents: serverModule.contents }, ...framework.files],
-    snippets: [
-      ...framework.snippets,
-      framework.widget,
-      {
-        title: "use the user's key (respondToMissingKey comes from @fiducy/sdk/server)",
-        file: 'your AI route',
-        code: MODEL_CALL.replace('fiducy.', `${exportName}.`)
-      }
-    ],
+    steps: [...serverModule.steps, ...framework.snippets, ...placementSection.steps],
     packages,
-    notes: [...serverModule.notes, 'Then run npx fiducy dev for a local gateway.']
+    warnings: [...(fellBack ? [CHAT_FALLBACK_WARNING] : []), ...serverModule.warnings],
+    commands: [
+      ...serverModule.commands,
+      {
+        command: runFiducy(project.packageManager, 'dev'),
+        purpose: 'runs a local gateway',
+        followUp: DEV_GATEWAY_NOTE
+      }
+    ]
   };
+}
+
+function pinFiducyPackage(name: string): string {
+  return name.startsWith('@fiducy/') ? `${name}@${CLI_VERSION}` : name;
 }

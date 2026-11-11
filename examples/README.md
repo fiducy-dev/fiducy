@@ -23,10 +23,9 @@ npm install
 npx fiducy dev --mock
 ```
 
-`fiducy dev` writes `.env` and keeps running. In a second terminal:
+`fiducy dev` writes its settings to `.env` and keeps running. In a second terminal:
 
 ```bash
-echo "EXAMPLE_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
 npm run dev
 ```
 
@@ -36,4 +35,4 @@ Inside the repository, the same ranges resolve to the local packages, so the exa
 
 1. `bun install` and `bun run build` at the repository root.
 2. In the example folder, start a local gateway: `node ../../packages/cli/dist/index.js dev --mock` (in your own app this is `npx fiducy dev --mock`). It writes `.env` with the three `FIDUCY_` values.
-3. Add `EXAMPLE_SESSION_SECRET` (any 32+ characters) to that `.env`, then `bun run dev` in the example folder.
+3. `bun run dev` in the example folder. The test sign-in keeps a random session secret in `.data/` (set `EXAMPLE_SESSION_SECRET` to use your own).
