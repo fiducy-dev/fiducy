@@ -42,7 +42,7 @@ read_stack_outputs() {
   KEY_ARN=$(stack_output KeyArn)
   BUCKET=$(stack_output BucketName)
   KEYS_TABLE=$(stack_output KeysTableName)
-  GATEWAY_HOST="gw.${PUBLIC_IP//./-}.sslip.io"
+  GATEWAY_HOST="${FIDUCY_GATEWAY_HOST:-gw.${PUBLIC_IP//./-}.sslip.io}"
 }
 
 read_build_info() {
@@ -66,10 +66,10 @@ wait_for_ssm() {
 host_environment() {
   jq -cn --arg bucket "$BUCKET" --arg key "$KEY_ARN" --arg ip "$PUBLIC_IP" --arg region "$AWS_REGION" \
     --arg table "$KEYS_TABLE" --arg controlPlane "$CONTROL_PLANE_URL" \
-    --arg commit "${RELEASE_COMMIT:-}" --arg pinnedPCR0 "${PINNED_PCR0:-}" '
+    --arg commit "${RELEASE_COMMIT:-}" --arg gatewayHost "$GATEWAY_HOST" --arg pinnedPCR0 "${PINNED_PCR0:-}" '
     "export AWS_REGION=\($region) FIDUCY_BUCKET=\($bucket) FIDUCY_KMS_KEY_ID=\($key) " +
     "FIDUCY_PUBLIC_IP=\($ip) FIDUCY_KEYS_TABLE=\($table) FIDUCY_CONTROL_PLANE_URL=\($controlPlane) " +
-    "FIDUCY_RELEASE_COMMIT=\($commit) FIDUCY_PINNED_PCR0=\($pinnedPCR0)"'
+    "FIDUCY_RELEASE_COMMIT=\($commit) FIDUCY_PINNED_PCR0=\($pinnedPCR0) FIDUCY_GATEWAY_HOST=\($gatewayHost)"'
 }
 
 host_commands() {

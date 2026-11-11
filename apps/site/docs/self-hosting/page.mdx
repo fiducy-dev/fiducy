@@ -30,7 +30,7 @@ The dashboard (`apps/control-plane`) is a Node app that needs Postgres. Host it 
 | `DATABASE_URL` | Your Postgres connection string |
 | `FARM_AUTH_SECRET` | 32 random bytes |
 | `FARM_AUTH_URL` | The dashboard's public URL |
-| `FIDUCY_GATEWAY_URL` | `https://gw.<your-ip>.sslip.io`, from the deploy below |
+| `FIDUCY_GATEWAY_URL` | `https://<FIDUCY_GATEWAY_HOST>`, or `https://gw.<your-ip>.sslip.io` without a domain, from the deploy below |
 | `FIDUCY_GATEWAY_TOKEN` | The value of `/fiducy/gateway-token` in Parameter Store, created by the first deploy |
 
 Run `bunx farm auth migrate` in `apps/control-plane` once, with `DATABASE_URL` set, before the first start.
@@ -41,7 +41,7 @@ There are no AWS keys in the repository. GitHub Actions assumes a role in your a
 
 1. Run the first deploy from your machine with admin credentials (see below). It creates the stack, including the deployer role and the GitHub OIDC provider. If your account already has a provider for `token.actions.githubusercontent.com`, set `FIDUCY_GITHUB_OIDC_PROVIDER_ARN` to its ARN first. For a fork, set `FIDUCY_GITHUB_REPOSITORY=<owner>/<name>`.
 2. In the repository settings, create the environment `aws-production`: add yourself as a required reviewer and limit deployment branches to `main`. Every deploy then waits for your click.
-3. Add the repository variables `AWS_DEPLOY_ROLE_ARN` (the stack's `DeployerRoleArn` output), `FIDUCY_CONTROL_PLANE_URL` (the dashboard's URL) and optionally `AWS_REGION` (default `us-east-1`).
+3. Add the repository variables `AWS_DEPLOY_ROLE_ARN` (the stack's `DeployerRoleArn` output), `FIDUCY_CONTROL_PLANE_URL` (the dashboard's URL) and optionally `AWS_REGION` (default `us-east-1`) and `FIDUCY_GATEWAY_HOST` (see [Use your own domain](#use-your-own-domain)).
 4. Run the **AWS deploy** workflow from `main` and approve it.
 
 The first deploy creates the gateway token. Every deploy builds the enclave image on the host and prints its `PCR0`. If that hash is the one the KMS key already trusts, it restarts the enclave on it. If it is a new image, the workflow stops there: the enclave that was running keeps running, and the summary shows the command to trust the new one (next section). A deploy can never make the key trust an image on its own.
@@ -103,6 +103,16 @@ bash infra/aws/deploy.sh
 `FIDUCY_KEY_CUSTODIAN_USER_ARNS` is only read when the stack is created. To change who may pin later, update the `KeyCustodianUserArns` parameter as an admin; the role-change alert emails you when that happens.
 
 Needs the AWS CLI, `jq`, `openssl` and admin credentials for the first run, which creates the stack. Template changes that touch IAM, the key or the host also need an admin run from your machine; the deployer role in CI is refused for those on purpose. Add `--rotate-token` to replace the gateway token. Trusting the image is the same `pin.sh` step as above.
+
+## Use your own domain
+
+By default the gateway answers at `gw.<dashed-ip>.sslip.io`, a free name that resolves to the Elastic IP. It works with no setup, but you do not own it, so you cannot restrict who may issue certificates for it. For production, use a domain you control:
+
+1. Add a DNS `A` record for, say, `gateway.yourapp.com` pointing at the stack's Elastic IP (`PublicIp` output).
+2. Lock down which certificates can exist for that name with a `CAA` record and Certificate Transparency alerts, as described in [Lock down the gateway hostname](/docs/security#lock-down-the-gateway-hostname).
+3. Set `FIDUCY_GATEWAY_HOST=gateway.yourapp.com` for `deploy.sh`, or as a repository variable for the workflow, and deploy.
+
+The host name is baked into the enclave image, so changing it produces a new `PCR0` that a custodian has to pin like any other change. `pin.sh` shows the host name it is about to trust next to the commit.
 
 ## Tear down
 
