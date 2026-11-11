@@ -267,27 +267,33 @@ export interface LeakCardProps {
   leak: LeakScene;
 }
 
-export interface FlowCard {
-  label: string;
+export type FlowCalloutName = 'browser' | 'split' | 'open' | 'database' | 'store' | 'provider';
+
+export interface FlowLayout {
+  along: readonly [number, number];
+  across: readonly [number, number];
+  step: number;
+  callouts: Record<FlowCalloutName, readonly [number, number]>;
+}
+
+export interface FlowStage {
+  until: number;
   text: string;
-  isVerdict?: boolean;
 }
 
-export interface FlowColumn {
-  status: string;
-  cards: FlowCard[];
+export interface FlowChipProps {
+  at: Point;
+  label: string;
+  isSolid?: boolean;
 }
 
-export interface FlowColumnProps {
-  column: FlowColumn;
-  isShown: boolean;
-  isActive: boolean;
-  hasExit: boolean;
+export interface FlowFigureProps {
+  layout: FlowLayout;
 }
 
-export interface FlowCardProps {
-  card: FlowCard;
-  isActive: boolean;
+export interface FlowStageSvgProps {
+  className: string;
+  children: ReactNode;
 }
 
 export interface CipherWordProps {
