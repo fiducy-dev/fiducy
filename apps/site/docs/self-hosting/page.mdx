@@ -77,6 +77,8 @@ Upgrading a stack created before `PCR16` existed: the first deploy of the new te
 
 The host keeps running the last pinned image through reboots and crashes. A build that nobody pinned sits on disk and is never started.
 
+Turn on MFA for the AWS account root user too (IAM console, Security credentials). The root user is the one principal besides the custodian role that can change what the key trusts, and the stack cannot require MFA for it. Lock its password and MFA device away and never create access keys for it.
+
 ## Alerts
 
 Set `FIDUCY_ALERT_EMAIL` when you run `deploy.sh` and the stack emails you, through SNS, when any of these happen:
@@ -89,7 +91,7 @@ Set `FIDUCY_ALERT_EMAIL` when you run `deploy.sh` and the stack emails you, thro
 - the stack is updated or deleted
 - someone tries to silence the alerts: stops or changes the trail, disables or deletes a rule, removes a target, or unsubscribes or deletes the topic
 
-Confirm the subscription email SNS sends. The stack also creates a multi-region CloudTrail trail so the rules receive these calls. Its bucket is versioned, survives a teardown and refuses deletes from anyone but the root user; pass `CreateAuditTrail=false` as a parameter override if the account already records management events. Everything here costs cents a month. Use a dedicated AWS account for the gateway and these emails stay rare.
+Confirm the subscription email SNS sends. Who gets these emails is locked like the key: the topic's policy refuses subscribe, unsubscribe and policy changes from everyone but the custodian role and the root user, so an attacker with admin rights cannot quietly redirect the alerts first. To change the address later, run `deploy.sh` with the new `FIDUCY_ALERT_EMAIL` as the root user. The stack also creates a multi-region CloudTrail trail so the rules receive these calls. Its bucket is versioned, survives a teardown and refuses deletes from anyone but the root user; pass `CreateAuditTrail=false` as a parameter override if the account already records management events. Everything here costs cents a month. Use a dedicated AWS account for the gateway and these emails stay rare.
 
 ## Deploy from your machine
 

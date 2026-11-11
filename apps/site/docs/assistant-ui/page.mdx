@@ -27,10 +27,13 @@ You don't place the key box yourself. When a user has no key, the chat route ask
 
 In `app/api/chat/route.ts`, look up the user's key before calling the model. Lines marked `// Fiducy` are new or changed; the rest is the template:
 
-```ts title="app/api/chat/route.ts"
+<CodeGroup>
+
+```ts title="OpenAI"
+// app/api/chat/route.ts
 import { createOpenAI } from '@ai-sdk/openai'; // Fiducy
 import { frontendTools } from '@assistant-ui/ai-sdk';
-import { requestKey, withoutKeyRequests } from '@fiducy/assistant-ui/server'; // Fiducy
+import { requestKey, streamWithKeyRequests, withoutKeyRequests } from '@fiducy/assistant-ui/server'; // Fiducy
 import { respondToMissingKey } from '@fiducy/sdk/server'; // Fiducy
 import { convertToModelMessages, streamText } from 'ai';
 
@@ -51,13 +54,107 @@ export async function POST(req: Request) {
     system,
     tools: aiSDKTools
   });
-  return result.toUIMessageStreamResponse();
+  // Fiducy: replaces result.toUIMessageStreamResponse()
+  return streamWithKeyRequests({ provider: 'openai', stream: result.stream, tools: aiSDKTools });
 }
 ```
 
-- `createOpenAI(settings)` replaces the template's `openai` import, so the call goes through your gateway with the user's key.
+```ts title="Anthropic"
+// app/api/chat/route.ts
+import { createAnthropic } from '@ai-sdk/anthropic'; // Fiducy
+import { frontendTools } from '@assistant-ui/ai-sdk';
+import { requestKey, streamWithKeyRequests, withoutKeyRequests } from '@fiducy/assistant-ui/server'; // Fiducy
+import { respondToMissingKey } from '@fiducy/sdk/server'; // Fiducy
+import { convertToModelMessages, streamText } from 'ai';
+
+import { fiducy } from '@/lib/fiducy'; // Fiducy
+
+export async function POST(req: Request) {
+  // Fiducy: signed out answers 401; no key yet shows the key box instead of an answer.
+  const settings = await fiducy.providerSettings('anthropic', { request: req });
+  if (!settings.ok && settings.reason === 'signed-out') return respondToMissingKey(settings);
+  if (!settings.ok) return requestKey({ provider: 'anthropic' });
+
+  const { messages, system, tools } = await req.json();
+  const aiSDKTools = frontendTools(tools ?? {});
+  const result = streamText({
+    model: createAnthropic(settings)('claude-sonnet-4-5'), // Fiducy
+    // Fiducy: withoutKeyRequests(...) around messages
+    messages: await convertToModelMessages(withoutKeyRequests(messages), { tools: aiSDKTools }),
+    system,
+    tools: aiSDKTools
+  });
+  // Fiducy: replaces result.toUIMessageStreamResponse()
+  return streamWithKeyRequests({ provider: 'anthropic', stream: result.stream, tools: aiSDKTools });
+}
+```
+
+```ts title="Gemini"
+// app/api/chat/route.ts
+import { createGoogleGenerativeAI } from '@ai-sdk/google'; // Fiducy
+import { frontendTools } from '@assistant-ui/ai-sdk';
+import { requestKey, streamWithKeyRequests, withoutKeyRequests } from '@fiducy/assistant-ui/server'; // Fiducy
+import { respondToMissingKey } from '@fiducy/sdk/server'; // Fiducy
+import { convertToModelMessages, streamText } from 'ai';
+
+import { fiducy } from '@/lib/fiducy'; // Fiducy
+
+export async function POST(req: Request) {
+  // Fiducy: signed out answers 401; no key yet shows the key box instead of an answer.
+  const settings = await fiducy.providerSettings('gemini', { request: req });
+  if (!settings.ok && settings.reason === 'signed-out') return respondToMissingKey(settings);
+  if (!settings.ok) return requestKey({ provider: 'gemini' });
+
+  const { messages, system, tools } = await req.json();
+  const aiSDKTools = frontendTools(tools ?? {});
+  const result = streamText({
+    model: createGoogleGenerativeAI(settings)('gemini-2.5-flash'), // Fiducy
+    // Fiducy: withoutKeyRequests(...) around messages
+    messages: await convertToModelMessages(withoutKeyRequests(messages), { tools: aiSDKTools }),
+    system,
+    tools: aiSDKTools
+  });
+  // Fiducy: replaces result.toUIMessageStreamResponse()
+  return streamWithKeyRequests({ provider: 'gemini', stream: result.stream, tools: aiSDKTools });
+}
+```
+
+```ts title="OpenRouter"
+// app/api/chat/route.ts
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'; // Fiducy
+import { frontendTools } from '@assistant-ui/ai-sdk';
+import { requestKey, streamWithKeyRequests, withoutKeyRequests } from '@fiducy/assistant-ui/server'; // Fiducy
+import { respondToMissingKey } from '@fiducy/sdk/server'; // Fiducy
+import { convertToModelMessages, streamText } from 'ai';
+
+import { fiducy } from '@/lib/fiducy'; // Fiducy
+
+export async function POST(req: Request) {
+  // Fiducy: signed out answers 401; no key yet shows the key box instead of an answer.
+  const settings = await fiducy.providerSettings('openrouter', { request: req });
+  if (!settings.ok && settings.reason === 'signed-out') return respondToMissingKey(settings);
+  if (!settings.ok) return requestKey({ provider: 'openrouter' });
+
+  const { messages, system, tools } = await req.json();
+  const aiSDKTools = frontendTools(tools ?? {});
+  const result = streamText({
+    model: createOpenRouter(settings)('openai/gpt-4o-mini'), // Fiducy
+    // Fiducy: withoutKeyRequests(...) around messages
+    messages: await convertToModelMessages(withoutKeyRequests(messages), { tools: aiSDKTools }),
+    system,
+    tools: aiSDKTools
+  });
+  // Fiducy: replaces result.toUIMessageStreamResponse()
+  return streamWithKeyRequests({ provider: 'openrouter', stream: result.stream, tools: aiSDKTools });
+}
+```
+
+</CodeGroup>
+
+- The provider factory (`createOpenAI(settings)`, `createAnthropic(settings)`, `createGoogleGenerativeAI(settings)` or `createOpenRouter(settings)`) replaces the template's provider import, so the call goes through your gateway with the user's key.
 - `requestKey` answers with a short message and a `connect_api_key` call, without calling a model.
 - `withoutKeyRequests` drops those turns before the next model call, so the model answers the user's original question.
+- `streamWithKeyRequests` streams the answer. If the saved key is gone (revoked, or a reset dev gateway), the thread shows the key box instead of an error, and the message is answered once a key is saved. Pass `onError` to word other errors your way.
 - If you switch models per request, pass the provider of the chosen model, for example `'anthropic'` for Claude.
 
 ## 3. Register the key tool in the thread

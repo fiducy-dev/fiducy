@@ -464,6 +464,27 @@ Resources:
             Condition:
               ArnLike:
                 aws:SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-*'
+          # Whoever gets these emails is decided like the key: only the custodian role (MFA) or the
+          # root user may change the subscription, the topic or its policy. Anyone else, an IAM admin
+          # or a stack update run by the deploy credentials included, is refused, so an attacker
+          # cannot quietly point the alerts at themselves before touching the key.
+          - Sid: OnlyTheCustodianChangesWhoIsAlerted
+            Effect: Deny
+            Principal: '*'
+            Action:
+              - sns:Subscribe
+              - sns:Unsubscribe
+              - sns:SetSubscriptionAttributes
+              - sns:SetTopicAttributes
+              - sns:AddPermission
+              - sns:RemovePermission
+              - sns:DeleteTopic
+            Resource: !Ref AlertTopic
+            Condition:
+              StringNotLike:
+                aws:userid:
+                  - !Sub '${KeyCustodianRole.RoleId}:*'
+                  - !Ref AWS::AccountId
 
   KeyChangeAlert:
     Type: AWS::Events::Rule
@@ -564,7 +585,9 @@ Resources:
             - DeleteRule
             - RemoveTargets
             - PutRule
+            - Subscribe
             - Unsubscribe
+            - SetSubscriptionAttributes
             - DeleteTopic
             - SetTopicAttributes
       Targets:

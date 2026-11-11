@@ -60,7 +60,6 @@ export async function startExample(
       `FIDUCY_GATEWAY_URL=${connection.gatewayURL}`,
       `FIDUCY_APP_ID=${connection.appID}`,
       `FIDUCY_APP_SECRET=${connection.appSecret}`,
-      `EXAMPLE_SESSION_SECRET=${crypto.randomUUID().repeat(2)}`,
       `EXAMPLE_DATA_DIR=${dataDirectory}`,
       ''
     ].join('\n')

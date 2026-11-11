@@ -12,12 +12,11 @@ export const REQUEST_TRACE = [
 ];
 
 export const SHOWCASE_CODE = `import { createFiducy } from '@fiducy/sdk/server';
+import { kyselyStorage } from '@fiducy/sdk/storage/kysely';
 
 export const fiducy = createFiducy({
-  gatewayURL: env.FIDUCY_GATEWAY_URL,
-  appSecret: env.FIDUCY_APP_SECRET,
-  storage,
-  getUserID
+  storage: kyselyStorage(pool),
+  getUserID: readSessionUser
 });`;
 export const SHOWCASE_KEY = 'sk-proj-7Tq2m9Lx4bVn8cRk0wXWYZ';
 export const SHOWCASE_QUESTION = 'Summarize this contract in three lines.';
