@@ -267,13 +267,27 @@ export interface LeakCardProps {
   leak: LeakScene;
 }
 
-export interface ShaderBoxProps {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  viewWidth: number;
-  viewHeight: number;
+export interface FlowCard {
+  label: string;
+  text: string;
+  isVerdict?: boolean;
+}
+
+export interface FlowColumn {
+  status: string;
+  cards: FlowCard[];
+}
+
+export interface FlowColumnProps {
+  column: FlowColumn;
+  isShown: boolean;
+  isActive: boolean;
+  hasExit: boolean;
+}
+
+export interface FlowCardProps {
+  card: FlowCard;
+  isActive: boolean;
 }
 
 export interface CipherWordProps {
