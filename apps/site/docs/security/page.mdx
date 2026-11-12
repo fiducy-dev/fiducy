@@ -34,7 +34,7 @@ The response holds a CBOR attestation document signed by AWS. Check that:
 2. your nonce is in the document,
 3. `PCR0` and `PCR16` equal the hashes your deploy printed and you locked the KMS key to.
 
-The image holds no deployment settings, so one commit has one `PCR0` for everyone, and `PCR16` is yours alone. Today the image is still built on your host during the deploy, and two builds of the same source can differ. Images built and signed in CI, with a published `PCR0` per release, are next. You can also check a document in code with `verifyNitroAttestation` from `@fiducy/core/attestation`.
+The image holds no deployment settings, so one commit has one `PCR0` for everyone, and `PCR16` is yours alone. Today the image is still built on your host during the deploy, and two builds of the same source can differ. Images built and signed in CI, with a published `PCR0` per release, are next. You can also check a document in code with `verifyNitroAttestation` from `@fiducy/core/attestation`; it requires both `expectedPCR0s` and `expectedPCR16s`.
 
 ## What it protects against
 
