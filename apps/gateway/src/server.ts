@@ -1,4 +1,7 @@
+import { loadEnclaveConfig } from './enclaveConfig';
 import { createGatewayFromEnvironment, startTlsFrontFromEnvironment } from './environment';
+
+await loadEnclaveConfig();
 
 const { handleRequest, keyWrapperName, keyWrapper } = await createGatewayFromEnvironment();
 

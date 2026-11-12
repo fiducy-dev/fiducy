@@ -37,3 +37,17 @@ export const SHARE_CACHE_TIME_TO_LIVE_MILLISECONDS = 300000;
 export const SHARE_CACHE_MAXIMUM_ENTRIES = 10000;
 export const POSTGRES_KEYS_TABLE = 'fiducy_sealed_records';
 export const MOCK_PROVIDER_PATH_PREFIX = '/v1/';
+export const IMDS_REGION_PATH = '/latest/meta-data/placement/region';
+export const ENCLAVE_CONFIG_PCR_INDEX = 16;
+export const ENCLAVE_CONFIG_FIELDS = [
+  'controlPlaneURL',
+  'gatewayTokenCiphertext',
+  'keysTable',
+  'kmsKeyID',
+  'publicHost',
+  'region'
+] as const;
+export const NSM_DEVICE_PATH = '/dev/nsm';
+export const NSM_IOCTL_REQUEST = 0xc0200a00;
+export const NSM_RESPONSE_MAXIMUM_BYTES = 0x3000;
+export const PCR_LENGTH_BYTES = 48;

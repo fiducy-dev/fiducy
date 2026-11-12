@@ -123,14 +123,23 @@ describe('setup from server env', () => {
     expect((await readBody(response)).message).toContain('full http(s) URL');
   });
 
-  it('refuses to run when the app secret is in a public env var', async () => {
+  it('refuses to start when the app secret is in a public env var', () => {
     setConnectionEnvironment();
     process.env.NEXT_PUBLIC_FIDUCY_APP_SECRET = CHAT_APP.appSecret;
-    const response = await createFromEnvironment().handler(appRequest('/config', null));
-    const body = await readBody(response);
-    expect(response.status).toBe(500);
-    expect(body.message).toContain('NEXT_PUBLIC_FIDUCY_APP_SECRET');
-    expect(JSON.stringify(body)).not.toContain(CHAT_APP.appSecret);
+    expect(() => createFromEnvironment()).toThrow(
+      'NEXT_PUBLIC_FIDUCY_APP_SECRET is a public env var'
+    );
+    expect(() => createFromEnvironment()).not.toThrow(CHAT_APP.appSecret);
+  });
+
+  it('checks the env object a framework passes in', () => {
+    expect(() =>
+      createFiducy({
+        storage: memoryStorage(),
+        getUserID: readTestUser,
+        env: { VITE_FIDUCY_APP_SECRET: CHAT_APP.appSecret }
+      })
+    ).toThrow('VITE_FIDUCY_APP_SECRET is a public env var');
   });
 });
 

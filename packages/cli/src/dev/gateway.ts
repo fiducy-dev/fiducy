@@ -8,7 +8,7 @@ import { createProviderRegistry } from '@fiducy/providers';
 import { answerMockProviderRequest } from '@fiducy/testing';
 
 import { DEV_APP_NAME, DEV_MONTHLY_REQUEST_LIMIT, DEV_ORIGIN_HOSTS } from '../constants.ts';
-import { DEV_ORIGIN_PORTS, MOCK_PROVIDER_PATH_PREFIX } from '../constants.ts';
+import { DEV_ORIGIN_PORTS, MOCK_PROVIDER_PATH_PREFIXES } from '../constants.ts';
 import { createFileKeyStore } from './fileKeyStore.ts';
 
 import type { RequestHandler } from '@fiducy/gateway/src/types.ts';
@@ -54,13 +54,15 @@ export async function createDevGatewayHandler(input: DevGatewayInput): Promise<R
     ]),
     usageLedger: createMemoryUsageLedger(),
     providerRegistry: createProviderRegistry(
-      mock ? { openai: gatewayURL, anthropic: gatewayURL } : undefined
+      mock
+        ? { openai: gatewayURL, anthropic: gatewayURL, gemini: gatewayURL, openrouter: gatewayURL }
+        : undefined
     ),
     mockProviders: mock
   });
   return async (request) => {
     const url = new URL(request.url);
-    if (mock && url.pathname.startsWith(MOCK_PROVIDER_PATH_PREFIX)) {
+    if (mock && MOCK_PROVIDER_PATH_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
       return answerMockProviderRequest(url.pathname, await request.text());
     }
     const origin = url.searchParams.get('origin') ?? '';

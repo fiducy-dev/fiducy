@@ -52,6 +52,22 @@ Say in the PR description how your change affects the [threat model](https://fid
 - Clear names over comments. Comment the "why", not the "what".
 - No new dependencies without a reason in the PR. Pin exact versions.
 
+## How releases work
+
+Releases come only from this repository's `main` branch, through `.github/workflows/release.yml`:
+
+1. Merging a pull request with a changeset makes the workflow open a "Version packages" pull request.
+2. Merging that pull request is the human approval for a release. The workflow then builds and publishes every `@fiducy/*` package.
+3. npm accepts the upload through [trusted publishing](https://docs.npmjs.com/trusted-publishers): GitHub Actions proves to npm with a short-lived OIDC token that the upload comes from `fiducy-dev/fiducy`'s `release.yml`. There is no npm token in GitHub secrets, so a leaked secret cannot publish a package. Every release carries a provenance statement that links it to the exact commit and workflow run.
+
+Maintainer setup, once per package on npmjs.com (Package settings, Trusted publishing):
+
+- Publisher: GitHub Actions. Organization or user: `fiducy-dev`. Repository: `fiducy`. Workflow filename: `release.yml`. Environment: leave empty.
+- Publishing access: "Require two-factor authentication and disallow tokens".
+- Then delete the `NPM_TOKEN` repository secret and revoke that token on npmjs.com.
+
+A new package needs one first publish by hand before trusted publishing can be set up for it. Every package published so far, including the `fiducy` CLI, already has one.
+
 ## License
 
 By contributing you agree that your work is released under the [Apache-2.0 License](LICENSE).

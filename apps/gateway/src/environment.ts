@@ -11,6 +11,7 @@ import { KEY_UPLOAD_REFILL_PER_SECOND } from './constants';
 import { createDynamoBlobStore } from './dynamoBlobStore';
 import { createDynamoClient, createDynamoKeyStore } from './dynamoKeyStore';
 import { createKmsClient, createKmsKeyWrapper, decryptBootSecret } from './kmsKeyWrapper';
+import { readMasterKey } from './masterKey';
 import { createMemoryAppDirectory, createMemoryBlobStore } from './memoryStores';
 import { createMemoryKeyStore, createMemoryUsageLedger } from './memoryStores';
 import { createPostgresKeyStore } from './postgresKeyStore';
@@ -21,16 +22,10 @@ import { createGateway } from './router';
 import { startTlsFront } from './tlsFront';
 import { createTokenBucketRateLimiter } from './tokenBucketRateLimiter';
 
-import type { Bytes, KeyWrapper } from '@fiducy/core';
+import type { KeyWrapper } from '@fiducy/core';
 import type { AppRegistration, ControlPlaneConnection, GatewayRuntime } from './types';
 import type { BlobStore, KeyStore, KmsSettings } from './types';
 import type { RequestHandler } from './types';
-
-function readMasterKey(): Bytes {
-  const encodedMasterKey = process.env.FIDUCY_MASTER_KEY;
-  if (!encodedMasterKey) throw new Error('Set FIDUCY_MASTER_KEY to 32 random bytes in base64url');
-  return new Uint8Array(Buffer.from(encodedMasterKey, 'base64url'));
-}
 
 function readKmsSettings(): KmsSettings | null {
   const keyID = process.env.FIDUCY_KMS_KEY_ID;
