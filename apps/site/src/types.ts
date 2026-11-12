@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import type { Group } from 'three';
+import type { Group, LineSegments, MeshBasicMaterial } from 'three';
 import type { Object3D, OrthographicCamera, PerspectiveCamera, Scene } from 'three';
-import type { MeshToonMaterial, Vector2, Vector3, WebGLRenderTarget } from 'three';
+import type { Mesh, MeshToonMaterial, Vector2, WebGLRenderTarget } from 'three';
 
 export type DocsNavItem = {
   label: string;
@@ -32,23 +32,20 @@ export interface LeakScene {
   scene: ReactNode;
 }
 
-export type HeroStation = 'app' | 'store' | 'enclave' | 'provider';
+export interface KeyHalves {
+  storedHalf: Group;
+  handleHalf: Group;
+  keyFaces: MeshToonMaterial;
+}
 
 export interface EnclaveParts {
   scene: Scene;
   turntable: Group;
-  userHalf: Group;
-  fiducyHalf: Group;
-  userCopy: Group;
-  fiducyCopy: Group;
-  fiducyCopyMaterial: MeshToonMaterial;
-  insetMaterial: MeshToonMaterial;
-  enclaveLed: MeshToonMaterial;
-  providerLed: MeshToonMaterial;
-  packet: Group;
-  reply: Group;
-  rests: { user: Vector3; fiducy: Vector3 };
-  anchors: Record<'app' | 'store' | 'provider', Object3D>;
+  attestationFrame: LineSegments;
+  request: Group;
+  halves: KeyHalves;
+  pulse: Mesh;
+  glass: MeshBasicMaterial;
 }
 
 export interface DitherKeyParts {
@@ -81,8 +78,9 @@ export interface SceneLabel {
 }
 
 export interface SceneLabelElements {
-  app: HTMLElement;
-  store: HTMLElement;
+  handleHalf: HTMLElement;
+  storedHalf: HTMLElement;
+  request: HTMLElement;
   provider: HTMLElement;
 }
 
