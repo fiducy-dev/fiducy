@@ -147,7 +147,7 @@ Run the app you are testing on another port (for example 5173) and add that orig
 | --- | --- |
 | `FIDUCY_ENCLAVE_CONFIG_PARAMETER` | Parameter Store name of the enclave config. When set (the enclave image sets `/fiducy/enclave-config`), the gateway reads it at boot, extends and locks `PCR16` with its SHA-384, and takes `AWS_REGION`, `FIDUCY_KMS_KEY_ID`, `FIDUCY_KEYS_TABLE`, `FIDUCY_CONTROL_PLANE_URL`, `FIDUCY_GATEWAY_TOKEN_CIPHERTEXT` and `FIDUCY_PUBLIC_HOST` from it |
 | `FIDUCY_KMS_KEY_ID` | KMS key ARN. When unset, `FIDUCY_MASTER_KEY` is used instead (local only) |
-| `FIDUCY_MASTER_KEY` | 32 random bytes, base64url. Local development only |
+| `FIDUCY_MASTER_KEY` | 32 random bytes, base64url. Local development only: the gateway refuses to start with it inside a Nitro enclave |
 | `AWS_KMS_ENDPOINT` | KMS proxy inside the enclave. Default `http://127.0.0.1:9999` |
 | `FIDUCY_CONTROL_PLANE_URL` | Dashboard URL for app configs, usage and key events |
 | `FIDUCY_KEYS_TABLE` | DynamoDB table for sealed key records. When unset, records stay in memory (local only) |
