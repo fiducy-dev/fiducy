@@ -9,7 +9,7 @@ const ENCODED_KEY = Buffer.alloc(32, 7).toString('base64url');
 const originalMasterKey = process.env.FIDUCY_MASTER_KEY;
 
 afterEach(() => {
-  if (originalMasterKey === undefined) delete process.env.FIDUCY_MASTER_KEY;
+  if (originalMasterKey === undefined) Reflect.deleteProperty(process.env, 'FIDUCY_MASTER_KEY');
   else process.env.FIDUCY_MASTER_KEY = originalMasterKey;
 });
 
