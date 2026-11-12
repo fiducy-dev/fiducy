@@ -94,6 +94,22 @@ describe('fiducy generate and migrate', () => {
     expect((await run(root, ['migrate'])).text).toContain('drizzle-kit migrate');
   });
 
+  it('regenerates the Drizzle table after its file was deleted', async () => {
+    const root = createProject({
+      'package.json': packageWith({}),
+      'tsconfig.json': JSON.stringify({ compilerOptions: { paths: { '@/*': ['./*'] } } }),
+      'lib/db/schema.ts': "export * from './fiducy-schema';\nexport const posts = {};\n",
+      'lib/db/index.ts': "import * as schema from './schema';\nexport const db = { schema };\n",
+      'lib/fiducy.ts': `import { db } from '@/lib/db';\nimport { fiducyUserKey } from '@/lib/db/fiducy-schema';\nvoid fiducyUserKey;\n${DRIZZLE_MODULE.replace('drizzleStorage({}', 'drizzleStorage(db')}`,
+      'drizzle.config.ts': "export default { dialect: 'postgresql', schema: './lib/db/schema.ts' };"
+    });
+    const result = await run(root, ['generate']);
+    expect(result.code).toBe(0);
+    expect(readFileSync(join(root, 'lib/db/fiducy-schema.ts'), 'utf8')).toContain('pgTable');
+    expect(result.text).toContain('does not exist yet');
+    expect(result.text).toContain('already exports it');
+  });
+
   it('prints the Prisma model when the schema is a single file it must not edit', async () => {
     const root = createProject({
       'package.json': packageWith({}),

@@ -1,6 +1,7 @@
 import { relative } from 'node:path';
 
 import { loadFiducy } from '../config/loadFiducy.ts';
+import { isMissingGeneratedSchema, readDrizzleFallback } from './missingSchema.ts';
 
 import type { Output, StorageSchema } from '../types.ts';
 
@@ -12,8 +13,13 @@ export async function loadStorageSchema(
   configPath: string | undefined,
   output: Output
 ): Promise<StorageSchema | null> {
-  const { file, schema } = await loadFiducy(root, configPath);
-  output.info(`Loaded ${relative(root, file)}`);
+  const loaded = await loadFiducy(root, configPath).catch((error: unknown) => {
+    if (!isMissingGeneratedSchema(error)) throw error;
+    return null;
+  });
+  if (!loaded) return readDrizzleFallback(root, output);
+  const { file, schema } = loaded;
+  output.info(`Loaded ${output.style.path(relative(root, file))}`);
   if (!schema) output.error(NO_SCHEMA_MESSAGE);
   return schema;
 }

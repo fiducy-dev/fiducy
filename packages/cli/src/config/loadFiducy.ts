@@ -56,6 +56,7 @@ export async function loadFiducy(root: string, configPath?: string): Promise<Loa
   loadEnvironmentFiles(root, process.env);
   const stubDirectory = mkdtempSync(join(tmpdir(), 'fiducy-cli-'));
   const previousDirectory = process.cwd();
+  const { prepareStackTrace } = Error;
   process.chdir(root);
   try {
     const jiti = createJiti(import.meta.url, {
@@ -73,6 +74,7 @@ export async function loadFiducy(root: string, configPath?: string): Promise<Loa
       `${file} does not export a createFiducy() instance. Export it, for example: export const fiducy = createFiducy({ ... })`
     );
   } finally {
+    Error.prepareStackTrace = prepareStackTrace;
     process.chdir(previousDirectory);
     rmSync(stubDirectory, { recursive: true, force: true });
   }
