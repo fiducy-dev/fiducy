@@ -52,6 +52,10 @@ Say in the PR description how your change affects the [threat model](https://fid
 - Clear names over comments. Comment the "why", not the "what".
 - No new dependencies without a reason in the PR. Pin exact versions.
 
+## GitHub Actions
+
+Pin every action to a full commit SHA with the version in a comment, like `actions/checkout@<sha> # v4.4.0`. A tag like `@v4` can be moved to different code by whoever controls that action. Dependabot bumps the pins once a month.
+
 ## How releases work
 
 Releases come only from this repository's `main` branch, through `.github/workflows/release.yml`:
