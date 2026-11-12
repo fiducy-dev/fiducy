@@ -111,7 +111,7 @@ describe('npx fiducy init in an existing Next.js + Better Auth app', () => {
 
     const init = runCli(['init', '--skip-install']);
     expect(init.code).toBe(0);
-    expect(init.output).toContain('Found next, bun, auth: better-auth');
+    expect(init.output).toContain('Found Next.js + bun · Better Auth');
     const serverModule = readFileSync(join(APP_DIRECTORY, 'lib/fiducy.ts'), 'utf8');
     expect(serverModule).toContain("import { auth } from '@/lib/auth';");
     expect(serverModule).toContain('auth.api.getSession({ headers: request.headers })');
@@ -120,7 +120,7 @@ describe('npx fiducy init in an existing Next.js + Better Auth app', () => {
     expect(readFileSync(join(APP_DIRECTORY, 'lib/auth.ts'), 'utf8')).toBe(authBefore);
 
     const rerun = runCli(['init', '--skip-install']);
-    expect(rerun.output).toContain('Kept your existing lib/fiducy.ts');
+    expect(rerun.output).toContain('Kept lib/fiducy.ts (already there)');
 
     const generate = runCli(['generate']);
     expect(generate.code).toBe(0);

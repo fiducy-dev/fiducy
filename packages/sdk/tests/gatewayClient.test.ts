@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText, streamText } from 'ai';
 
 import { SAMPLE_API_KEY, SAMPLE_HANDLE } from '@fiducy/testing';
@@ -54,6 +56,43 @@ describe('provider settings for the AI SDK', () => {
     expect(await result.text).toBe('Hi there');
     const forwarded = harness.mockProvider.recordedRequests.at(-1);
     expect(forwarded?.headers.get('x-api-key')).toBe(SAMPLE_API_KEY);
+  });
+
+  it('generates and streams text with the Google provider for Gemini', async () => {
+    const handle = await storeHandle(DESK_APP.appID);
+    const settings = createClient(DESK_APP.appSecret).providerSettings('gemini', handle);
+    const google = createGoogleGenerativeAI(settings);
+    const result = await generateText({ model: google('gemini-2.5-flash'), prompt: 'Hi' });
+    expect(result.text).toBe('Hello');
+    const forwarded = harness.mockProvider.recordedRequests.at(-1);
+    expect(forwarded?.path).toBe('/v1beta/models/gemini-2.5-flash:generateContent');
+    expect(forwarded?.headers.get('x-goog-api-key')).toBe(SAMPLE_API_KEY);
+    const streamed = streamText({ model: google('gemini-2.5-flash'), prompt: 'Hi' });
+    expect(await streamed.text).toBe('Hi from Gemini');
+  });
+
+  it('generates text through OpenRouter with an OpenAI-compatible client', async () => {
+    const handle = await storeHandle(DESK_APP.appID);
+    const settings = createClient(DESK_APP.appSecret).providerSettings('openrouter', handle);
+    const openrouter = createOpenAI(settings);
+    const result = await generateText({
+      model: openrouter.chat('openai/gpt-4o-mini'),
+      prompt: 'Hi'
+    });
+    expect(result.text).toBe('Hello');
+    const forwarded = harness.mockProvider.recordedRequests.at(-1);
+    expect(forwarded?.path).toBe('/api/v1/chat/completions');
+    expect(forwarded?.headers.get('authorization')).toBe(`Bearer ${SAMPLE_API_KEY}`);
+  });
+
+  it('generates text with the OpenRouter provider package', async () => {
+    const handle = await storeHandle(DESK_APP.appID);
+    const settings = createClient(DESK_APP.appSecret).providerSettings('openrouter', handle);
+    const openrouter = createOpenRouter(settings);
+    const result = await generateText({ model: openrouter('openai/gpt-4o-mini'), prompt: 'Hi' });
+    expect(result.text).toBe('Hello');
+    const forwarded = harness.mockProvider.recordedRequests.at(-1);
+    expect(forwarded?.headers.get('authorization')).toBe(`Bearer ${SAMPLE_API_KEY}`);
   });
 });
 

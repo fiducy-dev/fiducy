@@ -8,5 +8,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "convex/_generated", "farm.config.ts", "docs.config.ts"]
+  "include": ["src", "tests", "convex/_generated", "farm.config.ts", "docs.config.ts"]
 }

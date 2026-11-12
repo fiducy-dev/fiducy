@@ -10,10 +10,29 @@ Fiducy is a key custody layer for apps where users bring their own API key (BYOK
 
 Your users paste their key into a small iframe served by the Fiducy gateway. The gateway encrypts it inside an AWS Nitro enclave and hands your app a **handle**. Your server points its AI SDK at the gateway with that handle. The gateway opens the key inside the enclave, calls the provider, and streams the answer back. Your app, your database and your logs never see the plaintext key.
 
-```ts
+<CodeGroup>
+
+```ts title="OpenAI"
 const settings = await fiducy.providerSettings('openai', { userID });
 const openai = createOpenAI(settings); // calls go through the gateway
 ```
+
+```ts title="Anthropic"
+const settings = await fiducy.providerSettings('anthropic', { userID });
+const anthropic = createAnthropic(settings); // calls go through the gateway
+```
+
+```ts title="Gemini"
+const settings = await fiducy.providerSettings('gemini', { userID });
+const google = createGoogleGenerativeAI(settings); // calls go through the gateway
+```
+
+```ts title="OpenRouter"
+const settings = await fiducy.providerSettings('openrouter', { userID });
+const openrouter = createOpenRouter(settings); // calls go through the gateway
+```
+
+</CodeGroup>
 
 ## Why
 

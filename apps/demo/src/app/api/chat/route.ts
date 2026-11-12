@@ -1,5 +1,5 @@
 import { frontendTools } from '@assistant-ui/react-ai-sdk';
-import { requestKey, withoutKeyRequests } from '@fiducy/assistant-ui/server';
+import { requestKey, streamWithKeyRequests, withoutKeyRequests } from '@fiducy/assistant-ui/server';
 import { convertToModelMessages, streamText } from 'ai';
 
 import { describeChatError } from '@/lib/chatErrors';
@@ -32,5 +32,10 @@ export async function POST(request: Request) {
     tools,
     maxRetries: 0
   });
-  return result.toUIMessageStreamResponse({ onError: describeChatError });
+  return streamWithKeyRequests({
+    provider: model.provider,
+    stream: result.stream,
+    tools,
+    onError: describeChatError
+  });
 }
