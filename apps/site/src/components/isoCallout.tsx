@@ -1,6 +1,6 @@
 import { Animate } from '@/components/Animate';
 import { project } from '@/components/isometric';
-import { shown, track } from '@/lib/isoMotion';
+import { LOOP_CLOCK, shown, track } from '@/lib/isoMotion';
 import { ISO_CALLOUT, ISO_CALLOUT_NAME, ISO_CALLOUT_VALUE } from '@/lib/isoStyles';
 import { ISO_WIRE, ISO_WIRE_DOT, ISO_WIRE_END } from '@/lib/isoStyles';
 
@@ -35,31 +35,43 @@ const DRAW_MS = 500;
 const RETRACT_MS = 400;
 const LABEL_MS = 200;
 
-function wireFrames([from, to]: readonly [number, number]): Keyframe[] {
-  return track('strokeDashoffset', [
-    [from, 1],
-    [from + DRAW_MS, 0],
-    [to, 0],
-    [to + RETRACT_MS, 1]
-  ]);
+function wireFrames([from, to]: readonly [number, number], span: number): Keyframe[] {
+  return track(
+    'strokeDashoffset',
+    [
+      [from, 1],
+      [from + DRAW_MS, 0],
+      [to, 0],
+      [Math.min(span, to + RETRACT_MS), 1]
+    ],
+    span
+  );
 }
 
-function Timed({ frames, children }: TimedProps) {
-  return frames ? <Animate frames={frames}>{children}</Animate> : children;
+function Timed({ frames, clock, children }: TimedProps) {
+  return frames ? (
+    <Animate frames={frames} clock={clock}>
+      {children}
+    </Animate>
+  ) : (
+    children
+  );
 }
 
-export function Callout({ at, to, name, value, window }: CalloutProps) {
+export function Callout({ at, to, name, value, window, clock = LOOP_CLOCK }: CalloutProps) {
   const from = project(at);
   const [endX, rawEndY] = to;
   const endY = Math.abs(rawEndY - from[1]) < ELBOW * 2 ? from[1] : rawEndY;
   const towardRight = endX >= from[0];
   const textX = endX + (towardRight ? TEXT_GAP : -TEXT_GAP);
-  const dotFrames = window && shown('opacity', [window[0], window[1] + RETRACT_MS], [0, 1], 120);
+  const { span } = clock;
+  const dotFrames =
+    window && shown('opacity', [window[0], window[1] + RETRACT_MS], [0, 1], 120, span);
   const labelFrames =
-    window && shown('opacity', [window[0] + DRAW_MS, window[1]], [0, 1], LABEL_MS);
+    window && shown('opacity', [window[0] + DRAW_MS, window[1]], [0, 1], LABEL_MS, span);
   return (
     <g>
-      <Timed frames={window && wireFrames(window)}>
+      <Timed frames={window && wireFrames(window, span)} clock={clock}>
         <path
           className={ISO_WIRE}
           pathLength={1}
@@ -67,10 +79,10 @@ export function Callout({ at, to, name, value, window }: CalloutProps) {
           d={routeWire(from, [endX, endY])}
         />
       </Timed>
-      <Timed frames={dotFrames}>
+      <Timed frames={dotFrames} clock={clock}>
         <circle className={ISO_WIRE_DOT} cx={from[0]} cy={from[1]} r={1.6} />
       </Timed>
-      <Timed frames={labelFrames}>
+      <Timed frames={labelFrames} clock={clock}>
         <rect
           className={ISO_WIRE_END}
           vectorEffect="non-scaling-stroke"

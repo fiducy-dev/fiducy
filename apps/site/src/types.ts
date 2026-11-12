@@ -239,6 +239,7 @@ export interface CalloutProps {
   name: string;
   value: string;
   window?: readonly [number, number];
+  clock?: MotionClock;
 }
 
 export interface DotProps {
@@ -247,13 +248,21 @@ export interface DotProps {
   className?: string;
 }
 
+export interface MotionClock {
+  span: number;
+  delay?: number;
+  isOnce?: boolean;
+}
+
 export interface TimedProps {
   frames?: Keyframe[];
+  clock?: MotionClock;
   children: ReactNode;
 }
 
 export interface AnimateProps {
   frames: Keyframe[];
+  clock?: MotionClock;
   className?: string;
   children: ReactNode;
 }
@@ -267,13 +276,33 @@ export interface LeakCardProps {
   leak: LeakScene;
 }
 
-export interface ShaderBoxProps {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  viewWidth: number;
-  viewHeight: number;
+export type FlowCalloutName = 'browser' | 'split' | 'open' | 'database' | 'store' | 'provider';
+
+export interface FlowLayout {
+  along: readonly [number, number];
+  across: readonly [number, number];
+  step: number;
+  callouts: Record<FlowCalloutName, readonly [number, number]>;
+}
+
+export interface FlowStage {
+  until: number;
+  text: string;
+}
+
+export interface FlowChipProps {
+  at: Point;
+  label: string;
+  isSolid?: boolean;
+}
+
+export interface FlowFigureProps {
+  layout: FlowLayout;
+}
+
+export interface FlowStageSvgProps {
+  className: string;
+  children: ReactNode;
 }
 
 export interface CipherWordProps {

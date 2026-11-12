@@ -9,6 +9,7 @@ export const ISO_SOLID_FACES = {
 export const ISO_PRINT = 'fill-ink stroke-none font-mono';
 export const ISO_PRINT_QUIET = 'fill-ink-quiet';
 export const ISO_PRINT_INVERSE = 'fill-white';
+export const ISO_PRINT_CENTER = '[text-anchor:middle] [dominant-baseline:central]';
 export const ISO_DETAIL_FACE = 'fill-wash stroke-ink-quiet';
 export const ISO_WIRE = 'fill-none stroke-ink-quiet';
 export const ISO_WIRE_END = 'fill-white stroke-ink-quiet';
