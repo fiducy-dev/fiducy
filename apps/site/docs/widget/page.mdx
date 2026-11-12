@@ -44,7 +44,7 @@ Importing `@fiducy/sdk/element` defines the tag once. The wrappers do this for y
 | `base-path` | `/api/fiducy` | Where your key route is mounted |
 | `gateway-url`, `app-id` | from `/config` | Only to skip the config request |
 | `enclave-pcr0` | from `/config` | With `gateway-url`: the PCR0 to expect. The widget checks the gateway's attestation before it shows the key box |
-| `enclave-pcr16` | from `/config` | With `gateway-url`: the PCR16 (deployment config) to expect |
+| `enclave-pcr16` | from `/config` | With `gateway-url`: the PCR16 (deployment config) to expect. Required with `enclave-pcr0` |
 | `skip-attestation` | off | With `gateway-url`: only for a test gateway that is not in an enclave |
 
 ## Events

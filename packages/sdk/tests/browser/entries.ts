@@ -9,7 +9,7 @@ const basePath = new URLSearchParams(location.search).get('basePath');
 const provider = new URLSearchParams(location.search).get('provider') ?? 'openai';
 if (provider !== 'none') element.setAttribute('provider', provider);
 if (basePath) element.setAttribute('base-path', basePath);
-for (const [parameter, attribute] of [['gatewayURL', 'gateway-url'], ['appID', 'app-id'], ['enclavePCR0', 'enclave-pcr0']]) {
+for (const [parameter, attribute] of [['gatewayURL', 'gateway-url'], ['appID', 'app-id'], ['enclavePCR0', 'enclave-pcr0'], ['enclavePCR16', 'enclave-pcr16']]) {
   const value = new URLSearchParams(location.search).get(parameter);
   if (value) element.setAttribute(attribute, value);
 }

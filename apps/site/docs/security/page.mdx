@@ -16,7 +16,7 @@ description: What Fiducy protects against, how to verify it, and its limits.
 
 **The SDK does this for you.** Set `FIDUCY_ENCLAVE_PCR0` and `FIDUCY_ENCLAVE_PCR16` on your app server to the values your deploy printed. `PCR0` pins the enclave image; `PCR16` pins this deployment's config, so the genuine image running someone else's config (and KMS key) is refused too. Before the widget shows the key box, the user's browser asks the gateway for a fresh attestation and checks it with WebCrypto; `importKeys` does the same on your server before it sends any key. If the check fails, nothing is sent and the widget says why.
 
-The check refuses: a document not signed through the AWS Nitro root, a document made for another request (nonce), an enclave in debug mode, an enclave running any image other than the `PCR0`s you listed, and, when `FIDUCY_ENCLAVE_PCR16` is set, any deployment config other than the `PCR16`s you listed. During an upgrade, list both values separated by a comma, then drop the old one.
+The check refuses: a document not signed through the AWS Nitro root, a document made for another request (nonce), an enclave in debug mode, an enclave running any image other than the `PCR0`s you listed, and any deployment config other than the `PCR16`s you listed. Setting `PCR0` without `PCR16` is refused before anything is sent, because the genuine image running someone else's config would pass. During an upgrade, list both values separated by a comma, then drop the old one.
 
 Gateways on `localhost` (such as `npx fiducy dev`) are not checked. A test gateway that is not in an enclave needs `FIDUCY_SKIP_ATTESTATION=true`; the browser console warns every time. Any other gateway with neither variable set is refused.
 

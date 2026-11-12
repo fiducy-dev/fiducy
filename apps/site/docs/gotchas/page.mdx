@@ -40,7 +40,9 @@ Most of what used to go wrong is now handled for you: `init` writes the files, `
 
 **The widget says "Test gateway" or "No enclave".** It says "Sealed in an enclave" only when the gateway can prove it runs in one (it serves `/attestation`). `npx fiducy dev --mock` and other gateways with mock providers show "Test gateway" and ask for a made-up key. Any other gateway without an enclave shows "No enclave". Deploy the gateway in an enclave for production; see [Self-hosting](/docs/self-hosting).
 
-**"Fiducy will not send keys to ... until it can check the enclave."** Your gateway is not on `localhost` and the app has no expected `PCR0`. Set `FIDUCY_ENCLAVE_PCR0` to the value your deploy printed. For a test gateway with no enclave (for example a mock gateway on Vercel), set `FIDUCY_SKIP_ATTESTATION=true` instead.
+**"Fiducy will not send keys to ... until it can check the enclave."** Your gateway is not on `localhost` and the app has no expected `PCR0` or `PCR16`. Set `FIDUCY_ENCLAVE_PCR0` and `FIDUCY_ENCLAVE_PCR16` to the values your deploy printed. For a test gateway with no enclave (for example a mock gateway on Vercel), set `FIDUCY_SKIP_ATTESTATION=true` instead.
+
+**"Fiducy will not send keys to ... with only FIDUCY_ENCLAVE_PCR0 set."** Set `FIDUCY_ENCLAVE_PCR16` to the `PCR16` your deploy printed as well. `PCR0` alone would also accept the genuine image running someone else's deployment config.
 
 **"Fiducy refused the gateway: ..."** The gateway's attestation did not match. "a different deployment config" means `PCR16` changed: the gateway was redeployed with other settings, or someone runs the image with their own config; update `FIDUCY_ENCLAVE_PCR16` only if you made that deploy. "a different image" means the enclave was redeployed from other code: if you deployed it, add the new `PCR0` to `FIDUCY_ENCLAVE_PCR0` (comma-separated) and remove the old one after the rollout; if you did not, treat it as an incident. "did not return an attestation document" means the gateway is not in an enclave or is unreachable.
 
