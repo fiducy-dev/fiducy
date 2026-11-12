@@ -1,4 +1,4 @@
-import { createAcmeAccountReporter } from './acmeAccounts';
+import { createACMEAccountReporter } from './acmeAccounts';
 import { BLOB_KEY_PREFIX, TLS_STATE_BLOB_NAME, TLS_STATE_SCOPE } from './constants';
 import { decodeSnapshot, encodeSnapshot, fingerprintSnapshot } from './directorySnapshot';
 import { restoreDirectory, snapshotDirectory } from './directorySnapshot';
@@ -12,7 +12,7 @@ export function createTlsStateKeeper({
   keyWrapper
 }: TlsStateOptions): TlsStateKeeper {
   let persistedFingerprint = '';
-  const reportAcmeAccounts = createAcmeAccountReporter();
+  const reportACMEAccounts = createACMEAccountReporter();
 
   const restore = async () => {
     const sealed = await blobStore.readBlob(TLS_STATE_BLOB_NAME);
@@ -25,7 +25,7 @@ export function createTlsStateKeeper({
       );
     }
     await restoreDirectory(directory, snapshot);
-    reportAcmeAccounts(snapshot);
+    reportACMEAccounts(snapshot);
     persistedFingerprint = await fingerprintSnapshot(snapshot);
     return true;
   };
@@ -38,7 +38,7 @@ export function createTlsStateKeeper({
     const sealed = await sealBlob(keyWrapper, TLS_STATE_SCOPE, encodeSnapshot(snapshot));
     await blobStore.writeBlob(TLS_STATE_BLOB_NAME, sealed);
     persistedFingerprint = fingerprint;
-    reportAcmeAccounts(snapshot);
+    reportACMEAccounts(snapshot);
     return true;
   };
 

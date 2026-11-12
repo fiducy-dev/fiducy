@@ -186,7 +186,7 @@ export interface BlobStore {
 
 export type DirectorySnapshot = Record<string, string>;
 
-export interface AcmeAccountFile {
+export interface ACMEAccountFile {
   location?: string;
 }
 

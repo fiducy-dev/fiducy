@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, spyOn } from 'bun:test';
 
 import { createLocalKeyWrapper } from '@fiducy/core';
 
-import { findAcmeAccountURLs } from '../src/acmeAccounts';
+import { findACMEAccountURLs } from '../src/acmeAccounts';
 import { TLS_STATE_BLOB_NAME } from '../src/constants';
 import { createMemoryBlobStore } from '../src/memoryStores';
 import { openBlob, sealBlob } from '../src/sealedBlob';
@@ -101,7 +101,7 @@ describe('reporting the ACME account for CAA', () => {
         JSON.stringify({ location: 'https://elsewhere.example/acct/1' })
       )
     };
-    expect(findAcmeAccountURLs(snapshot)).toEqual([accountURL]);
+    expect(findACMEAccountURLs(snapshot)).toEqual([accountURL]);
   });
 
   it('ignores account files without an https location or with broken JSON', () => {
@@ -110,7 +110,7 @@ describe('reporting the ACME account for CAA', () => {
       'acme/other/users/default/default.json': encode('not json'),
       'acme/plain/users/default/default.json': encode('{"location":"http://insecure/acct/1"}')
     };
-    expect(findAcmeAccountURLs(snapshot)).toEqual([]);
+    expect(findACMEAccountURLs(snapshot)).toEqual([]);
   });
 
   it('logs each account once while the state keeps being persisted', async () => {
