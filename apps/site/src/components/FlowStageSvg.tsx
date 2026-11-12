@@ -36,9 +36,10 @@ export function FlowStageSvg({ className, children }: FlowStageSvgProps) {
     if (!svg || !isMounted) return;
     eachAnimation(svg, (animation) => animation.updatePlaybackRate(FLOW_RATE));
     const observer = new IntersectionObserver(([entry]) => {
-      eachAnimation(svg, (animation) =>
-        entry?.isIntersecting ? animation.play() : animation.pause()
-      );
+      eachAnimation(svg, (animation) => {
+        if (!entry?.isIntersecting) animation.pause();
+        else if (animation.playState === 'paused') animation.play();
+      });
     });
     observer.observe(svg);
     return () => observer.disconnect();
