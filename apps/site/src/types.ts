@@ -38,14 +38,30 @@ export interface KeyHalves {
   keyFaces: MeshToonMaterial;
 }
 
+export interface ClientWindow {
+  group: Group;
+  question: Group;
+  answer: Group;
+}
+
+export interface ProviderBlock {
+  group: Group;
+  faces: MeshToonMaterial;
+}
+
 export interface EnclaveParts {
   scene: Scene;
   turntable: Group;
+  vault: Group;
   attestationFrame: LineSegments;
   request: Group;
+  response: Group;
   halves: KeyHalves;
   pulse: Mesh;
+  providerPulse: Mesh;
   glass: MeshBasicMaterial;
+  client: ClientWindow;
+  provider: ProviderBlock;
 }
 
 export interface DitherKeyParts {
@@ -81,7 +97,11 @@ export interface SceneLabelElements {
   handleHalf: HTMLElement;
   storedHalf: HTMLElement;
   request: HTMLElement;
+  response: HTMLElement;
+  client: HTMLElement;
+  vault: HTMLElement;
   provider: HTMLElement;
+  providerName: HTMLElement;
 }
 
 export interface InfoSection {

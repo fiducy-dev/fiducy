@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <div className="square-corners min-h-screen bg-white px-4 font-sans text-ink antialiased selection:bg-ink selection:text-white">
+    <div className="square-corners min-h-screen overflow-x-clip bg-white px-4 font-sans text-ink antialiased selection:bg-ink selection:text-white">
       <div className="mx-auto max-w-[1200px] divide-y divide-dashed divide-frame border-x border-frame">
         <SiteNav />
 

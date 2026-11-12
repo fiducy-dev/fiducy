@@ -9,13 +9,14 @@ import type { EnclaveParts, PointerState } from '@/types';
 import type { SceneLabel, SceneLabelElements } from '@/types';
 
 const MAX_PIXEL_RATIO = 2;
-const BASE_PITCH = 0.42;
+const BASE_PITCH = 0.32;
 const BASE_YAW = -0.62;
 const POINTER_YAW = 0.55;
 const POINTER_PITCH = 0.3;
 const FOLLOW_RATE = 0.06;
 const DRAG_FRICTION = 0.94;
 const REDUCED_MOTION_SECONDS = 6.5;
+const HORIZONTAL_FOV = 47;
 
 function createPointerState(): PointerState {
   return { targetX: 0, targetY: 0, dragVelocity: 0, isDragging: false, lastClientX: 0 };
@@ -54,9 +55,9 @@ function listenToPointer(canvas: HTMLCanvasElement, pointer: PointerState): () =
   };
 }
 
-function createAnchor(parent: Object3D, x: number, y: number): Object3D {
+function createAnchor(parent: Object3D, x: number, y: number, z = 0): Object3D {
   const anchor = new Object3D();
-  anchor.position.set(x, y, 0);
+  anchor.position.set(x, y, z);
   parent.add(anchor);
   return anchor;
 }
@@ -65,7 +66,11 @@ function pinLabels(parts: EnclaveParts, elements: SceneLabelElements): SceneLabe
   return [
     { element: elements.handleHalf, anchor: createAnchor(parts.halves.handleHalf, -1.1, 0.75) },
     { element: elements.storedHalf, anchor: createAnchor(parts.halves.storedHalf, 1.0, -0.6) },
-    { element: elements.request, anchor: createAnchor(parts.request, 0, -0.3) }
+    { element: elements.request, anchor: createAnchor(parts.request, 0, -0.3) },
+    { element: elements.response, anchor: createAnchor(parts.response, 0, -0.3) },
+    { element: elements.client, anchor: createAnchor(parts.client.group, -1.0, 0.95) },
+    { element: elements.vault, anchor: createAnchor(parts.vault, 0, 1.6) },
+    { element: elements.provider, anchor: createAnchor(parts.provider.group, -1.3, 0.35, 1.3) }
   ];
 }
 
@@ -77,7 +82,7 @@ function placeLabels(labels: SceneLabel[], camera: PerspectiveCamera, host: HTML
     const left = ((point.x + 1) / 2) * width;
     const top = ((1 - point.y) / 2) * height;
     element.style.transform = `translate(${left.toFixed(1)}px, ${top.toFixed(1)}px)`;
-    element.style.opacity = anchor.parent?.visible && Math.abs(point.x) < 0.95 ? '1' : '0';
+    element.style.opacity = anchor.parent?.visible && Math.abs(point.x) < 0.98 ? '1' : '0';
   }
 }
 
@@ -89,6 +94,12 @@ function resizeRenderer(
   const { width, height } = host.getBoundingClientRect();
   renderer.setSize(Math.max(1, width), Math.max(1, height), false);
   camera.aspect = Math.max(1, width) / Math.max(1, height);
+  const halfWidth = Math.tan(MathUtils.degToRad(HORIZONTAL_FOV / 2));
+  camera.fov = MathUtils.clamp(
+    MathUtils.radToDeg(2 * Math.atan(halfWidth / camera.aspect)),
+    30,
+    64
+  );
   camera.updateProjectionMatrix();
 }
 
@@ -101,8 +112,8 @@ export function startEnclaveRenderer(
   let providerIndex = -1;
   const renderer = new WebGLRenderer({ canvas, alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO));
-  const camera = new PerspectiveCamera(28, 1, 0.1, 100);
-  camera.position.set(0, 0, 14.5);
+  const camera = new PerspectiveCamera(36, 1, 0.1, 100);
+  camera.position.set(0.9, 0, 12);
   const parts = createEnclaveParts();
   const pointer = createPointerState();
   const labels = pinLabels(parts, labelElements);
@@ -122,7 +133,7 @@ export function startEnclaveRenderer(
     const nextProvider = readProviderIndex(elapsedSeconds);
     if (nextProvider !== providerIndex) {
       providerIndex = nextProvider;
-      labelElements.provider.textContent = PROVIDERS[providerIndex] ?? '';
+      labelElements.providerName.textContent = PROVIDERS[providerIndex] ?? '';
     }
     renderer.render(parts.scene, camera);
     placeLabels(labels, camera, host);
