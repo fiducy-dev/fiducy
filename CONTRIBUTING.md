@@ -66,7 +66,7 @@ Maintainer setup, once per package on npmjs.com (Package settings, Trusted publi
 - Publishing access: "Require two-factor authentication and disallow tokens".
 - Then delete the `NPM_TOKEN` repository secret and revoke that token on npmjs.com.
 
-A new package needs one first publish by hand before trusted publishing can be set up for it. The `fiducy` CLI package is in that state: npm has never accepted it, so publish it once from a maintainer's machine (`cd packages/cli && bun run build && bun publish --access public`), then add the trusted publisher.
+A new package needs one first publish by hand before trusted publishing can be set up for it. Every package published so far, including the `fiducy` CLI, already has one.
 
 ## License
 

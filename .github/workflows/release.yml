@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 24
       - run: bun install --frozen-lockfile
-      - run: bunx semver@7.7.3 --range '>=11.5.1' "$(npm --version)"
+      - run: bun x semver@7.7.3 --range '>=11.5.1' "$(npm --version)"
       - uses: changesets/action@v2
         with:
           version-script: bun run version-packages
