@@ -1,5 +1,40 @@
 # @fiducy/farm
 
+## 0.3.0-beta.5
+
+### Patch Changes
+
+- Updated dependencies [[`25889e5`](https://github.com/fiducy-dev/fiducy/commit/25889e5ba43a6f69bbc36e4e0a0df827d6d8d2d3)]:
+  - @fiducy/sdk@0.3.0-beta.5
+
+## 0.3.0-beta.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fiducy/sdk@0.3.0-beta.4
+
+## 0.3.0-beta.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fiducy/sdk@0.3.0-beta.3
+
+## 0.3.0-beta.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fiducy/sdk@0.3.0-beta.2
+
+## 0.3.0-beta.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fiducy/sdk@0.3.0-beta.1
+
 ## 0.3.0-beta.0
 
 ### Patch Changes

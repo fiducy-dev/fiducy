@@ -11,7 +11,49 @@ Parameters:
   EnclaveImageSha384:
     Type: String
     Default: none
-    Description: PCR0 of the enclave image. Only an enclave with this hash can decrypt with the key
+    Description: >-
+      PCR0 of the enclave image. Only an enclave with this hash can decrypt with the key. Changed
+      only by pin.sh, run by the key custodian role with MFA
+  EnclaveConfigSha384:
+    Type: String
+    Default: none
+    Description: >-
+      PCR16 of the enclave, the measurement of the deployment config it read at boot. Only an
+      enclave with this config can decrypt with the key. Changed only by pin.sh
+  GitHubRepository:
+    Type: String
+    Default: fiducy-dev/fiducy
+    Description: owner/name of the repository whose aws-production environment may assume the deployer role
+  GitHubOIDCProviderArn:
+    Type: String
+    Default: ''
+    Description: >-
+      ARN of an existing GitHub OIDC provider in this account. Leave empty to create one; an
+      account can only hold one for token.actions.githubusercontent.com
+  KeyCustodianUserArns:
+    Type: CommaDelimitedList
+    Description: >-
+      ARNs of the IAM users allowed to assume the key custodian role, each with MFA. Name people,
+      not the whole account, so an IAM admin cannot hand themselves the role
+
+  AlertEmail:
+    Type: String
+    Default: ''
+    Description: >-
+      Where to send an email when someone touches the key policy, the roles, the host, the table
+      or the stack, or when a Decrypt is refused. Empty turns the alerts off
+  CreateAuditTrail:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: >-
+      Create a CloudTrail trail so the alert rules receive API calls. Set to false when the account
+      already has a trail that records management events
+
+Conditions:
+  CreateGitHubOIDCProvider: !Equals [!Ref GitHubOIDCProviderArn, '']
+  SendAlerts: !Not [!Equals [!Ref AlertEmail, '']]
+  CreateAuditTrail: !And [!Condition SendAlerts, !Equals [!Ref CreateAuditTrail, 'true']]
 
 Resources:
   DeployBucket:
@@ -48,7 +90,8 @@ Resources:
                 Action: [s3:GetObject, s3:PutObject]
                 Resource: !Sub '${DeployBucket.Arn}/*'
               # Decrypt is listed here but the key policy denies it unless the request carries
-              # an attestation document from the enclave image named in EnclaveImageSha384.
+              # an attestation document from the enclave image named in EnclaveImageSha384, with
+              # the config named in EnclaveConfigSha384.
               - Effect: Allow
                 Action: [kms:Encrypt, kms:Decrypt, kms:DescribeKey]
                 Resource: !GetAtt WrappingKey.Arn
@@ -58,6 +101,11 @@ Resources:
               - Effect: Allow
                 Action: [ssm:GetParameter]
                 Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/fiducy/*'
+              # The host publishes the config the enclave reads at boot. A config nobody pinned
+              # gives a different PCR16, and the key refuses that enclave.
+              - Effect: Allow
+                Action: [ssm:PutParameter]
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/fiducy/enclave-config'
               - Effect: Allow
                 Action: [kms:Decrypt]
                 Resource: '*'
@@ -70,11 +118,150 @@ Resources:
     Properties:
       Roles: [!Ref HostRole]
 
+  # Whoever assumes this role decides which enclave image the key trusts. It needs MFA, it is the
+  # only principal pin.sh accepts, and the key policy below refuses policy changes from anyone else.
+  KeyCustodianRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-key-custodian'
+      Description: Pins the enclave image hash the KMS key trusts. Assume with MFA, run pin.sh
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { AWS: !Ref KeyCustodianUserArns }
+            Action: sts:AssumeRole
+            Condition:
+              Bool: { aws:MultiFactorAuthPresent: 'true' }
+      Policies:
+        - PolicyName: fiducy-key-custodian
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:GetTemplate
+                  - cloudformation:GetTemplateSummary
+                Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*'
+              - Effect: Allow
+                Action: cloudformation:GetTemplateSummary
+                Resource: '*'
+              # By ARN pattern, not !GetAtt: the key policy names this role's unique ID, so a
+              # reference back to the key would be a circular dependency.
+              - Effect: Allow
+                Action: [kms:PutKeyPolicy, kms:GetKeyPolicy, kms:DescribeKey]
+                Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub '${DeployBucket.Arn}/*'
+              # By tag, not !Ref Host: the host's role reads the key, and the key names this
+              # role, so a direct reference would be a circular dependency.
+              - Effect: Allow
+                Action: ssm:SendCommand
+                Resource: !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*'
+                Condition:
+                  StringEquals: { ssm:resourceTag/fiducy-stack: !Ref AWS::StackName }
+              - Effect: Allow
+                Action: ssm:SendCommand
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript'
+              - Effect: Allow
+                Action: [ssm:GetCommandInvocation, ssm:DescribeInstanceInformation]
+                Resource: '*'
+
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateGitHubOIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  # GitHub Actions assumes this role with a short-lived OIDC token from a job in the repository's
+  # aws-production environment (required reviewers, main only), so no AWS key is stored anywhere
+  # and no other workflow on main can borrow it. It can ship a release and build on the
+  # host. It cannot touch the key policy, IAM, or the stack's deletion, and it cannot assume the
+  # custodian role (no MFA).
+  DeployerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-deployer'
+      Description: Assumed by GitHub Actions from main to upload a release and build it on the host
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateGitHubOIDCProvider
+                - !Ref GitHubOIDCProvider
+                - !Ref GitHubOIDCProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubRepository}:environment:aws-production'
+      Policies:
+        - PolicyName: fiducy-deployer
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:GetTemplate
+                  - cloudformation:GetTemplateSummary
+                Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*'
+              - Effect: Allow
+                Action: cloudformation:GetTemplateSummary
+                Resource: '*'
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject]
+                Resource: !Sub '${DeployBucket.Arn}/*'
+              - Effect: Allow
+                Action: [ssm:GetParameter, ssm:PutParameter]
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/fiducy/gateway-token'
+              - Effect: Allow
+                Action: ssm:SendCommand
+                Resource:
+                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Host}'
+                  - !Sub 'arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript'
+              - Effect: Allow
+                Action: [ssm:GetCommandInvocation, ssm:DescribeInstanceInformation]
+                Resource: '*'
+              - Effect: Deny
+                Action:
+                  - kms:PutKeyPolicy
+                  - kms:ScheduleKeyDeletion
+                  - kms:DisableKey
+                  - kms:CreateGrant
+                  - kms:Decrypt
+                  - iam:*
+                  - sts:AssumeRole
+                  - cloudformation:DeleteStack
+                  - ec2:TerminateInstances
+                Resource: '*'
+
   WrappingKey:
     Type: AWS::KMS::Key
     Properties:
       Description: Wraps share B of every stored API key. Decrypt only works inside the enclave
       PendingWindowInDays: 7
+      # The lockout check would refuse this policy, because whoever creates the stack is not the
+      # custodian role and so cannot change the policy afterwards. That is the point.
+      BypassPolicyLockoutSafetyCheck: true
       KeyPolicy:
         Version: '2012-10-17'
         Statement:
@@ -83,6 +270,26 @@ Resources:
             Principal: { AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root' }
             Action: kms:*
             Resource: '*'
+          # Changing what the key trusts, disabling it or scheduling its deletion is reserved for
+          # this stack's custodian role (MFA, named users) and the account root user. IAM admins, the deploy credentials
+          # and the host cannot, whatever their IAM policies say. Every attempt lands in CloudTrail.
+          - Sid: OnlyTheCustodianChangesTheKey
+            Effect: Deny
+            Principal: '*'
+            Action:
+              - kms:PutKeyPolicy
+              - kms:ScheduleKeyDeletion
+              - kms:DisableKey
+              - kms:CreateGrant
+            Resource: '*'
+            # Matched by the role's unique ID, not its name. An admin who deletes the role and
+            # creates a new one with the same name gets a new ID, so the new role is refused.
+            # The root user's aws:userid is the account ID.
+            Condition:
+              StringNotLike:
+                aws:userid:
+                  - !Sub '${KeyCustodianRole.RoleId}:*'
+                  - !Ref AWS::AccountId
           # Applies to everyone, account admins included. A Decrypt without an attestation
           # document for this exact enclave image is refused. Missing attestation counts as a
           # mismatch, so the parent host and the AWS console cannot decrypt either.
@@ -94,6 +301,17 @@ Resources:
             Condition:
               StringNotEqualsIgnoreCase:
                 kms:RecipientAttestation:ImageSha384: !Ref EnclaveImageSha384
+          # A separate statement, because one Deny with two conditions only applies when both
+          # mismatch. The same image with a config nobody pinned (another key, table or control
+          # plane) measures a different PCR16 and is refused.
+          - Sid: DecryptOnlyWithThePinnedConfig
+            Effect: Deny
+            Principal: '*'
+            Action: kms:Decrypt
+            Resource: '*'
+            Condition:
+              StringNotEqualsIgnoreCase:
+                kms:RecipientAttestation:PCR16: !Ref EnclaveConfigSha384
           # ReEncrypt decrypts under this key and re-encrypts under another one, without a Decrypt
           # call. The gateway never uses it, so it is refused for everyone, or a stored share could
           # be moved under a key the caller controls and opened there.
@@ -152,12 +370,314 @@ Resources:
             Encrypted: true
       Tags:
         - { Key: Name, Value: fiducy-prototype }
+        - { Key: fiducy-stack, Value: !Ref AWS::StackName }
 
   HostAddress:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
       InstanceId: !Ref Host
+
+  # Alerts. Every rule below matches CloudTrail management events, which cost nothing to record
+  # once (the trail) and nothing to match (EventBridge). The email is the point: Zeabur learned
+  # about its breach from a user, and these are the calls that precede one here.
+  AuditBucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateAuditTrail
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-old-logs
+            Status: Enabled
+            ExpirationInDays: 90
+
+  AuditBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: CreateAuditTrail
+    Properties:
+      Bucket: !Ref AuditBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: NoDeletingAuditLogs
+            Effect: Deny
+            Principal: '*'
+            Action: [s3:DeleteObject, s3:DeleteObjectVersion, s3:PutLifecycleConfiguration]
+            Resource: [!GetAtt AuditBucket.Arn, !Sub '${AuditBucket.Arn}/*']
+            Condition:
+              StringNotLike:
+                aws:userid: [!Ref AWS::AccountId]
+          - Effect: Allow
+            Principal: { Service: cloudtrail.amazonaws.com }
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt AuditBucket.Arn
+            Condition:
+              StringEquals:
+                aws:SourceArn: !Sub 'arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AWS::StackName}-audit'
+          - Effect: Allow
+            Principal: { Service: cloudtrail.amazonaws.com }
+            Action: s3:PutObject
+            Resource: !Sub '${AuditBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+                aws:SourceArn: !Sub 'arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AWS::StackName}-audit'
+
+  AuditTrail:
+    Type: AWS::CloudTrail::Trail
+    Condition: CreateAuditTrail
+    DependsOn: AuditBucketPolicy
+    Properties:
+      TrailName: !Sub '${AWS::StackName}-audit'
+      S3BucketName: !Ref AuditBucket
+      IsLogging: true
+      IsMultiRegionTrail: true
+      IncludeGlobalServiceEvents: true
+      EnableLogFileValidation: true
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: SendAlerts
+    Properties:
+      DisplayName: Fiducy gateway alerts
+      Subscription:
+        - { Protocol: email, Endpoint: !Ref AlertEmail }
+
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Condition: SendAlerts
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: events.amazonaws.com }
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-*'
+          # Whoever gets these emails is decided like the key: only the custodian role (MFA) or the
+          # root user may change the subscription, the topic or its policy. Anyone else, an IAM admin
+          # or a stack update run by the deploy credentials included, is refused, so an attacker
+          # cannot quietly point the alerts at themselves before touching the key.
+          - Sid: OnlyTheCustodianChangesWhoIsAlerted
+            Effect: Deny
+            Principal: '*'
+            Action:
+              - sns:Subscribe
+              - sns:Unsubscribe
+              - sns:SetSubscriptionAttributes
+              - sns:SetTopicAttributes
+              - sns:AddPermission
+              - sns:RemovePermission
+              - sns:DeleteTopic
+            Resource: !Ref AlertTopic
+            Condition:
+              StringNotLike:
+                aws:userid:
+                  - !Sub '${KeyCustodianRole.RoleId}:*'
+                  - !Ref AWS::AccountId
+
+  KeyChangeAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-key-change'
+      Description: Someone tried to change what the wrapping key trusts, disable it or delete it
+      EventPattern:
+        source: [aws.kms]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName: [PutKeyPolicy, ScheduleKeyDeletion, DisableKey, CreateGrant, UpdateKeyDescription]
+          resources:
+            ARN: [!GetAtt WrappingKey.Arn]
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+              address: $.detail.sourceIPAddress
+            InputTemplate: '"Fiducy: <name> on the wrapping key by <who> from <address> at <time>. Only pin.sh run by the custodian should do this."'
+
+  DecryptRefusedAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-decrypt-refused'
+      Description: KMS refused a Decrypt with the wrapping key, so something other than the trusted enclave asked
+      EventPattern:
+        source: [aws.kms]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName: [Decrypt]
+          errorCode: [{ exists: true }]
+          resources:
+            ARN: [!GetAtt WrappingKey.Arn]
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+              error: $.detail.errorCode
+            InputTemplate: '"Fiducy: KMS refused a Decrypt from <who> at <time> (<error>). The trusted enclave never gets this. A rogue enclave, the host or an admin tried to open a key."'
+
+  RoleChangeAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-role-change'
+      Description: One of the stack's roles was changed (delivered in us-east-1 only, where IAM events land)
+      EventPattern:
+        source: [aws.iam]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName:
+            - CreateRole
+            - UpdateAssumeRolePolicy
+            - PutRolePolicy
+            - DeleteRolePolicy
+            - AttachRolePolicy
+            - DetachRolePolicy
+            - DeleteRole
+          requestParameters:
+            roleName: [!Ref KeyCustodianRole, !Ref DeployerRole, !Ref HostRole]
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+              role: $.detail.requestParameters.roleName
+            InputTemplate: '"Fiducy: <name> on role <role> by <who> at <time>. Only a stack update from an admin should do this."'
+
+  AlertTamperAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-alert-tamper'
+      Description: Someone tried to silence these alerts by stopping the trail, the rules or the topic
+      EventPattern:
+        detail-type: [AWS API Call via CloudTrail]
+        source: [aws.cloudtrail, aws.events, aws.sns]
+        detail:
+          eventName:
+            - StopLogging
+            - DeleteTrail
+            - UpdateTrail
+            - PutEventSelectors
+            - PutAdvancedEventSelectors
+            - DisableRule
+            - DeleteRule
+            - RemoveTargets
+            - PutRule
+            - Subscribe
+            - Unsubscribe
+            - SetSubscriptionAttributes
+            - DeleteTopic
+            - SetTopicAttributes
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+              address: $.detail.sourceIPAddress
+            InputTemplate: '"Fiducy: <name> by <who> from <address> at <time>. This can switch off the alerts that watch the key. If it was not you, treat it as an incident."'
+
+  HostChangeAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-host-change'
+      Description: An instance profile was attached or swapped, or the gateway host was changed or terminated
+      EventPattern:
+        source: [aws.ec2]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName:
+            - AssociateIamInstanceProfile
+            - ReplaceIamInstanceProfileAssociation
+            - ModifyInstanceAttribute
+            - TerminateInstances
+            - StopInstances
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+              address: $.detail.sourceIPAddress
+            InputTemplate: '"Fiducy: <name> by <who> from <address> at <time>. Check it was you."'
+
+  TableChangeAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-table-change'
+      Description: The sealed records table was deleted, had its protection changed, or lost its backups
+      EventPattern:
+        source: [aws.dynamodb]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName: [DeleteTable, UpdateTable, UpdateContinuousBackups]
+          requestParameters:
+            tableName: [!Ref KeysTable]
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+            InputTemplate: '"Fiducy: <name> on the sealed records table by <who> at <time>."'
+
+  StackChangeAlert:
+    Type: AWS::Events::Rule
+    Condition: SendAlerts
+    Properties:
+      Name: !Sub '${AWS::StackName}-stack-change'
+      Description: The stack was updated or deleted
+      EventPattern:
+        source: [aws.cloudformation]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventName: [ExecuteChangeSet, UpdateStack, DeleteStack]
+          requestParameters:
+            stackName:
+              - !Ref AWS::StackName
+              - { prefix: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/' }
+      Targets:
+        - Id: email
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              name: $.detail.eventName
+              who: $.detail.userIdentity.arn
+              time: $.detail.eventTime
+            InputTemplate: '"Fiducy: <name> on the gateway stack by <who> at <time>. A deploy from CI or a pin by the custodian is expected; anything else is not."'
 
 Outputs:
   InstanceId:
@@ -170,3 +690,9 @@ Outputs:
     Value: !Ref DeployBucket
   KeysTableName:
     Value: !Ref KeysTable
+  DeployerRoleArn:
+    Description: Set this as the AWS_DEPLOY_ROLE_ARN repository variable in GitHub
+    Value: !GetAtt DeployerRole.Arn
+  KeyCustodianRoleArn:
+    Description: The role to assume, with MFA, before running pin.sh
+    Value: !GetAtt KeyCustodianRole.Arn

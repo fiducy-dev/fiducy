@@ -117,7 +117,10 @@ Signed out, it says so. Signed in without a key, it shows the key box. With a ke
 
 ## 5. Call the model with the user's key
 
-```ts title="app/api/chat/route.ts"
+<CodeGroup>
+
+```ts title="OpenAI"
+// app/api/chat/route.ts
 import { createOpenAI } from '@ai-sdk/openai';
 import { respondToMissingKey } from '@fiducy/sdk/server';
 import { streamText } from 'ai';
@@ -129,10 +132,66 @@ export async function POST(request: Request) {
   if (!settings.ok) return respondToMissingKey(settings);
 
   const { messages } = await request.json();
-  const result = streamText({ model: createOpenAI(settings).chat('gpt-4o-mini'), messages });
+  const result = streamText({ model: createOpenAI(settings).responses('gpt-4o-mini'), messages });
   return result.toUIMessageStreamResponse();
 }
 ```
+
+```ts title="Anthropic"
+// app/api/chat/route.ts
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '@/lib/fiducy';
+
+export async function POST(request: Request) {
+  const settings = await fiducy.providerSettings('anthropic', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+
+  const { messages } = await request.json();
+  const result = streamText({ model: createAnthropic(settings)('claude-sonnet-4-5'), messages });
+  return result.toUIMessageStreamResponse();
+}
+```
+
+```ts title="Gemini"
+// app/api/chat/route.ts
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '@/lib/fiducy';
+
+export async function POST(request: Request) {
+  const settings = await fiducy.providerSettings('gemini', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+
+  const { messages } = await request.json();
+  const result = streamText({ model: createGoogleGenerativeAI(settings)('gemini-2.5-flash'), messages });
+  return result.toUIMessageStreamResponse();
+}
+```
+
+```ts title="OpenRouter"
+// app/api/chat/route.ts
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '@/lib/fiducy';
+
+export async function POST(request: Request) {
+  const settings = await fiducy.providerSettings('openrouter', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+
+  const { messages } = await request.json();
+  const result = streamText({ model: createOpenRouter(settings)('openai/gpt-4o-mini'), messages });
+  return result.toUIMessageStreamResponse();
+}
+```
+
+</CodeGroup>
 
 `providerSettings` returns `{ ok: true, baseURL, apiKey, headers, fetch }` pointing at your gateway, or `{ ok: false, reason }` with `reason` `'signed-out'` or `'no-key'`. `respondToMissingKey` turns that into `401` ("Sign in to use your OpenAI key") or `409` ("Connect your OpenAI key to keep going") with the provider in `data`, so your page can show the widget. Never fall back to a key of your own.
 

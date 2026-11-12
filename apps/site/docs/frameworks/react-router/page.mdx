@@ -23,10 +23,9 @@ npm install
 npx fiducy dev --mock
 ```
 
-`fiducy dev` writes `.env` and keeps running. In a second terminal, add the example's session secret and start the app:
+`fiducy dev` writes its settings to `.env` and keeps running. In a second terminal, start the app:
 
 ```bash
-echo "EXAMPLE_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
 npm run dev
 ```
 
@@ -89,7 +88,10 @@ export const KeySettings = () => <FiducyKey provider="openai" />;
 
 ## Model route
 
-```ts title="app/routes/chat.ts"
+<CodeGroup>
+
+```ts title="OpenAI"
+// app/routes/chat.ts
 import { createOpenAI } from '@ai-sdk/openai';
 import { respondToMissingKey } from '@fiducy/sdk/server';
 import { streamText } from 'ai';
@@ -102,7 +104,66 @@ export async function action({ request }: Route.ActionArgs) {
   const settings = await fiducy.providerSettings('openai', { request });
   if (!settings.ok) return respondToMissingKey(settings);
   const { messages } = await request.json();
-  const model = createOpenAI(settings).chat('gpt-4o-mini');
+  const model = createOpenAI(settings).responses('gpt-4o-mini');
   return streamText({ model, messages }).toUIMessageStreamResponse();
 }
 ```
+
+```ts title="Anthropic"
+// app/routes/chat.ts
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '~/lib/fiducy';
+
+import type { Route } from './+types/chat';
+
+export async function action({ request }: Route.ActionArgs) {
+  const settings = await fiducy.providerSettings('anthropic', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createAnthropic(settings)('claude-sonnet-4-5');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+}
+```
+
+```ts title="Gemini"
+// app/routes/chat.ts
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '~/lib/fiducy';
+
+import type { Route } from './+types/chat';
+
+export async function action({ request }: Route.ActionArgs) {
+  const settings = await fiducy.providerSettings('gemini', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createGoogleGenerativeAI(settings)('gemini-2.5-flash');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+}
+```
+
+```ts title="OpenRouter"
+// app/routes/chat.ts
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { respondToMissingKey } from '@fiducy/sdk/server';
+import { streamText } from 'ai';
+
+import { fiducy } from '~/lib/fiducy';
+
+import type { Route } from './+types/chat';
+
+export async function action({ request }: Route.ActionArgs) {
+  const settings = await fiducy.providerSettings('openrouter', { request });
+  if (!settings.ok) return respondToMissingKey(settings);
+  const { messages } = await request.json();
+  const model = createOpenRouter(settings)('openai/gpt-4o-mini');
+  return streamText({ model, messages }).toUIMessageStreamResponse();
+}
+```
+
+</CodeGroup>

@@ -56,3 +56,17 @@ export const DAILY_APP_LIMIT_MESSAGE = 'This app reached its daily spend limit';
 export const MINUTE_APP_LIMIT_MESSAGE =
   'This app reached its spend limit for this minute. Try again shortly';
 export const UNMETERED_METHODS = ['GET', 'HEAD'];
+export const IMDS_REGION_PATH = '/latest/meta-data/placement/region';
+export const ENCLAVE_CONFIG_PCR_INDEX = 16;
+export const ENCLAVE_CONFIG_FIELDS = [
+  'controlPlaneURL',
+  'gatewayTokenCiphertext',
+  'keysTable',
+  'kmsKeyID',
+  'publicHost',
+  'region'
+] as const;
+export const NSM_DEVICE_PATH = '/dev/nsm';
+export const NSM_IOCTL_REQUEST = 0xc0200a00;
+export const NSM_RESPONSE_MAXIMUM_BYTES = 0x3000;
+export const PCR_LENGTH_BYTES = 48;

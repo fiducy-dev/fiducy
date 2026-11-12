@@ -45,7 +45,9 @@ export async function startGatewayHarness(
     usageLedger,
     providerRegistry: createProviderRegistry({
       openai: mockProvider.baseURL,
-      anthropic: mockProvider.baseURL
+      anthropic: mockProvider.baseURL,
+      gemini: mockProvider.baseURL,
+      openrouter: mockProvider.baseURL
     }),
     controlPlaneToken: CONTROL_PLANE_TOKEN,
     rateLimiter,

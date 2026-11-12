@@ -16,7 +16,8 @@ Self-hosting is free. You pay AWS for one Graviton instance with enclaves (about
 - a KMS key whose policy only allows `kms:Decrypt` from the enclave image you built
 - a `c6g.large` instance with Nitro enclaves on, an Elastic IP, and ports 80 and 443 open
 - a DynamoDB table (`KeysTable`) for sealed key records, on demand billing, with deletion protection and point-in-time recovery
-- an IAM role limited to the bucket, the key, the table and the `/fiducy/*` parameters
+- an IAM role for the host, limited to the bucket, the key, the table and the `/fiducy/*` parameters
+- a key custodian role (`<stack>-key-custodian`) that only the IAM users you name in `FIDUCY_KEY_CUSTODIAN_USER_ARNS` can assume, each with MFA. It is the one principal, besides the account root user, that the key policy lets change what the key trusts. The policy names the role by its unique ID, so deleting it and creating a look-alike does not work. A deploy, an IAM admin or the host cannot
 
 The host runs only the gateway enclave. TLS ends inside the enclave: Caddy runs next to the gateway and keeps its certificate sealed with the KMS key, so the parent host never sees plaintext traffic or a private key. The gateway reads and writes sealed records in `KeysTable` directly and talks to the dashboard over HTTPS with a token kept in Parameter Store (`/fiducy/gateway-token`).
 
@@ -29,19 +30,23 @@ The dashboard (`apps/control-plane`) is a Node app that needs Postgres. Host it 
 | `DATABASE_URL` | Your Postgres connection string |
 | `FARM_AUTH_SECRET` | 32 random bytes |
 | `FARM_AUTH_URL` | The dashboard's public URL |
-| `FIDUCY_GATEWAY_URL` | `https://gw.<your-ip>.sslip.io`, from the deploy below |
+| `FIDUCY_GATEWAY_URL` | `https://<FIDUCY_GATEWAY_HOST>`, or `https://gw.<your-ip>.sslip.io` without a domain, from the deploy below |
 | `FIDUCY_GATEWAY_TOKEN` | The value of `/fiducy/gateway-token` in Parameter Store, created by the first deploy |
 
 Run `bunx farm auth migrate` in `apps/control-plane` once, with `DATABASE_URL` set, before the first start.
 
 ## Deploy with GitHub Actions
 
-1. Create an IAM user with admin rights for the first deploy.
-2. Add repository secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and optionally `AWS_REGION` (default `us-east-1`).
-3. Add the repository variable `FIDUCY_CONTROL_PLANE_URL`: the dashboard's URL.
-4. Run the **AWS deploy** workflow.
+There are no AWS keys in the repository. GitHub Actions assumes a role in your account with a short-lived OIDC token, and that role only accepts tokens from jobs in the repository's `aws-production` environment. Any other workflow, even one on `main`, is refused. The role can upload a release and build it on the host. It cannot change the key policy, touch IAM, delete the stack or assume the custodian role.
 
-The workflow creates the gateway token on the first run, builds the enclave on the host, locks the KMS key to its `PCR0`, starts it, and prints the gateway URL. Then copy the token into the dashboard's `FIDUCY_GATEWAY_TOKEN` and restart it:
+1. Run the first deploy from your machine with admin credentials (see below). It creates the stack, including the deployer role and the GitHub OIDC provider. If your account already has a provider for `token.actions.githubusercontent.com`, set `FIDUCY_GITHUB_OIDC_PROVIDER_ARN` to its ARN first. For a fork, set `FIDUCY_GITHUB_REPOSITORY=<owner>/<name>`.
+2. In the repository settings, create the environment `aws-production`: add yourself as a required reviewer and limit deployment branches to `main`. Every deploy then waits for your click.
+3. Add the repository variables `AWS_DEPLOY_ROLE_ARN` (the stack's `DeployerRoleArn` output), `FIDUCY_CONTROL_PLANE_URL` (the dashboard's URL) and optionally `AWS_REGION` (default `us-east-1`) and `FIDUCY_GATEWAY_HOST` (see [Use your own domain](#use-your-own-domain)).
+4. Run the **AWS deploy** workflow from `main` and approve it.
+
+The first deploy creates the gateway token. Every deploy builds the enclave image on the host, writes this deployment's enclave config, and prints two hashes: `PCR0` for the image and `PCR16` for the config. If both are the ones the KMS key already trusts, it restarts the enclave. If either is new, the workflow stops there: the enclave that was running keeps running, and the summary shows the command to trust the new build (next section). A deploy can never make the key trust anything on its own.
+
+Then copy the token into the dashboard's `FIDUCY_GATEWAY_TOKEN` and restart it:
 
 ```bash
 aws ssm get-parameter --name /fiducy/gateway-token --with-decryption --query Parameter.Value --output text
@@ -49,19 +54,71 @@ aws ssm get-parameter --name /fiducy/gateway-token --with-decryption --query Par
 
 To replace the token, run the workflow by hand with **rotate_token** ticked, then put the new value in the dashboard's `FIDUCY_GATEWAY_TOKEN` and restart it. The old token stops working, and the gateway can't load app settings until the dashboard has the new one.
 
+## Trust a new enclave image
+
+The enclave image holds nothing specific to your deployment, so every deployment of the same commit has the same `PCR0`. Your settings (KMS key, table, region, dashboard URL, gateway host and the sealed gateway token) are the enclave config. The host publishes it to Parameter Store as `/fiducy/enclave-config`, and the enclave reads it at boot and measures it into `PCR16` before it makes any KMS call. Changing the code changes `PCR0`; changing a setting or rotating the token changes `PCR16`. A config the host made up, such as one that points at another KMS key or dashboard, measures to a `PCR16` nobody pinned, and the key refuses that enclave. The KMS key only decrypts for the two hashes in its policy, so someone has to tell it to trust new ones. That someone is the key custodian role, assumed with MFA from your own machine, never CI. Add a profile once:
+
+```ini
+[profile fiducy-custodian]
+role_arn = arn:aws:iam::<account-id>:role/fiducy-prototype-key-custodian
+source_profile = <your-iam-user-profile>
+mfa_serial = arn:aws:iam::<account-id>:mfa/<your-device>
+```
+
+Then run the command the deploy printed:
+
+```bash
+AWS_PROFILE=fiducy-custodian bash infra/aws/pin.sh <pcr0> <pcr16>
+```
+
+It shows the commit the host built and when, and the config. It recomputes `PCR16` from that config on your machine and checks that the KMS key, table and region are your stack's, so a host cannot show you one config and pin another. Then it asks you to type the first characters of `PCR0`, updates the key policy and restarts the enclave. Check that the commit is the one you reviewed on `main` and that the dashboard URL and gateway host are yours before you confirm.
+
+Upgrading a stack created before `PCR16` existed: the first deploy of the new template makes the key require a pinned `PCR16`, so the running gateway stops decrypting until you run `pin.sh` with the hashes that deploy prints. Do both back to back.
+
+The host keeps running the last pinned image through reboots and crashes. A build that nobody pinned sits on disk and is never started.
+
+Turn on MFA for the AWS account root user too (IAM console, Security credentials). The root user is the one principal besides the custodian role that can change what the key trusts, and the stack cannot require MFA for it. Lock its password and MFA device away and never create access keys for it.
+
+## Alerts
+
+Set `FIDUCY_ALERT_EMAIL` when you run `deploy.sh` and the stack emails you, through SNS, when any of these happen:
+
+- someone changes, disables or schedules deletion of the wrapping key's policy (only `pin.sh` should)
+- KMS refuses a `Decrypt` with the key (the trusted enclave never gets refused; a rogue enclave, the host or an admin tried)
+- a role is created, or one of the stack's roles is edited (IAM events only reach EventBridge in `us-east-1`, so deploy the stack there or this alert stays silent)
+- an instance profile is attached or swapped, or an instance is changed, stopped or terminated
+- the sealed records table is deleted or its protection or backups change
+- the stack is updated or deleted
+- someone tries to silence the alerts: stops or changes the trail, disables or deletes a rule, removes a target, or unsubscribes or deletes the topic
+
+Confirm the subscription email SNS sends. Who gets these emails is locked like the key: the topic's policy refuses subscribe, unsubscribe and policy changes from everyone but the custodian role and the root user, so an attacker with admin rights cannot quietly redirect the alerts first. To change the address later, run `deploy.sh` with the new `FIDUCY_ALERT_EMAIL` as the root user. The stack also creates a multi-region CloudTrail trail so the rules receive these calls. Its bucket is versioned, survives a teardown and refuses deletes from anyone but the root user; pass `CreateAuditTrail=false` as a parameter override if the account already records management events. Everything here costs cents a month. Use a dedicated AWS account for the gateway and these emails stay rare.
+
 ## Deploy from your machine
 
 ```bash
 export AWS_REGION=us-east-1
 export FIDUCY_CONTROL_PLANE_URL=https://<your-dashboard>
+export FIDUCY_KEY_CUSTODIAN_USER_ARNS=arn:aws:iam::<account-id>:user/<you>
 bash infra/aws/deploy.sh
 ```
 
-Needs the AWS CLI, `jq`, `openssl` and admin credentials. Add `--rotate-token` to replace the gateway token.
+`FIDUCY_KEY_CUSTODIAN_USER_ARNS` is only read when the stack is created. To change who may pin later, update the `KeyCustodianUserArns` parameter as an admin; the role-change alert emails you when that happens.
+
+Needs the AWS CLI, `jq`, `openssl` and admin credentials for the first run, which creates the stack. Template changes that touch IAM, the key or the host also need an admin run from your machine; the deployer role in CI is refused for those on purpose. Add `--rotate-token` to replace the gateway token. Trusting the image is the same `pin.sh` step as above.
+
+## Use your own domain
+
+By default the gateway answers at `gw.<dashed-ip>.sslip.io`, a free name that resolves to the Elastic IP. It works with no setup, but you do not own it, so you cannot restrict who may issue certificates for it. For production, use a domain you control:
+
+1. Add a DNS `A` record for, say, `gateway.yourapp.com` pointing at the stack's Elastic IP (`PublicIp` output).
+2. Lock down which certificates can exist for that name with a `CAA` record and Certificate Transparency alerts, as described in [Lock down the gateway hostname](/docs/security#lock-down-the-gateway-hostname).
+3. Set `FIDUCY_GATEWAY_HOST=gateway.yourapp.com` for `deploy.sh`, or as a repository variable for the workflow, and deploy.
+
+The host name is part of the enclave config, so changing it produces a new `PCR16` that a custodian has to pin like any other change. `pin.sh` shows the host name it is about to trust next to the commit.
 
 ## Tear down
 
-Run the **AWS teardown** workflow, or `bash infra/aws/teardown.sh`. The KMS key enters a 7 day deletion window; every key it wrapped becomes unrecoverable after that.
+Run `bash infra/aws/teardown.sh` as the custodian profile or the root user; nobody else may schedule the key's deletion. The KMS key enters a 7 day deletion window; every key it wrapped becomes unrecoverable after that.
 
 ## Run locally
 
@@ -88,8 +145,9 @@ Run the app you are testing on another port (for example 5173) and add that orig
 
 | Variable | Purpose |
 | --- | --- |
+| `FIDUCY_ENCLAVE_CONFIG_PARAMETER` | Parameter Store name of the enclave config. When set (the enclave image sets `/fiducy/enclave-config`), the gateway reads it at boot, extends and locks `PCR16` with its SHA-384, and takes `AWS_REGION`, `FIDUCY_KMS_KEY_ID`, `FIDUCY_KEYS_TABLE`, `FIDUCY_CONTROL_PLANE_URL`, `FIDUCY_GATEWAY_TOKEN_CIPHERTEXT` and `FIDUCY_PUBLIC_HOST` from it |
 | `FIDUCY_KMS_KEY_ID` | KMS key ARN. When unset, `FIDUCY_MASTER_KEY` is used instead (local only) |
-| `FIDUCY_MASTER_KEY` | 32 random bytes, base64url. Local development only |
+| `FIDUCY_MASTER_KEY` | 32 random bytes, base64url. Local development only: the gateway refuses to start with it inside a Nitro enclave |
 | `AWS_KMS_ENDPOINT` | KMS proxy inside the enclave. Default `http://127.0.0.1:9999` |
 | `FIDUCY_CONTROL_PLANE_URL` | Dashboard URL for app configs, usage and key events |
 | `FIDUCY_KEYS_TABLE` | DynamoDB table for sealed key records and spend limit totals. When unset, both stay in memory (local only) |
