@@ -133,6 +133,18 @@ describe('deciding whether to check a gateway', () => {
     expect(decideAttestation({ gatewayURL: GATEWAY_URL, skipAttestation: true })).toBe('skip');
   });
 
+  it('works in browsers without URL.parse, such as Safari 17', () => {
+    const parse = URL.parse;
+    Object.defineProperty(URL, 'parse', { value: undefined, configurable: true });
+    try {
+      expect(decideAttestation({ gatewayURL: 'http://localhost:8787' })).toBe('skip');
+      expect(decideAttestation({ gatewayURL: GATEWAY_URL })).toBe('refuse');
+      expect(decideAttestation({ gatewayURL: 'not a url', skipAttestation: true })).toBe('skip');
+    } finally {
+      Object.defineProperty(URL, 'parse', { value: parse, configurable: true });
+    }
+  });
+
   it('refuses a remote gateway with no expected PCR0', () => {
     expect(decideAttestation({ gatewayURL: GATEWAY_URL })).toBe('refuse');
     expect(decideAttestation({ gatewayURL: GATEWAY_URL, enclavePCR0: ' , ' })).toBe('refuse');

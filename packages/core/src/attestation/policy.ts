@@ -5,8 +5,8 @@ import type { AttestationDecision, AttestationPolicyInput } from './types.ts';
 import type { GatewayAttestationError } from './types.ts';
 
 export function isLocalGateway(gatewayURL: string): boolean {
-  const hostname = URL.parse(gatewayURL)?.hostname ?? '';
-  return LOCAL_GATEWAY_HOSTNAMES.includes(hostname);
+  if (!URL.canParse(gatewayURL)) return false;
+  return LOCAL_GATEWAY_HOSTNAMES.includes(new URL(gatewayURL).hostname);
 }
 
 function readPCRLists({ enclavePCR0, enclavePCR16 }: AttestationPolicyInput) {
