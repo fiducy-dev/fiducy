@@ -1,12 +1,6 @@
-import { BoxGeometry, EdgesGeometry, ExtrudeGeometry, Group } from 'three';
-import { LineBasicMaterial, LineDashedMaterial, LineSegments, Mesh } from 'three';
-import { MeshBasicMaterial, Path, Shape } from 'three';
-
-import type { BufferGeometry, Material } from 'three';
+import { ExtrudeGeometry, LineBasicMaterial, Path, Shape } from 'three';
 
 const INK = 0x000000;
-const SURFACE = 0xffffff;
-const EDGE_ANGLE = 20;
 const KEY_DEPTH = 0.16;
 const HEAD_CENTER_X = -1.1;
 const HEAD_RADIUS = 0.55;
@@ -15,51 +9,6 @@ const SHAFT_HALF_HEIGHT = 0.12;
 const SPLIT_X = 0.35;
 
 export const inkLines = new LineBasicMaterial({ color: INK });
-
-export function createLineArt(geometry: BufferGeometry, faces: Material): Group {
-  const group = new Group();
-  group.add(new Mesh(geometry, faces));
-  group.add(new LineSegments(new EdgesGeometry(geometry, EDGE_ANGLE), inkLines));
-  return group;
-}
-
-export function createSolidFaces(): MeshBasicMaterial {
-  return new MeshBasicMaterial({
-    color: SURFACE,
-    polygonOffset: true,
-    polygonOffsetFactor: 1,
-    polygonOffsetUnits: 1
-  });
-}
-
-export function createGlassFaces(): MeshBasicMaterial {
-  return new MeshBasicMaterial({
-    color: SURFACE,
-    transparent: true,
-    opacity: 0.62,
-    depthWrite: false
-  });
-}
-
-export function createDashedBox(size: number): LineSegments {
-  const edges = new EdgesGeometry(new BoxGeometry(size, size, size));
-  const box = new LineSegments(
-    edges,
-    new LineDashedMaterial({ color: 0x8a8a8a, dashSize: 0.12, gapSize: 0.1 })
-  );
-  box.computeLineDistances();
-  return box;
-}
-
-export function createDashedTrack(length: number): LineSegments {
-  const edges = new EdgesGeometry(new BoxGeometry(length, 0.001, 0.001));
-  const track = new LineSegments(
-    edges,
-    new LineDashedMaterial({ color: 0xb0b0b0, dashSize: 0.1, gapSize: 0.12 })
-  );
-  track.computeLineDistances();
-  return track;
-}
 
 function extrudeKeyShape(shape: Shape): ExtrudeGeometry {
   const geometry = new ExtrudeGeometry(shape, { depth: KEY_DEPTH, bevelEnabled: false });
