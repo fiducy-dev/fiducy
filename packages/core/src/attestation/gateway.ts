@@ -1,7 +1,7 @@
 import { fail } from '../result.ts';
 import { decodeBase64, encodeHex } from './bytes.ts';
 import { ATTESTATION_FORMAT, ATTESTATION_NONCE_LENGTH, ATTESTATION_ROUTE } from './constants.ts';
-import { AWS_NITRO_ROOT_FINGERPRINT } from './constants.ts';
+import { ATTESTATION_TIMEOUT_MILLISECONDS, AWS_NITRO_ROOT_FINGERPRINT } from './constants.ts';
 import { assertExpectedPCRs } from './input.ts';
 import { parsePCRList } from './pcr.ts';
 import { verifyAttestationWithRoot } from './verifyAttestation.ts';
@@ -24,12 +24,13 @@ function buildAttestationURL(gatewayURL: string, nonce: string): string {
   return url.toString();
 }
 
-async function fetchDocument(
+async function readDocument(
   fetchAttestation: FetchAttestation,
-  url: string
+  url: string,
+  signal: AbortSignal
 ): Promise<Bytes | null> {
   try {
-    const response = await fetchAttestation(url);
+    const response = await fetchAttestation(url, { signal });
     if (!response.ok) return null;
     const body = (await response.json()) as AttestationResponseBody;
     if (body.data?.format !== ATTESTATION_FORMAT || !body.data.document) return null;
@@ -39,12 +40,28 @@ async function fetchDocument(
   }
 }
 
+function waitForAbort(signal: AbortSignal): Promise<null> {
+  return new Promise((resolve) => {
+    signal.addEventListener('abort', () => resolve(null), { once: true });
+  });
+}
+
+async function fetchDocument(
+  fetchAttestation: FetchAttestation,
+  url: string,
+  timeoutMilliseconds: number
+): Promise<Bytes | null> {
+  const signal = AbortSignal.timeout(timeoutMilliseconds);
+  return Promise.race([readDocument(fetchAttestation, url, signal), waitForAbort(signal)]);
+}
+
 export async function verifyGatewayWithRoot(
   {
     gatewayURL,
     enclavePCR0,
     enclavePCR16,
-    fetch: fetchAttestation = (url) => fetch(url)
+    fetch: fetchAttestation = (url, init) => fetch(url, init),
+    timeoutMilliseconds = ATTESTATION_TIMEOUT_MILLISECONDS
   }: VerifyGatewayInput,
   trustedRootFingerprint: string
 ): Promise<Result<VerifiedAttestation, GatewayAttestationError>> {
@@ -52,7 +69,8 @@ export async function verifyGatewayWithRoot(
   const expectedPCR16s = parsePCRList(enclavePCR16);
   assertExpectedPCRs(expectedPCR0s, expectedPCR16s);
   const nonce = createNonce();
-  const document = await fetchDocument(fetchAttestation, buildAttestationURL(gatewayURL, nonce));
+  const url = buildAttestationURL(gatewayURL, nonce);
+  const document = await fetchDocument(fetchAttestation, url, timeoutMilliseconds);
   if (!document) return fail('attestation_unavailable');
   const encodedNonce = new TextEncoder().encode(nonce);
   return verifyAttestationWithRoot(

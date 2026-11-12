@@ -119,7 +119,7 @@ export type GatewayAttestationError = AttestationError | 'attestation_unavailabl
 
 export type AttestationDecision = 'verify' | 'skip' | 'refuse';
 
-export type FetchAttestation = (url: string) => Promise<Response>;
+export type FetchAttestation = (url: string, init: { signal: AbortSignal }) => Promise<Response>;
 
 export interface AttestationPolicyInput {
   gatewayURL: string;
@@ -133,6 +133,7 @@ export interface VerifyGatewayInput {
   enclavePCR0: string;
   enclavePCR16: string;
   fetch?: FetchAttestation;
+  timeoutMilliseconds?: number;
 }
 
 export interface AttestationResponseBody {

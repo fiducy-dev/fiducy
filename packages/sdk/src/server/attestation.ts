@@ -4,6 +4,8 @@ import { isLocalGateway, verifyGatewayAttestation } from '@fiducy/core/attestati
 
 import { FiducyGatewayError } from './errors.ts';
 
+import type { FetchAttestation } from '@fiducy/core/attestation';
+
 import type { FetchGateway } from '../types.ts';
 import type { FiducyConnection } from './types.ts';
 
@@ -21,7 +23,8 @@ export async function assertGatewayAttested(
     if (!isLocalGateway(gatewayURL)) console.warn(describeSkippedAttestation(gatewayURL));
     return;
   }
-  const fetchAttestation = (url: string) => fetchGateway(url, { method: 'GET' });
+  const fetchAttestation: FetchAttestation = (url, { signal }) =>
+    fetchGateway(url, { method: 'GET', signal });
   const expected = { enclavePCR0: enclavePCR0 ?? '', enclavePCR16: enclavePCR16 ?? '' };
   const input = { gatewayURL, ...expected, fetch: fetchAttestation };
   const verified = await verifyGatewayAttestation(input);

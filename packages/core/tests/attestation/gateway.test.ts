@@ -111,6 +111,23 @@ describe('verifying a gateway', () => {
     expect(await verifyGatewayAttestation(input)).toEqual({ ok: false, error: 'nonce_mismatch' });
   });
 
+  it('gives up on a gateway that never answers', async () => {
+    const signals: AbortSignal[] = [];
+    const input = {
+      gatewayURL: GATEWAY_URL,
+      enclavePCR0: TEST_PCR0,
+      enclavePCR16: TEST_PCR16,
+      timeoutMilliseconds: 50,
+      fetch: (_url: string, { signal }: { signal: AbortSignal }) => {
+        signals.push(signal);
+        return new Promise<Response>(() => {});
+      }
+    };
+    const result = await verifyGatewayAttestation(input);
+    expect(result).toEqual({ ok: false, error: 'attestation_unavailable' });
+    expect(signals[0]?.aborted).toBe(true);
+  });
+
   it('trusts only the AWS root by default', async () => {
     const { fetchAttestation } = createEnclaveFetch();
     const input = {
