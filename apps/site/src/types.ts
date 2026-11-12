@@ -239,6 +239,7 @@ export interface CalloutProps {
   name: string;
   value: string;
   window?: readonly [number, number];
+  clock?: MotionClock;
 }
 
 export interface DotProps {
@@ -247,13 +248,21 @@ export interface DotProps {
   className?: string;
 }
 
+export interface MotionClock {
+  span: number;
+  delay?: number;
+  isOnce?: boolean;
+}
+
 export interface TimedProps {
   frames?: Keyframe[];
+  clock?: MotionClock;
   children: ReactNode;
 }
 
 export interface AnimateProps {
   frames: Keyframe[];
+  clock?: MotionClock;
   className?: string;
   children: ReactNode;
 }

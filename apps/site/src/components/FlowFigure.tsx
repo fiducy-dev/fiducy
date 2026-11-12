@@ -4,8 +4,9 @@ import { Animate } from '@/components/Animate';
 import { Callout } from '@/components/isoCallout';
 import { Dot, Inset, Print, RoundBox } from '@/components/isoSolids';
 import { Line } from '@/components/isometric';
-import { ENCLAVE_BLINK, ENCLAVE_OPEN_BLINK, FLOW_WINDOWS, PROVIDER_BLINK } from '@/lib/flowFigure';
-import { WIPE_FLASH, callFrames, halfFrames, keyFrames, replyFrames } from '@/lib/flowFigure';
+import { CALL_CLOCK, CALL_WINDOWS, SETUP_CLOCK, SETUP_WINDOWS } from '@/lib/flowFigure';
+import { ENCLAVE_BLINK, ENCLAVE_OPEN_BLINK, PROVIDER_BLINK, WIPE_FLASH } from '@/lib/flowFigure';
+import { callFrames, fetchFrames, keyFrames, replyFrames, storeFrames } from '@/lib/flowFigure';
 import { station } from '@/lib/flowFigure';
 import { ISO_DETAIL, ISO_DETAIL_FACE, ISO_FLASH, ISO_GHOST, ISO_LED } from '@/lib/isoStyles';
 import { ISO_PRINT_INVERSE, ISO_PRINT_QUIET } from '@/lib/isoStyles';
@@ -17,6 +18,9 @@ const ENCLAVE_HEIGHT = 1.8;
 const DISC_LEVELS = [0, 0.7, 1.4];
 const RACK_LEVELS = [0, 0.7, 1.4];
 const STACK_TOP = 2.1;
+const STACK_LID = 1.95;
+const LABEL_SIZE = 6.5;
+const CHIP_BACK = 0.6;
 const CHIP = 1.1;
 const CHIP_HEIGHT = 0.12;
 
@@ -56,8 +60,8 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
   const provider = station(layout, 3);
   const keyHome = top(browser, 0.3);
   const enclaveTop = top(enclave, ENCLAVE_HEIGHT);
-  const databaseTop = top(database, STACK_TOP);
-  const storeTop = top(store, STACK_TOP);
+  const databaseTop: Point = [database[0] + CHIP_BACK, database[1], STACK_TOP];
+  const storeTop: Point = [store[0] + CHIP_BACK, store[1], STACK_TOP];
   const providerTop = top(provider, 1.2);
   const { callouts } = layout;
 
@@ -86,7 +90,7 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
         radius={0.45}
         tone="solid"
       >
-        <Animate frames={WIPE_FLASH}>
+        <Animate frames={WIPE_FLASH} clock={CALL_CLOCK}>
           <Inset
             at={[enclave[0] - 1.2, enclave[1] - 1.2, ENCLAVE_HEIGHT]}
             size={[2.4, 2.4]}
@@ -94,10 +98,10 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
             className={ISO_FLASH}
           />
         </Animate>
-        <Animate frames={ENCLAVE_BLINK}>
+        <Animate frames={ENCLAVE_BLINK} clock={SETUP_CLOCK}>
           <Dot at={[enclave[0] + 1.3, enclave[1] + 1.7, 1.2]} className="fill-white stroke-none" />
         </Animate>
-        <Animate frames={ENCLAVE_OPEN_BLINK}>
+        <Animate frames={ENCLAVE_OPEN_BLINK} clock={CALL_CLOCK}>
           <Dot at={[enclave[0] + 0.7, enclave[1] + 1.7, 1.2]} className="fill-white stroke-none" />
         </Animate>
       </RoundBox>
@@ -111,7 +115,7 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
       {DISC_LEVELS.map((z) => (
         <RoundBox key={z} at={corner(database, 3, z)} size={[3, 3, 0.55]} radius={1.5} />
       ))}
-      <Print at={[database[0] + 1.25, database[1] + 1.5, 0.2]} face="front" size={6}>
+      <Print at={[database[0] - 0.75, database[1] + 1.05, STACK_LID]} size={LABEL_SIZE}>
         your db
       </Print>
 
@@ -124,12 +128,12 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
           />
         </RoundBox>
       ))}
-      <Print at={[store[0] + 1.5, store[1] - 1.3, 0.2]} face="side" size={6}>
+      <Print at={[store[0] - 1.05, store[1] + 1.1, STACK_LID]} size={LABEL_SIZE}>
         key store
       </Print>
 
       <RoundBox at={corner(provider, 2.8)} size={[2.8, 2.8, 1.2]} radius={0.4}>
-        <Animate frames={PROVIDER_BLINK}>
+        <Animate frames={PROVIDER_BLINK} clock={CALL_CLOCK}>
           <Dot at={[provider[0] + 0.9, provider[1] + 1.4, 0.6]} className={ISO_LED} />
         </Animate>
       </RoundBox>
@@ -137,19 +141,25 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
         openai
       </Print>
 
-      <Animate frames={keyFrames(keyHome, enclaveTop)}>
+      <Animate frames={keyFrames(keyHome, enclaveTop)} clock={SETUP_CLOCK}>
         <Chip at={keyHome} label="sk-" isSolid />
       </Animate>
-      <Animate frames={halfFrames(databaseTop, enclaveTop)}>
+      <Animate frames={storeFrames(databaseTop, enclaveTop)} clock={SETUP_CLOCK}>
         <Chip at={databaseTop} label="A" />
       </Animate>
-      <Animate frames={halfFrames(storeTop, enclaveTop)}>
+      <Animate frames={storeFrames(storeTop, enclaveTop)} clock={SETUP_CLOCK}>
         <Chip at={storeTop} label="B" isSolid />
       </Animate>
-      <Animate frames={callFrames(enclaveTop, providerTop)}>
+      <Animate frames={fetchFrames(databaseTop, enclaveTop)} clock={CALL_CLOCK}>
+        <Chip at={databaseTop} label="A" />
+      </Animate>
+      <Animate frames={fetchFrames(storeTop, enclaveTop)} clock={CALL_CLOCK}>
+        <Chip at={storeTop} label="B" isSolid />
+      </Animate>
+      <Animate frames={callFrames(enclaveTop, providerTop)} clock={CALL_CLOCK}>
         <Chip at={enclaveTop} label="call" isSolid />
       </Animate>
-      <Animate frames={replyFrames(providerTop, enclaveTop)}>
+      <Animate frames={replyFrames(providerTop, enclaveTop)} clock={CALL_CLOCK}>
         <Chip at={providerTop} label="200" />
       </Animate>
 
@@ -158,42 +168,48 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
         to={callouts.browser}
         name="key box"
         value="sk-proj-a81f…"
-        window={FLOW_WINDOWS.browser}
+        window={SETUP_WINDOWS.browser}
+        clock={SETUP_CLOCK}
       />
       <Callout
         at={enclaveTop}
         to={callouts.split}
         name="enclave"
         value="splits it"
-        window={FLOW_WINDOWS.split}
+        window={SETUP_WINDOWS.split}
+        clock={SETUP_CLOCK}
       />
       <Callout
         at={enclaveTop}
         to={callouts.open}
         name="enclave"
         value="opens it, 1 call"
-        window={FLOW_WINDOWS.open}
+        window={CALL_WINDOWS.open}
+        clock={CALL_CLOCK}
       />
       <Callout
         at={databaseTop}
         to={callouts.database}
         name="your db"
         value="half A"
-        window={FLOW_WINDOWS.database}
+        window={SETUP_WINDOWS.database}
+        clock={SETUP_CLOCK}
       />
       <Callout
         at={storeTop}
         to={callouts.store}
         name="key store"
         value="half B, sealed"
-        window={FLOW_WINDOWS.store}
+        window={SETUP_WINDOWS.store}
+        clock={SETUP_CLOCK}
       />
       <Callout
         at={providerTop}
         to={callouts.provider}
         name="openai"
         value="200 OK"
-        window={FLOW_WINDOWS.provider}
+        window={CALL_WINDOWS.provider}
+        clock={CALL_CLOCK}
       />
     </>
   );
