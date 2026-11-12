@@ -1,5 +1,13 @@
 # @fiducy/sdk
 
+## 0.3.0-beta.6
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fiducy/core@0.3.0-beta.6
+  - @fiducy/widget@0.3.0-beta.6
+
 ## 0.3.0-beta.5
 
 ### Patch Changes
