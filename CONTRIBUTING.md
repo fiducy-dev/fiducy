@@ -58,18 +58,11 @@ Pin every action to a full commit SHA with the version in a comment, like `actio
 
 ## How releases work
 
-Releases come only from this repository's `main` branch, through `.github/workflows/release.yml`:
+Releases come only from `main`, through `.github/workflows/release.yml`:
 
-1. Merging a pull request with a changeset makes the workflow open a "Version packages" pull request.
-2. Merging that pull request bumps the versions. The workflow's `publish` job then waits in the `npm-release` GitHub environment until a maintainer approves the run, and only then builds and publishes every `@fiducy/*` package and the `fiducy` CLI.
-3. npm accepts the upload through [trusted publishing](https://docs.npmjs.com/trusted-publishers): GitHub Actions proves to npm with a short-lived OIDC token that the upload comes from `fiducy-dev/fiducy`'s `release.yml`, in the `npm-release` environment. There is no npm token in GitHub secrets, so a leaked secret cannot publish a package, and neither can any other job or workflow in this repository. Every release carries a provenance statement that links it to the exact commit and workflow run.
-
-Maintainer setup, once:
-
-- GitHub, Settings, Environments: create `npm-release`, add the maintainers as required reviewers, and allow only the `main` branch.
-- npmjs.com, for each package (Package settings, Trusted publishing): Publisher: GitHub Actions. Organization or user: `fiducy-dev`. Repository: `fiducy`. Workflow filename: `release.yml`. Environment: `npm-release`.
-- Publishing access: "Require two-factor authentication and disallow tokens".
-- Then delete the `NPM_TOKEN` repository secret and revoke that token on npmjs.com.
+1. Merging a pull request with a changeset opens a "Version packages" pull request.
+2. Merging that one bumps the versions. Publishing then waits for a maintainer to approve the run in the `npm-release` environment.
+3. npm accepts the upload through [trusted publishing](https://docs.npmjs.com/trusted-publishers), so there is no npm token to leak. Every release links to the exact commit that built it.
 
 A new package needs one first publish by hand before trusted publishing can be set up for it. Every package published so far, including the `fiducy` CLI, already has one.
 
