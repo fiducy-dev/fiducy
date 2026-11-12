@@ -1,21 +1,31 @@
 import { offset } from '@/components/isometric';
-import { LOOP_MS, blink, motion, track } from '@/lib/isoMotion';
+import { blink, motion, track } from '@/lib/isoMotion';
 
-import type { FlowLayout, FlowStage, Point } from '@/types';
+import type { FlowLayout, FlowStage, MotionClock, Point } from '@/types';
 
-export const FLOW_RATE = 0.55;
+export const FLOW_RATE = 0.7;
 
-export const FLOW_HINT = 'One key, start to finish';
+export const FLOW_HINT = 'One key, every call';
 
-export const FLOW_STAGES: FlowStage[] = [
-  { until: 2000, text: 'Plaintext key · in the key box' },
-  { until: 2500, text: 'Plaintext key · enclave memory' },
-  { until: 5600, text: 'Plaintext key · nowhere, two sealed halves' },
-  { until: 7300, text: 'Plaintext key · enclave memory, 1 request' },
-  { until: LOOP_MS, text: 'Plaintext key · wiped' }
+export const SETUP_MS = 3600;
+export const CALL_MS = 3600;
+
+export const SETUP_CLOCK: MotionClock = { span: SETUP_MS, isOnce: true };
+export const CALL_CLOCK: MotionClock = { span: CALL_MS, delay: SETUP_MS };
+
+export const SETUP_STAGES: FlowStage[] = [
+  { until: 1300, text: 'Plaintext key · in the key box' },
+  { until: 1900, text: 'Plaintext key · enclave memory' },
+  { until: SETUP_MS, text: 'Plaintext key · nowhere, two sealed halves' }
 ];
 
-export const FLOW_REST_STAGE = 2;
+export const CALL_STAGES: FlowStage[] = [
+  { until: 900, text: 'halves fetched, still sealed' },
+  { until: 2600, text: 'plaintext key in enclave, 1 request' },
+  { until: CALL_MS, text: 'plaintext key wiped' }
+];
+
+export const FLOW_REST_TEXT = 'Plaintext key · nowhere, two sealed halves';
 
 export const FLOW_LAYOUTS: Record<'row' | 'column', FlowLayout> = {
   row: {
@@ -56,58 +66,86 @@ export function travel(from: Point, to: Point): string {
 }
 
 export function keyFrames(from: Point, to: Point) {
-  return motion([
-    [200, 'none', 0],
-    [500, 'none', 1],
-    [900, 'none', 1],
-    [1900, travel(to, from), 1],
-    [2050, travel(to, from), 0]
-  ]);
+  return motion(
+    [
+      [200, 'none', 0],
+      [400, 'none', 1],
+      [600, 'none', 1],
+      [1300, travel(to, from), 1],
+      [1400, travel(to, from), 0]
+    ],
+    SETUP_MS
+  );
 }
 
-export function halfFrames(home: Point, enclave: Point) {
-  return motion([
-    [2300, travel(enclave, home), 0],
-    [2450, travel(enclave, home), 1],
-    [3400, 'none', 1],
-    [4800, 'none', 1],
-    [5600, travel(enclave, home), 1],
-    [5700, travel(enclave, home), 0]
-  ]);
+export function storeFrames(home: Point, enclave: Point) {
+  return motion(
+    [
+      [1800, travel(enclave, home), 0],
+      [1900, travel(enclave, home), 1],
+      [2700, 'none', 1]
+    ],
+    SETUP_MS
+  );
+}
+
+export function fetchFrames(home: Point, enclave: Point) {
+  return motion(
+    [
+      [0, 'none', 0],
+      [100, 'none', 1],
+      [800, travel(enclave, home), 1],
+      [900, travel(enclave, home), 0]
+    ],
+    CALL_MS
+  );
 }
 
 export function callFrames(from: Point, to: Point) {
-  return motion([
-    [5800, 'none', 0],
-    [5900, 'none', 1],
-    [6500, travel(to, from), 1],
-    [6600, travel(to, from), 0]
-  ]);
+  return motion(
+    [
+      [1000, 'none', 0],
+      [1100, 'none', 1],
+      [1700, travel(to, from), 1],
+      [1800, travel(to, from), 0]
+    ],
+    CALL_MS
+  );
 }
 
 export function replyFrames(from: Point, to: Point) {
-  return motion([
-    [6600, 'none', 0],
-    [6700, 'none', 1],
-    [7200, travel(to, from), 1],
-    [7300, travel(to, from), 0]
-  ]);
+  return motion(
+    [
+      [1800, 'none', 0],
+      [1900, 'none', 1],
+      [2500, travel(to, from), 1],
+      [2600, travel(to, from), 0]
+    ],
+    CALL_MS
+  );
 }
 
-export const ENCLAVE_BLINK = blink(1900, 2500, 150);
-export const ENCLAVE_OPEN_BLINK = blink(5600, 7300, 220);
-export const WIPE_FLASH = track('opacity', [
-  [7300, 0],
-  [7400, 1],
-  [7900, 0]
-]);
-export const PROVIDER_BLINK = blink(6500, 6900, 120);
+export const ENCLAVE_BLINK = blink(1300, 1900, 150, SETUP_MS);
+export const ENCLAVE_OPEN_BLINK = blink(900, 2600, 220, CALL_MS);
+export const WIPE_FLASH = track(
+  'opacity',
+  [
+    [2600, 0],
+    [2700, 1],
+    [3200, 0]
+  ],
+  CALL_MS
+);
+export const PROVIDER_BLINK = blink(1700, 2000, 120, CALL_MS);
 
-export const FLOW_WINDOWS = {
-  browser: [300, 2000],
-  split: [2000, 3300],
-  open: [5700, 7300],
-  database: [3400, 5500],
-  store: [3400, 5500],
-  provider: [6500, 7300]
+export const SETUP_WINDOWS = {
+  browser: [200, 1300],
+  split: [1300, 2200],
+  database: [2400, 3300],
+  store: [2400, 3300]
+} as const;
+
+export const CALL_WINDOWS = {
+  open: [900, 2500],
+  provider: [1700, 2500]
 } as const;
