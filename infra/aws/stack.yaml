@@ -14,6 +14,12 @@ Parameters:
     Description: >-
       PCR0 of the enclave image. Only an enclave with this hash can decrypt with the key. Changed
       only by pin.sh, run by the key custodian role with MFA
+  EnclaveConfigSha384:
+    Type: String
+    Default: none
+    Description: >-
+      PCR16 of the enclave, the measurement of the deployment config it read at boot. Only an
+      enclave with this config can decrypt with the key. Changed only by pin.sh
   GitHubRepository:
     Type: String
     Default: fiducy-dev/fiducy
@@ -84,7 +90,8 @@ Resources:
                 Action: [s3:GetObject, s3:PutObject]
                 Resource: !Sub '${DeployBucket.Arn}/*'
               # Decrypt is listed here but the key policy denies it unless the request carries
-              # an attestation document from the enclave image named in EnclaveImageSha384.
+              # an attestation document from the enclave image named in EnclaveImageSha384, with
+              # the config named in EnclaveConfigSha384.
               - Effect: Allow
                 Action: [kms:Encrypt, kms:Decrypt, kms:DescribeKey]
                 Resource: !GetAtt WrappingKey.Arn
@@ -94,6 +101,11 @@ Resources:
               - Effect: Allow
                 Action: [ssm:GetParameter]
                 Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/fiducy/*'
+              # The host publishes the config the enclave reads at boot. A config nobody pinned
+              # gives a different PCR16, and the key refuses that enclave.
+              - Effect: Allow
+                Action: [ssm:PutParameter]
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/fiducy/enclave-config'
               - Effect: Allow
                 Action: [kms:Decrypt]
                 Resource: '*'
@@ -289,6 +301,17 @@ Resources:
             Condition:
               StringNotEqualsIgnoreCase:
                 kms:RecipientAttestation:ImageSha384: !Ref EnclaveImageSha384
+          # A separate statement, because one Deny with two conditions only applies when both
+          # mismatch. The same image with a config nobody pinned (another key, table or control
+          # plane) measures a different PCR16 and is refused.
+          - Sid: DecryptOnlyWithThePinnedConfig
+            Effect: Deny
+            Principal: '*'
+            Action: kms:Decrypt
+            Resource: '*'
+            Condition:
+              StringNotEqualsIgnoreCase:
+                kms:RecipientAttestation:PCR16: !Ref EnclaveConfigSha384
           # ReEncrypt decrypts under this key and re-encrypts under another one, without a Decrypt
           # call. The gateway never uses it, so it is refused for everyone, or a stored share could
           # be moved under a key the caller controls and opened there.

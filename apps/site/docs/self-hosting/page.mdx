@@ -44,7 +44,7 @@ There are no AWS keys in the repository. GitHub Actions assumes a role in your a
 3. Add the repository variables `AWS_DEPLOY_ROLE_ARN` (the stack's `DeployerRoleArn` output), `FIDUCY_CONTROL_PLANE_URL` (the dashboard's URL) and optionally `AWS_REGION` (default `us-east-1`) and `FIDUCY_GATEWAY_HOST` (see [Use your own domain](#use-your-own-domain)).
 4. Run the **AWS deploy** workflow from `main` and approve it.
 
-The first deploy creates the gateway token. Every deploy builds the enclave image on the host and prints its `PCR0`. If that hash is the one the KMS key already trusts, it restarts the enclave on it. If it is a new image, the workflow stops there: the enclave that was running keeps running, and the summary shows the command to trust the new one (next section). A deploy can never make the key trust an image on its own.
+The first deploy creates the gateway token. Every deploy builds the enclave image on the host, writes this deployment's enclave config, and prints two hashes: `PCR0` for the image and `PCR16` for the config. If both are the ones the KMS key already trusts, it restarts the enclave. If either is new, the workflow stops there: the enclave that was running keeps running, and the summary shows the command to trust the new build (next section). A deploy can never make the key trust anything on its own.
 
 Then copy the token into the dashboard's `FIDUCY_GATEWAY_TOKEN` and restart it:
 
@@ -56,7 +56,7 @@ To replace the token, run the workflow by hand with **rotate_token** ticked, the
 
 ## Trust a new enclave image
 
-Every change to the gateway, the enclave image or its build arguments produces a new `PCR0`. The KMS key only decrypts for the hash in its policy, so someone has to tell it to trust the new one. That someone is the key custodian role, assumed with MFA from your own machine, never CI. Add a profile once:
+The enclave image holds nothing specific to your deployment, so every deployment of the same commit has the same `PCR0`. Your settings (KMS key, table, region, dashboard URL, gateway host and the sealed gateway token) are the enclave config. The host publishes it to Parameter Store as `/fiducy/enclave-config`, and the enclave reads it at boot and measures it into `PCR16` before it makes any KMS call. Changing the code changes `PCR0`; changing a setting or rotating the token changes `PCR16`. A config the host made up, such as one that points at another KMS key or dashboard, measures to a `PCR16` nobody pinned, and the key refuses that enclave. The KMS key only decrypts for the two hashes in its policy, so someone has to tell it to trust new ones. That someone is the key custodian role, assumed with MFA from your own machine, never CI. Add a profile once:
 
 ```ini
 [profile fiducy-custodian]
@@ -68,10 +68,12 @@ mfa_serial = arn:aws:iam::<account-id>:mfa/<your-device>
 Then run the command the deploy printed:
 
 ```bash
-AWS_PROFILE=fiducy-custodian bash infra/aws/pin.sh <pcr0>
+AWS_PROFILE=fiducy-custodian bash infra/aws/pin.sh <pcr0> <pcr16>
 ```
 
-It shows the commit the host built and when, asks you to type the first characters of the hash, updates the key policy and restarts the enclave on that image. Check that the commit is the one you reviewed on `main` before you confirm: the hash proves which image runs, and the commit is what tells you what that image does.
+It shows the commit the host built and when, and the config. It recomputes `PCR16` from that config on your machine and checks that the KMS key, table and region are your stack's, so a host cannot show you one config and pin another. Then it asks you to type the first characters of `PCR0`, updates the key policy and restarts the enclave. Check that the commit is the one you reviewed on `main` and that the dashboard URL and gateway host are yours before you confirm.
+
+Upgrading a stack created before `PCR16` existed: the first deploy of the new template makes the key require a pinned `PCR16`, so the running gateway stops decrypting until you run `pin.sh` with the hashes that deploy prints. Do both back to back.
 
 The host keeps running the last pinned image through reboots and crashes. A build that nobody pinned sits on disk and is never started.
 
@@ -112,7 +114,7 @@ By default the gateway answers at `gw.<dashed-ip>.sslip.io`, a free name that re
 2. Lock down which certificates can exist for that name with a `CAA` record and Certificate Transparency alerts, as described in [Lock down the gateway hostname](/docs/security#lock-down-the-gateway-hostname).
 3. Set `FIDUCY_GATEWAY_HOST=gateway.yourapp.com` for `deploy.sh`, or as a repository variable for the workflow, and deploy.
 
-The host name is baked into the enclave image, so changing it produces a new `PCR0` that a custodian has to pin like any other change. `pin.sh` shows the host name it is about to trust next to the commit.
+The host name is part of the enclave config, so changing it produces a new `PCR16` that a custodian has to pin like any other change. `pin.sh` shows the host name it is about to trust next to the commit.
 
 ## Tear down
 
@@ -143,8 +145,9 @@ Run the app you are testing on another port (for example 5173) and add that orig
 
 | Variable | Purpose |
 | --- | --- |
+| `FIDUCY_ENCLAVE_CONFIG_PARAMETER` | Parameter Store name of the enclave config. When set (the enclave image sets `/fiducy/enclave-config`), the gateway reads it at boot, extends and locks `PCR16` with its SHA-384, and takes `AWS_REGION`, `FIDUCY_KMS_KEY_ID`, `FIDUCY_KEYS_TABLE`, `FIDUCY_CONTROL_PLANE_URL`, `FIDUCY_GATEWAY_TOKEN_CIPHERTEXT` and `FIDUCY_PUBLIC_HOST` from it |
 | `FIDUCY_KMS_KEY_ID` | KMS key ARN. When unset, `FIDUCY_MASTER_KEY` is used instead (local only) |
-| `FIDUCY_MASTER_KEY` | 32 random bytes, base64url. Local development only |
+| `FIDUCY_MASTER_KEY` | 32 random bytes, base64url. Local development only: the gateway refuses to start with it inside a Nitro enclave |
 | `AWS_KMS_ENDPOINT` | KMS proxy inside the enclave. Default `http://127.0.0.1:9999` |
 | `FIDUCY_CONTROL_PLANE_URL` | Dashboard URL for app configs, usage and key events |
 | `FIDUCY_KEYS_TABLE` | DynamoDB table for sealed key records. When unset, records stay in memory (local only) |

@@ -6,24 +6,24 @@ sources:
   odyn: public.ecr.aws/s2t1d4c6/enclaver-io/odyn@sha256:76ea70290e9b42e02f21c9fbad205a23d4a77e840f41e8541708e7a1c262b8ba
   sleeve: public.ecr.aws/s2t1d4c6/enclaver-io/enclaver-wrapper-base@sha256:50d210beeca6d569247e5802a42ca641de4877648d925c8ec6fe77a8a05e08af
 defaults:
-  cpu_count: ${ENCLAVE_CPU_COUNT}
-  memory_mb: ${ENCLAVE_MEMORY_MB}
+  cpu_count: 1
+  memory_mb: 1536
 ingress:
   - listen_port: 443
   - listen_port: 80
+# The control plane can be any host, and the same image serves every deployment, so domains are
+# not filtered here. What the enclave connects to is decided by the gateway code (in PCR0) and the
+# pinned config (in PCR16): instance metadata, KMS, DynamoDB and Parameter Store in the config's
+# region, the ACME CAs, the provider APIs and the config's control plane. Private IP addresses are
+# refused so a bug cannot be pointed at other machines in the VPC.
 egress:
   allow:
     - 169.254.169.254
-    - kms.${AWS_REGION}.amazonaws.com
-    - dynamodb.${AWS_REGION}.amazonaws.com
-    - ${CONTROL_PLANE_HOST}
-    - acme-v02.api.letsencrypt.org
-    - acme.zerossl.com
-    - api.zerossl.com
-    - api.openai.com
-    - api.anthropic.com
-    - generativelanguage.googleapis.com
-    - openrouter.ai
+    - "**"
+  deny:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
 kms_proxy:
   listen_port: 9999
 api:

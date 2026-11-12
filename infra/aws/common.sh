@@ -45,6 +45,12 @@ read_stack_outputs() {
   GATEWAY_HOST="${FIDUCY_GATEWAY_HOST:-gw.${PUBLIC_IP//./-}.sslip.io}"
 }
 
+# Same measurement as host.sh and the enclave: PCR16 = SHA-384(48 zero bytes || SHA-384(config)).
+measure_config() {
+  { head -c 48 /dev/zero; printf '%s' "$1" | openssl dgst -sha384 -binary; } |
+    openssl dgst -sha384 -r | cut -d' ' -f1
+}
+
 read_build_info() {
   aws s3 cp "s3://$BUCKET/$BUILD_INFO_KEY" - 2>/dev/null || echo '{}'
 }
@@ -66,10 +72,12 @@ wait_for_ssm() {
 host_environment() {
   jq -cn --arg bucket "$BUCKET" --arg key "$KEY_ARN" --arg ip "$PUBLIC_IP" --arg region "$AWS_REGION" \
     --arg table "$KEYS_TABLE" --arg controlPlane "$CONTROL_PLANE_URL" \
-    --arg commit "${RELEASE_COMMIT:-}" --arg gatewayHost "$GATEWAY_HOST" --arg pinnedPCR0 "${PINNED_PCR0:-}" '
+    --arg commit "${RELEASE_COMMIT:-}" --arg gatewayHost "$GATEWAY_HOST" --arg pinnedPCR0 "${PINNED_PCR0:-}" \
+    --arg pinnedPCR16 "${PINNED_PCR16:-}" '
     "export AWS_REGION=\($region) FIDUCY_BUCKET=\($bucket) FIDUCY_KMS_KEY_ID=\($key) " +
     "FIDUCY_PUBLIC_IP=\($ip) FIDUCY_KEYS_TABLE=\($table) FIDUCY_CONTROL_PLANE_URL=\($controlPlane) " +
-    "FIDUCY_RELEASE_COMMIT=\($commit) FIDUCY_PINNED_PCR0=\($pinnedPCR0) FIDUCY_GATEWAY_HOST=\($gatewayHost)"'
+    "FIDUCY_RELEASE_COMMIT=\($commit) FIDUCY_PINNED_PCR0=\($pinnedPCR0) " +
+    "FIDUCY_PINNED_PCR16=\($pinnedPCR16) FIDUCY_GATEWAY_HOST=\($gatewayHost)"'
 }
 
 host_commands() {
