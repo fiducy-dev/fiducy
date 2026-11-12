@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 
 import { joinBytes } from '../../src/attestation/bytes.ts';
 import { encodeCBOR } from '../../src/attestation/encodeCBOR.ts';
@@ -25,12 +25,15 @@ describe('reading malformed input', () => {
     for (const input of inputs) expect(await verifyTestDocument(input)).toEqual(malformed);
   });
 
-  it('refuses indefinite lengths and integers that are not minimally encoded', async () => {
-    const document = await buildDocument();
+  it('refuses indefinite lengths', async () => {
     const indefinite = new Uint8Array([0x9f, 0x40, 0xa0, 0x40, 0x40, 0xff]);
-    const nonMinimal = new Uint8Array([0x98, 0x04, ...document.slice(2)]);
     expect(await verifyTestDocument(indefinite)).toEqual(malformed);
-    expect(await verifyTestDocument(nonMinimal)).toEqual(malformed);
+  });
+
+  it('accepts a non-minimal envelope header, since the signature covers only the signed bytes', async () => {
+    const document = await buildDocument();
+    const nonMinimal = new Uint8Array([0x98, 0x04, ...document.slice(2)]);
+    expect((await verifyTestDocument(nonMinimal)).ok).toBe(true);
   });
 
   it('refuses a validly signed payload that repeats a map key', async () => {
@@ -39,6 +42,24 @@ describe('reading malformed input', () => {
     const repeated = [encodeCBOR('nonce'), encodeCBOR(new TextEncoder().encode('other'))];
     const document = await signPayload(joinBytes([header, payload.slice(1), ...repeated]));
     expect(await verifyTestDocument(document)).toEqual(malformed);
+  });
+
+  it('refuses a validly signed payload with text that is not UTF-8', async () => {
+    const payload = encodeCBOR(buildPayload());
+    const header = new Uint8Array([(payload[0] ?? 0) + 1]);
+    const invalidText = new Uint8Array([0x62, 0xff, 0xfe, 0x01]);
+    const document = await signPayload(joinBytes([header, payload.slice(1), invalidText]));
+    expect(await verifyTestDocument(document)).toEqual(malformed);
+  });
+
+  it('lets an unexpected error through instead of calling the document malformed', async () => {
+    const document = await buildDocument();
+    const verify = spyOn(crypto.subtle, 'verify').mockRejectedValue(new Error('engine failure'));
+    try {
+      await expect(verifyTestDocument(document)).rejects.toThrow('engine failure');
+    } finally {
+      verify.mockRestore();
+    }
   });
 
   it('refuses a validly signed document larger than any real attestation', async () => {

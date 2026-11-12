@@ -13,3 +13,4 @@ export { verifyNitroAttestation } from './verifyAttestation.ts';
 export type { AttestationDecision, AttestationError, AttestationPolicyInput } from './types.ts';
 export type { CBORValue, FetchAttestation, GatewayAttestationError } from './types.ts';
 export type { VerifiedAttestation, VerifyAttestationInput, VerifyGatewayInput } from './types.ts';
+export type { VerifyNitroAttestationInput } from './types.ts';
