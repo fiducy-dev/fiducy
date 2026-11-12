@@ -42,6 +42,8 @@ export const LOCAL_GATEWAY_HOSTNAMES = ['localhost', '127.0.0.1', '[::1]'];
 export const ATTESTATION_ERROR_MESSAGES = {
   attestation_unavailable: 'the gateway did not return an attestation document',
   malformed_document: 'the attestation document is malformed',
+  webcrypto_unavailable:
+    'this page has no WebCrypto to check the enclave with; serve it over HTTPS or from localhost',
   unsupported_algorithm: 'the attestation document is not signed with ES384',
   untrusted_certificate_chain: 'the attestation is not signed by the AWS Nitro root',
   certificate_not_valid_at_timestamp:
