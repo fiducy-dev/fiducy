@@ -13,8 +13,14 @@ export const CALL_MS = 3600;
 export const SETUP_CLOCK: MotionClock = { span: SETUP_MS, isOnce: true };
 export const CALL_CLOCK: MotionClock = { span: CALL_MS, delay: SETUP_MS };
 
+export const FLOW_PROVIDERS = ['openai', 'anthropic', 'gemini', 'openrouter'] as const;
+const PROVIDER_SPAN = CALL_MS * FLOW_PROVIDERS.length;
+const PROVIDER_FADE_MS = 150;
+
+export const PROVIDER_CLOCK: MotionClock = { span: PROVIDER_SPAN, delay: SETUP_MS };
+
 export const SETUP_STAGES: FlowStage[] = [
-  { until: 1300, text: 'Plaintext key · in the key box' },
+  { until: 1300, text: 'Plaintext key · in the client' },
   { until: 1900, text: 'Plaintext key · enclave memory' },
   { until: SETUP_MS, text: 'Plaintext key · nowhere, two sealed halves' }
 ];
@@ -146,6 +152,38 @@ export const SETUP_WINDOWS = {
 } as const;
 
 export const CALL_WINDOWS = {
-  open: [900, 2500],
-  provider: [1700, 2500]
+  open: [900, 2500]
 } as const;
+
+export function providerWindow(index: number): readonly [number, number] {
+  const start = index * CALL_MS;
+  return [start + 1700, start + 2500];
+}
+
+export function providerLabelFrames(index: number): Keyframe[] {
+  const start = index * CALL_MS;
+  const end = start + CALL_MS;
+  if (index === 0) {
+    return track(
+      'opacity',
+      [
+        [0, 1],
+        [end - PROVIDER_FADE_MS, 1],
+        [end, 0],
+        [PROVIDER_SPAN - PROVIDER_FADE_MS, 0],
+        [PROVIDER_SPAN, 1]
+      ],
+      PROVIDER_SPAN
+    );
+  }
+  return track(
+    'opacity',
+    [
+      [start - PROVIDER_FADE_MS, 0],
+      [start, 1],
+      [end - PROVIDER_FADE_MS, 1],
+      [end, 0]
+    ],
+    PROVIDER_SPAN
+  );
+}

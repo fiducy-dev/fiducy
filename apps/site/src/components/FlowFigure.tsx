@@ -5,11 +5,17 @@ import { Callout } from '@/components/isoCallout';
 import { Dot, Inset, Print, RoundBox } from '@/components/isoSolids';
 import { Line } from '@/components/isometric';
 import { CALL_CLOCK, CALL_WINDOWS, SETUP_CLOCK, SETUP_WINDOWS } from '@/lib/flowFigure';
+import {
+  FLOW_PROVIDERS,
+  PROVIDER_CLOCK,
+  providerLabelFrames,
+  providerWindow
+} from '@/lib/flowFigure';
 import { ENCLAVE_BLINK, ENCLAVE_OPEN_BLINK, PROVIDER_BLINK, WIPE_FLASH } from '@/lib/flowFigure';
 import { callFrames, fetchFrames, keyFrames, replyFrames, storeFrames } from '@/lib/flowFigure';
 import { station } from '@/lib/flowFigure';
 import { ISO_DETAIL, ISO_DETAIL_FACE, ISO_FLASH, ISO_GHOST, ISO_LED } from '@/lib/isoStyles';
-import { ISO_PRINT_INVERSE, ISO_PRINT_QUIET } from '@/lib/isoStyles';
+import { ISO_PRINT_CENTER, ISO_PRINT_INVERSE } from '@/lib/isoStyles';
 
 import type { FlowChipProps, FlowFigureProps, Point } from '@/types';
 
@@ -20,7 +26,8 @@ const RACK_LEVELS = [0, 0.7, 1.4];
 const STACK_TOP = 2.1;
 const STACK_LID = 1.95;
 const LABEL_SIZE = 6.5;
-const CHIP_BACK = 0.6;
+const CHIP_ASIDE = 0.62;
+const PROVIDER_HEIGHT = 1.2;
 const CHIP = 1.1;
 const CHIP_HEIGHT = 0.12;
 
@@ -30,6 +37,10 @@ function corner([x, y]: Point, size: number, z = 0): Point {
 
 function top([x, y]: Point, z: number): Point {
   return [x, y, z];
+}
+
+function aside([x, y]: Point, z: number): Point {
+  return [x - CHIP_ASIDE, y - CHIP_ASIDE, z];
 }
 
 function Chip({ at, label, isSolid }: FlowChipProps) {
@@ -58,11 +69,11 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
   const database = station(layout, 2, -3);
   const store = station(layout, 2, 3);
   const provider = station(layout, 3);
-  const keyHome = top(browser, 0.3);
-  const enclaveTop = top(enclave, ENCLAVE_HEIGHT);
-  const databaseTop: Point = [database[0] + CHIP_BACK, database[1], STACK_TOP];
-  const storeTop: Point = [store[0] + CHIP_BACK, store[1], STACK_TOP];
-  const providerTop = top(provider, 1.2);
+  const keyHome = aside(browser, 0.3);
+  const enclaveTop = aside(enclave, ENCLAVE_HEIGHT);
+  const databaseTop = aside(database, STACK_TOP);
+  const storeTop = aside(store, STACK_TOP);
+  const providerTop = aside(provider, PROVIDER_HEIGHT);
   const { callouts } = layout;
 
   return (
@@ -80,8 +91,8 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
           className={ISO_DETAIL_FACE}
         />
       </RoundBox>
-      <Print at={[browser[0] + 1.3, browser[1] + 1.75, 0]} face="front" size={6}>
-        key box
+      <Print at={top(browser, 0.3)} size={LABEL_SIZE} className={ISO_PRINT_CENTER}>
+        client
       </Print>
 
       <RoundBox
@@ -106,8 +117,9 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
         </Animate>
       </RoundBox>
       <Print
-        at={[enclave[0] - 0.4, enclave[1] + 1.1, ENCLAVE_HEIGHT]}
-        className={ISO_PRINT_INVERSE}
+        at={top(enclave, ENCLAVE_HEIGHT)}
+        size={LABEL_SIZE}
+        className={`${ISO_PRINT_INVERSE} ${ISO_PRINT_CENTER}`}
       >
         enclave
       </Print>
@@ -115,7 +127,7 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
       {DISC_LEVELS.map((z) => (
         <RoundBox key={z} at={corner(database, 3, z)} size={[3, 3, 0.55]} radius={1.5} />
       ))}
-      <Print at={[database[0] - 0.75, database[1] + 1.05, STACK_LID]} size={LABEL_SIZE}>
+      <Print at={top(database, STACK_LID)} size={LABEL_SIZE} className={ISO_PRINT_CENTER}>
         your db
       </Print>
 
@@ -128,7 +140,7 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
           />
         </RoundBox>
       ))}
-      <Print at={[store[0] - 1.05, store[1] + 1.1, STACK_LID]} size={LABEL_SIZE}>
+      <Print at={top(store, STACK_LID)} size={LABEL_SIZE} className={ISO_PRINT_CENTER}>
         key store
       </Print>
 
@@ -137,9 +149,13 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
           <Dot at={[provider[0] + 0.9, provider[1] + 1.4, 0.6]} className={ISO_LED} />
         </Animate>
       </RoundBox>
-      <Print at={[provider[0] - 0.3, provider[1] + 0.9, 1.2]} className={ISO_PRINT_QUIET}>
-        openai
-      </Print>
+      {FLOW_PROVIDERS.map((name, index) => (
+        <Animate key={name} frames={providerLabelFrames(index)} clock={PROVIDER_CLOCK}>
+          <Print at={top(provider, PROVIDER_HEIGHT)} size={LABEL_SIZE} className={ISO_PRINT_CENTER}>
+            {name}
+          </Print>
+        </Animate>
+      ))}
 
       <Animate frames={keyFrames(keyHome, enclaveTop)} clock={SETUP_CLOCK}>
         <Chip at={keyHome} label="sk-" isSolid />
@@ -166,8 +182,8 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
       <Callout
         at={keyHome}
         to={callouts.browser}
-        name="key box"
-        value="sk-proj-a81f…"
+        name="client"
+        value="sk-…a81f"
         window={SETUP_WINDOWS.browser}
         clock={SETUP_CLOCK}
       />
@@ -203,14 +219,17 @@ export const FlowFigure = memo(function FlowFigure({ layout }: FlowFigureProps) 
         window={SETUP_WINDOWS.store}
         clock={SETUP_CLOCK}
       />
-      <Callout
-        at={providerTop}
-        to={callouts.provider}
-        name="openai"
-        value="200 OK"
-        window={CALL_WINDOWS.provider}
-        clock={CALL_CLOCK}
-      />
+      {FLOW_PROVIDERS.map((name, index) => (
+        <Callout
+          key={name}
+          at={providerTop}
+          to={callouts.provider}
+          name={name}
+          value="200 OK"
+          window={providerWindow(index)}
+          clock={PROVIDER_CLOCK}
+        />
+      ))}
     </>
   );
 });
