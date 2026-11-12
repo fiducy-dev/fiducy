@@ -27,10 +27,10 @@ export function isAllZero(bytes: Bytes): boolean {
   return bytes.every((byte) => byte === 0);
 }
 
-export function decodeBase64(text: string): Bytes {
-  return Uint8Array.from(atob(text), (character) => character.charCodeAt(0));
-}
-
 export async function hashSHA256(bytes: Bytes): Promise<string> {
   return encodeHex(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)));
+}
+
+export function decodeBase64(text: string): Bytes {
+  return Uint8Array.from(atob(text), (character) => character.charCodeAt(0));
 }

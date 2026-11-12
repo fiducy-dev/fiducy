@@ -202,8 +202,6 @@ export interface TlsFrontOptions extends TlsStateOptions {
   caddyConfigPath: string;
 }
 
-export type CborValue = number | string | Uint8Array | { [key: string]: CborValue };
-
 export type EnclaveConfigField = (typeof ENCLAVE_CONFIG_FIELDS)[number];
 
 export type EnclaveConfig = Record<EnclaveConfigField, string>;

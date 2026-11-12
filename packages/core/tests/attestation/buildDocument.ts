@@ -1,47 +1,23 @@
-import { decodeBase64 } from '../../src/attestation/bytes.ts';
-import { hashSHA256, joinBytes } from '../../src/attestation/bytes.ts';
+import { hashSHA256 } from '../../src/attestation/bytes.ts';
+import { encodeCBOR } from '../../src/attestation/encodeCBOR.ts';
+import { verifyAttestationWithRoot } from '../../src/attestation/verifyAttestation.ts';
 import { TEST_INTERMEDIATE_CERTIFICATE, TEST_LEAF_CERTIFICATE } from './certificates.ts';
 import { TEST_LEAF_PRIVATE_KEY, TEST_ROOT_CERTIFICATE } from './certificates.ts';
 
-import type { CborValue } from '../../src/attestation/types.ts';
+import type { CBORValue, VerifyAttestationInput } from '../../src/attestation/types.ts';
 import type { Bytes } from '../../src/types.ts';
 import type { TestDocumentOptions } from './types.ts';
 
 export const TEST_PCR0 = 'ab'.repeat(48);
 export const TEST_NONCE = new TextEncoder().encode('nonce-7f3a9c2e41b8d605');
+
+export function decodeBase64(text: string): Bytes {
+  return Uint8Array.from(atob(text), (character) => character.charCodeAt(0));
+}
+
 export const TEST_ROOT_FINGERPRINT = await hashSHA256(decodeBase64(TEST_ROOT_CERTIFICATE));
 
-function encodeHeader(majorType: number, length: number): Bytes {
-  if (length < 24) return new Uint8Array([(majorType << 5) | length]);
-  if (length < 0x100) return new Uint8Array([(majorType << 5) | 24, length]);
-  if (length < 0x10000) return new Uint8Array([(majorType << 5) | 25, length >> 8, length & 0xff]);
-  const header = new Uint8Array(9);
-  header[0] = (majorType << 5) | 27;
-  new DataView(header.buffer).setBigUint64(1, BigInt(length));
-  return header;
-}
-
-export function encodeCbor(value: CborValue): Bytes {
-  if (value === null) return new Uint8Array([0xf6]);
-  if (typeof value === 'number') {
-    return value >= 0 ? encodeHeader(0, value) : encodeHeader(1, -1 - value);
-  }
-  if (typeof value === 'string') {
-    const text = new TextEncoder().encode(value);
-    return joinBytes([encodeHeader(3, text.length), text]);
-  }
-  if (value instanceof Uint8Array) return joinBytes([encodeHeader(2, value.length), value]);
-  if (Array.isArray(value))
-    return joinBytes([encodeHeader(4, value.length), ...value.map(encodeCbor)]);
-  if (value instanceof Map) {
-    const entries = [...value].flatMap(([key, item]) => [encodeCbor(key), encodeCbor(item)]);
-    return joinBytes([encodeHeader(5, value.size), ...entries]);
-  }
-  if (typeof value === 'boolean') return new Uint8Array([value ? 0xf5 : 0xf4]);
-  return joinBytes([encodeHeader(6, value.tag), encodeCbor(value.value)]);
-}
-
-function createPCRs(pcr0: string): Map<number, Bytes> {
+export function createTestPCRs(pcr0 = TEST_PCR0): Map<number, Bytes> {
   const pcrs = new Map<number, Bytes>();
   for (let index = 0; index < 24; index += 1) pcrs.set(index, new Uint8Array(48).fill(index + 1));
   pcrs.set(
@@ -51,12 +27,12 @@ function createPCRs(pcr0: string): Map<number, Bytes> {
   return pcrs;
 }
 
-export function buildPayload(options: TestDocumentOptions = {}): Map<string, CborValue> {
-  return new Map<string, CborValue>([
+export function buildPayload(options: TestDocumentOptions = {}): Map<string, CBORValue> {
+  return new Map<string, CBORValue>([
     ['module_id', 'i-0fiducy7test-enc019'],
     ['digest', 'SHA384'],
     ['timestamp', options.timestamp ?? Date.now()],
-    ['pcrs', options.pcrs ?? createPCRs(options.pcr0 ?? TEST_PCR0)],
+    ['pcrs', options.pcrs ?? createTestPCRs(options.pcr0)],
     ['certificate', decodeBase64(options.leafCertificate ?? TEST_LEAF_CERTIFICATE)],
     [
       'cabundle',
@@ -89,10 +65,24 @@ export function replaceBytes(source: Bytes, search: Bytes, replacement: Bytes): 
   return replaced;
 }
 
-export async function buildDocument(options: TestDocumentOptions = {}): Promise<Bytes> {
-  const protectedHeader = encodeCbor(new Map([[1, options.algorithm ?? -35]]));
-  const payload = encodeCbor(options.payload ?? buildPayload(options));
-  const structure = encodeCbor(['Signature1', protectedHeader, new Uint8Array(0), payload]);
+export async function signPayload(
+  payload: Bytes,
+  options: TestDocumentOptions = {}
+): Promise<Bytes> {
+  const protectedHeader = encodeCBOR(new Map([[1, options.algorithm ?? -35]]));
+  const structure = encodeCBOR(['Signature1', protectedHeader, new Uint8Array(0), payload]);
   const signature = await signStructure(structure, options.privateKey ?? TEST_LEAF_PRIVATE_KEY);
-  return encodeCbor({ tag: 18, value: [protectedHeader, new Map(), payload, signature] });
+  return encodeCBOR({ tag: 18, value: [protectedHeader, new Map(), payload, signature] });
+}
+
+export async function buildDocument(options: TestDocumentOptions = {}): Promise<Bytes> {
+  return signPayload(encodeCBOR(options.payload ?? buildPayload(options)), options);
+}
+
+export function verifyTestDocument(
+  document: Bytes,
+  overrides: Partial<VerifyAttestationInput> = {}
+) {
+  const input = { document, nonce: TEST_NONCE, expectedPCR0s: [TEST_PCR0], ...overrides };
+  return verifyAttestationWithRoot(input, TEST_ROOT_FINGERPRINT);
 }
