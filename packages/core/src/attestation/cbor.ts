@@ -19,9 +19,6 @@ function readUnsigned(cursor: CBORCursor, byteCount: number): number {
     value = value * 256 + readByte(cursor);
   }
   if (!Number.isSafeInteger(value)) throw new MalformedDocumentError('CBOR integer is too large');
-  if (value < (byteCount === 1 ? 24 : 2 ** (4 * byteCount))) {
-    throw new MalformedDocumentError('CBOR argument is not minimally encoded');
-  }
   return value;
 }
 

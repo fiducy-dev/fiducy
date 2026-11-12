@@ -25,12 +25,15 @@ describe('reading malformed input', () => {
     for (const input of inputs) expect(await verifyTestDocument(input)).toEqual(malformed);
   });
 
-  it('refuses indefinite lengths and integers that are not minimally encoded', async () => {
-    const document = await buildDocument();
+  it('refuses indefinite lengths', async () => {
     const indefinite = new Uint8Array([0x9f, 0x40, 0xa0, 0x40, 0x40, 0xff]);
-    const nonMinimal = new Uint8Array([0x98, 0x04, ...document.slice(2)]);
     expect(await verifyTestDocument(indefinite)).toEqual(malformed);
-    expect(await verifyTestDocument(nonMinimal)).toEqual(malformed);
+  });
+
+  it('accepts a non-minimal envelope header, since the signature covers only the signed bytes', async () => {
+    const document = await buildDocument();
+    const nonMinimal = new Uint8Array([0x98, 0x04, ...document.slice(2)]);
+    expect((await verifyTestDocument(nonMinimal)).ok).toBe(true);
   });
 
   it('refuses a validly signed payload that repeats a map key', async () => {
