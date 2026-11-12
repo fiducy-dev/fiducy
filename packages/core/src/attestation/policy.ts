@@ -57,3 +57,8 @@ export function describeSkippedAttestation(gatewayURL: string): string {
 export function describeAttestationError(error: GatewayAttestationError): string {
   return `Fiducy refused the gateway: ${ATTESTATION_ERROR_MESSAGES[error]}. No key was sent.`;
 }
+
+export function describeFailedCheck(error: unknown): string {
+  const reason = error instanceof Error ? error.message || error.name : String(error);
+  return `Fiducy refused the gateway: the enclave check failed (${reason || 'unknown error'}). No key was sent.`;
+}

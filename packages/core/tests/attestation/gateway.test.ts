@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 
 import { verifyGatewayWithRoot } from '../../src/attestation/gateway.ts';
 import { decideAttestation, describeAttestationError } from '../../src/attestation/index.ts';
-import { describeRefusedAttestation } from '../../src/attestation/index.ts';
+import { checkGateway, describeRefusedAttestation } from '../../src/attestation/index.ts';
 import { verifyGatewayAttestation } from '../../src/attestation/index.ts';
 import { TEST_PCR0, TEST_ROOT_FINGERPRINT, buildDocument } from './buildDocument.ts';
 
@@ -219,5 +219,49 @@ describe('deciding whether to check a gateway', () => {
     expect(decideAttestation({ gatewayURL: GATEWAY_URL })).toBe('refuse');
     expect(decideAttestation({ gatewayURL: GATEWAY_URL, enclavePCR0: ' , ' })).toBe('refuse');
     expect(decideAttestation({ gatewayURL: 'http://localhost.evil.dev' })).toBe('refuse');
+  });
+});
+
+describe('checking a gateway for the widget and importKeys', () => {
+  const expected = { enclavePCR0: TEST_PCR0, enclavePCR16: TEST_PCR16 };
+
+  it('refuses with a reason, skips local gateways silently and warns for the skip flag', async () => {
+    expect(await checkGateway({ gatewayURL: GATEWAY_URL })).toEqual({
+      ok: false,
+      refusal: expect.stringContaining('FIDUCY_ENCLAVE_PCR0')
+    });
+    expect(await checkGateway({ gatewayURL: 'http://localhost:8787' })).toEqual({
+      ok: true,
+      warning: null
+    });
+    const skipped = await checkGateway({ gatewayURL: GATEWAY_URL, skipAttestation: true });
+    expect(skipped).toEqual({
+      ok: true,
+      warning: expect.stringContaining('FIDUCY_SKIP_ATTESTATION')
+    });
+  });
+
+  it('turns a failed attestation into a refusal', async () => {
+    const result = await checkGateway({
+      gatewayURL: GATEWAY_URL,
+      ...expected,
+      fetch: async () => new Response('<html>')
+    });
+    expect(result).toEqual({
+      ok: false,
+      refusal: expect.stringContaining('did not return an attestation document')
+    });
+  });
+
+  it('refuses when the check itself throws, even with an empty error message', async () => {
+    const getRandomValues = spyOn(crypto, 'getRandomValues').mockImplementation(() => {
+      throw new DOMException('', 'OperationError');
+    });
+    try {
+      const result = await checkGateway({ gatewayURL: GATEWAY_URL, ...expected });
+      expect(result).toEqual({ ok: false, refusal: expect.stringContaining('OperationError') });
+    } finally {
+      getRandomValues.mockRestore();
+    }
   });
 });

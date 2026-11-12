@@ -136,6 +136,13 @@ export interface VerifyGatewayInput {
   timeoutMilliseconds?: number;
 }
 
+export interface GatewayCheckInput extends AttestationPolicyInput {
+  fetch?: FetchAttestation;
+  timeoutMilliseconds?: number;
+}
+
+export type GatewayCheck = { ok: true; warning: string | null } | { ok: false; refusal: string };
+
 export interface AttestationResponseBody {
   data: { format?: string; document?: string } | null;
 }

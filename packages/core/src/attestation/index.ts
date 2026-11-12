@@ -1,3 +1,4 @@
+export { checkGateway } from './checkGateway.ts';
 export { AWS_NITRO_ROOT_FINGERPRINT } from './constants.ts';
 export { encodeCBOR } from './encodeCBOR.ts';
 export { verifyGatewayAttestation } from './gateway.ts';
@@ -13,4 +14,4 @@ export { verifyNitroAttestation } from './verifyAttestation.ts';
 export type { AttestationDecision, AttestationError, AttestationPolicyInput } from './types.ts';
 export type { CBORValue, FetchAttestation, GatewayAttestationError } from './types.ts';
 export type { VerifiedAttestation, VerifyAttestationInput, VerifyGatewayInput } from './types.ts';
-export type { VerifyNitroAttestationInput } from './types.ts';
+export type { GatewayCheck, GatewayCheckInput, VerifyNitroAttestationInput } from './types.ts';
