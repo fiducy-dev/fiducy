@@ -61,12 +61,13 @@ Pin every action to a full commit SHA with the version in a comment, like `actio
 Releases come only from this repository's `main` branch, through `.github/workflows/release.yml`:
 
 1. Merging a pull request with a changeset makes the workflow open a "Version packages" pull request.
-2. Merging that pull request is the human approval for a release. The workflow then builds and publishes every `@fiducy/*` package.
-3. npm accepts the upload through [trusted publishing](https://docs.npmjs.com/trusted-publishers): GitHub Actions proves to npm with a short-lived OIDC token that the upload comes from `fiducy-dev/fiducy`'s `release.yml`. There is no npm token in GitHub secrets, so a leaked secret cannot publish a package. Every release carries a provenance statement that links it to the exact commit and workflow run.
+2. Merging that pull request bumps the versions. The workflow's `publish` job then waits in the `npm-release` GitHub environment until a maintainer approves the run, and only then builds and publishes every `@fiducy/*` package and the `fiducy` CLI.
+3. npm accepts the upload through [trusted publishing](https://docs.npmjs.com/trusted-publishers): GitHub Actions proves to npm with a short-lived OIDC token that the upload comes from `fiducy-dev/fiducy`'s `release.yml`, in the `npm-release` environment. There is no npm token in GitHub secrets, so a leaked secret cannot publish a package, and neither can any other job or workflow in this repository. Every release carries a provenance statement that links it to the exact commit and workflow run.
 
-Maintainer setup, once per package on npmjs.com (Package settings, Trusted publishing):
+Maintainer setup, once:
 
-- Publisher: GitHub Actions. Organization or user: `fiducy-dev`. Repository: `fiducy`. Workflow filename: `release.yml`. Environment: leave empty.
+- GitHub, Settings, Environments: create `npm-release`, add the maintainers as required reviewers, and allow only the `main` branch.
+- npmjs.com, for each package (Package settings, Trusted publishing): Publisher: GitHub Actions. Organization or user: `fiducy-dev`. Repository: `fiducy`. Workflow filename: `release.yml`. Environment: `npm-release`.
 - Publishing access: "Require two-factor authentication and disallow tokens".
 - Then delete the `NPM_TOKEN` repository secret and revoke that token on npmjs.com.
 
