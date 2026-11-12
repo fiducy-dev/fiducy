@@ -1,4 +1,4 @@
-import type { CborValue } from '../../src/attestation/types.ts';
+import type { CBORValue } from '../../src/attestation/types.ts';
 import type { Bytes } from '../../src/types.ts';
 
 export interface TestDocumentOptions {
@@ -10,5 +10,5 @@ export interface TestDocumentOptions {
   privateKey?: string;
   bundle?: string[];
   algorithm?: number;
-  payload?: Map<string, CborValue>;
+  payload?: Map<string, CBORValue>;
 }
