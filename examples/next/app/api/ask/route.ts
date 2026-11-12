@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   if (!settings.ok) return respondToMissingKey(settings);
   try {
     const { text } = await generateText({
-      model: createOpenAI(settings).chat('gpt-4o-mini'),
+      model: createOpenAI(settings).responses('gpt-4o-mini'),
       prompt: question,
       maxRetries: 0
     });
