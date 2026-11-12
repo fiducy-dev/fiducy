@@ -38,7 +38,7 @@ The image holds no deployment settings, so one commit has one `PCR0` for everyon
 
 ## Lock down the gateway hostname
 
-The attestation check proves an approved enclave answered. It is only as strong as the rule that nobody else can get a TLS certificate for the gateway's hostname. Without that rule, someone who controls the host could get their own certificate, pass `/attestation` through to the real enclave, and serve a fake key box. Three settings close that gap. They need a hostname on a domain you control: CAA can't be set on the default `gw.<ip>.sslip.io` name, and the AWS deploy uses that name today; a custom hostname option is planned.
+The attestation check proves an approved enclave answered. It is only as strong as the rule that nobody else can get a TLS certificate for the gateway's hostname. Without that rule, someone who controls the host could get their own certificate, pass `/attestation` through to the real enclave, and serve a fake key box. Three settings narrow that gap: CAA and HSTS make such a certificate much harder to get and use, and CT monitoring tells you if one is issued anyway. They do not stop someone who controls your DNS or your AWS account: they can change the CAA record or the host. They need a hostname on a domain you control, because CAA can't be set on the default `gw.<ip>.sslip.io` name. Set `FIDUCY_GATEWAY_HOST` when you deploy; see [Use your own domain](/docs/self-hosting#use-your-own-domain).
 
 **1. CAA: only the enclave's ACME account may get certificates.** The enclave's Caddy uses Let's Encrypt only. Its account key is sealed in the enclave, like the certificate key. After the first certificate, the gateway logs the account URL:
 
@@ -46,7 +46,7 @@ The attestation check proves an approved enclave answered. It is only as strong 
 docker logs fiducy-enclave 2>&1 | grep 'ACME account for the CAA accounturi'
 ```
 
-Add one CAA record on the gateway hostname (or its parent domain) with that URL:
+Add one CAA record on the gateway hostname with that URL. Put it on the gateway hostname only, not the parent domain: on the parent it would also refuse certificates for your app's own hosts.
 
 ```
 gateway.yourapp.com.  CAA  0 issue "letsencrypt.org; accounturi=https://acme-v02.api.letsencrypt.org/acme/acct/123456789"
