@@ -1,6 +1,6 @@
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 
-import type { PackageManager } from '../types.ts';
+import type { InstallResult, PackageManager } from '../types.ts';
 
 const ADD_COMMANDS: Record<PackageManager, string[]> = {
   bun: ['bun', 'add'],
@@ -13,12 +13,22 @@ export function describeInstall(manager: PackageManager, packages: string[]): st
   return [...ADD_COMMANDS[manager], ...packages].join(' ');
 }
 
-export function installPackages(root: string, manager: PackageManager, packages: string[]) {
+export function installPackages(
+  root: string,
+  manager: PackageManager,
+  packages: string[]
+): Promise<InstallResult> {
   const [command, ...prefix] = ADD_COMMANDS[manager];
-  const result = spawnSync(command ?? 'npm', [...prefix, ...packages], {
-    cwd: root,
-    stdio: 'inherit',
-    shell: process.platform === 'win32'
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = [];
+    const child = spawn(command ?? 'npm', [...prefix, ...packages], {
+      cwd: root,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: process.platform === 'win32'
+    });
+    child.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
+    child.stderr.on('data', (chunk: Buffer) => chunks.push(chunk));
+    child.on('error', (error) => resolve({ ok: false, log: error.message }));
+    child.on('close', (code) => resolve({ ok: code === 0, log: Buffer.concat(chunks).toString() }));
   });
-  return result.status === 0;
 }

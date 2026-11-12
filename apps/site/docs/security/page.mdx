@@ -8,9 +8,9 @@ description: What Fiducy protects against, how to verify it, and its limits.
 
 ## What runs where
 
-- The gateway runs inside an **AWS Nitro enclave**: no disk, no shell, no network except a fixed egress allowlist (KMS, DynamoDB for sealed records, the instance metadata service for AWS credentials, the provider APIs, the control plane).
+- The gateway runs inside an **AWS Nitro enclave**: no disk and no shell. It only connects where its code and the pinned config say: KMS, DynamoDB for sealed records, Parameter Store for its config, the instance metadata service for AWS credentials, the provider APIs and your control plane. Private IP addresses are refused.
 - **TLS ends inside the enclave.** Caddy runs in the enclave image next to the gateway, so the parent host only forwards encrypted bytes and never sees a key in transit. The certificate's private key and Caddy's state are sealed with the KMS key, so the host never holds them either.
-- The KMS key policy denies `kms:Decrypt` to everyone, account admins included, unless the request carries an attestation document whose image hash (`PCR0`) matches the enclave image you deployed. It denies `kms:ReEncrypt*` to everyone, so a stored share cannot be moved under another key and opened there.
+- The KMS key policy denies `kms:Decrypt` to everyone, account admins included, unless the request carries an attestation document whose image hash (`PCR0`) matches the enclave image you pinned and whose `PCR16` matches the config you pinned. The enclave measures its config into `PCR16` and locks it before its first KMS call, so the same image started with another KMS key, table or control plane is refused. It denies `kms:ReEncrypt*` to everyone, so a stored share cannot be moved under another key and opened there.
 
 ## Verify the enclave
 
@@ -22,9 +22,9 @@ The response holds a CBOR attestation document signed by AWS. Check that:
 
 1. the certificate chain ends at the AWS Nitro root certificate,
 2. your nonce is in the document,
-3. `PCR0` equals the hash your deploy printed and locked the KMS key to.
+3. `PCR0` and `PCR16` equal the hashes your deploy printed and you locked the KMS key to.
 
-Today the enclave image is built on your host during the deploy, so `PCR0` identifies the image you built, not a build published by Fiducy, and two builds of the same source can differ. Reproducible builds with a published `PCR0` and a `fiducy verify` command are planned.
+The image holds no deployment settings, so one commit has one `PCR0` for everyone, and `PCR16` is yours alone. Today the image is still built on your host during the deploy, and two builds of the same source can differ. Images built and signed in CI, with a published `PCR0` per release, are next.
 
 ## What it protects against
 
@@ -33,7 +33,9 @@ Today the enclave image is built on your host during the deploy, so `PCR0` ident
 | Your database leaks | Attacker gets handles. Useless without the enclave and your app secret |
 | Fiducy's storage leaks | Attacker gets records. Useless without the handles |
 | Your server logs leak | Only handles and the app secret appear; rotate the secret |
-| Someone with AWS admin on the gateway account | Cannot decrypt stored keys through KMS: it refuses `Decrypt` without the enclave's attestation and refuses `ReEncrypt` always. An admin can still rewrite the key policy, which shows in CloudTrail as `PutKeyPolicy`; watch for it |
+| Someone with AWS admin on the gateway account | Cannot decrypt stored keys through KMS: it refuses `Decrypt` without the enclave's attestation and refuses `ReEncrypt` always. Cannot rewrite the key policy either: only the key custodian role, assumed with MFA, and the account root user may. The attempt shows in CloudTrail as a denied `PutKeyPolicy`, and the stack emails you about it when `FIDUCY_ALERT_EMAIL` is set |
+| A stolen deploy credential or GitHub token | Can build and upload a new enclave image, but the key keeps trusting the old hash until a custodian pins the new one by hand. The host never starts an image that was not pinned |
+| The deploy pipeline itself (the `aws-production` job) | Can read and rotate the gateway token and run commands as root on the host through SSM. Neither opens a key: the host cannot decrypt, and a rotated token only lets the holder talk to the dashboard (see the gateway token limits). Each run needs your approval in the environment |
 
 ## Limits
 

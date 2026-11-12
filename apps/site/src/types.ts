@@ -3,37 +3,18 @@ import type { Group, LineSegments, MeshBasicMaterial } from 'three';
 import type { Object3D, OrthographicCamera, PerspectiveCamera, Scene } from 'three';
 import type { Vector2, WebGLRenderTarget } from 'three';
 
+export type DocsNavItem = {
+  label: string;
+  slug?: string;
+  children?: DocsNavItem[];
+};
+
 export type Point = readonly [number, number, number];
-
-export interface BoxProps {
-  at: Point;
-  size: Point;
-  tone?: 'line' | 'solid';
-  children?: ReactNode;
-}
-
-export interface PlateProps {
-  at: Point;
-  size: readonly [number, number];
-  className?: string;
-}
 
 export interface LineProps {
   from: Point;
   to: Point;
   className?: string;
-}
-
-export interface TagProps {
-  at: Point;
-  children: ReactNode;
-  className?: string;
-}
-
-export interface IsoKeyProps {
-  at: Point;
-  tone?: BoxProps['tone'];
-  part?: 'whole' | 'bow' | 'tip';
 }
 
 export interface IsoSceneProps {
@@ -43,9 +24,10 @@ export interface IsoSceneProps {
 export interface LeakScene {
   label: string;
   hint: string;
-  stat: string;
+  readout: string;
   title: string;
   quiet: string;
+  accent: string;
   description: string;
   scene: ReactNode;
 }
@@ -115,6 +97,54 @@ export interface InfoPageProps {
   visual: InfoVisualProps;
 }
 
+export type SetupQuestionID = 'framework' | 'auth' | 'storage' | 'chat' | 'widget' | 'providers';
+
+export type SetupStepID = SetupQuestionID | 'review';
+
+export type SetupAnswers = Record<SetupQuestionID, string[]>;
+
+export interface SetupOption {
+  id: string;
+  label: string;
+  detail: string;
+  docs?: string;
+}
+
+export interface SetupQuestion {
+  id: SetupQuestionID;
+  step: string;
+  title: string;
+  helper: string;
+  options: SetupOption[];
+  isMultiple?: boolean;
+}
+
+export interface SetupQuestionProps {
+  question: SetupQuestion;
+  chosen: string[];
+  onChoose: (optionID: string) => void;
+}
+
+export interface SetupRailProps {
+  current: number;
+  answers: SetupAnswers;
+  onJump: (index: number) => void;
+}
+
+export interface SetupReviewProps {
+  answers: SetupAnswers;
+  onJump: (index: number) => void;
+}
+
+export interface PromptEditorProps {
+  prompt: string;
+}
+
+export interface CopyFieldProps {
+  value: string;
+  event: string;
+}
+
 export interface FaqItem {
   question: string;
   answer: string;
@@ -179,22 +209,103 @@ export interface ProviderLogoProps {
   name: string;
 }
 
-export interface TypedTagProps {
+export interface RoundBoxProps {
   at: Point;
+  size: Point;
+  radius?: number;
+  tone?: 'line' | 'solid';
+  className?: string;
+  children?: ReactNode;
+}
+
+export interface InsetProps {
+  at: Point;
+  size: readonly [number, number];
+  radius?: number;
+  className?: string;
+}
+
+export interface PrintProps {
+  at: Point;
+  face?: 'top' | 'front' | 'side';
+  size?: number;
+  className?: string;
+  children: ReactNode;
+}
+
+export interface CalloutProps {
+  at: Point;
+  to: readonly [number, number];
+  name: string;
+  value: string;
+  window?: readonly [number, number];
+  clock?: MotionClock;
+}
+
+export interface DotProps {
+  at: Point;
+  radius?: number;
+  className?: string;
+}
+
+export interface MotionClock {
+  span: number;
+  delay?: number;
+  isOnce?: boolean;
+}
+
+export interface TimedProps {
+  frames?: Keyframe[];
+  clock?: MotionClock;
+  children: ReactNode;
+}
+
+export interface AnimateProps {
+  frames: Keyframe[];
+  clock?: MotionClock;
+  className?: string;
+  children: ReactNode;
+}
+
+export interface EmphasisProps {
   text: string;
-  startsAt: number;
-  className: string;
+  word?: string;
 }
 
 export interface LeakCardProps {
   leak: LeakScene;
 }
 
-export interface ShaderBoxProps {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  viewWidth: number;
-  viewHeight: number;
+export type FlowCalloutName = 'browser' | 'split' | 'open' | 'database' | 'store' | 'provider';
+
+export interface FlowLayout {
+  along: readonly [number, number];
+  across: readonly [number, number];
+  step: number;
+  callouts: Record<FlowCalloutName, readonly [number, number]>;
+}
+
+export interface FlowStage {
+  until: number;
+  text: string;
+}
+
+export interface FlowChipProps {
+  at: Point;
+  label: string;
+  isSolid?: boolean;
+}
+
+export interface FlowFigureProps {
+  layout: FlowLayout;
+}
+
+export interface FlowStageSvgProps {
+  className: string;
+  children: ReactNode;
+}
+
+export interface CipherWordProps {
+  word: string;
+  isHinted: boolean;
 }
