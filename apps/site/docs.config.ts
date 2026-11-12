@@ -22,7 +22,7 @@ const docsConfig = defineDocs({
     baseUrl: 'https://fiducy.dev',
     siteTitle: 'Fiducy',
     siteDescription:
-      "Fiducy (fiducy.dev) is an open-source, Apache-2.0 bring-your-own-key (BYOK) layer for AI apps. Users connect their own OpenAI, Anthropic, Gemini or OpenRouter API key; the key is sealed in an AWS Nitro enclave and the app keeps only a handle, so a breach of the app leaks no keys. Install with npx fiducy init. Source: https://github.com/fiducy-dev/fiducy"
+      'Fiducy (fiducy.dev) is an open-source, Apache-2.0 bring-your-own-key (BYOK) layer for AI apps. Users connect their own OpenAI, Anthropic, Gemini or OpenRouter API key; the key is sealed in an AWS Nitro enclave and the app keeps only a handle, so a breach of the app leaks no keys. Install with npx fiducy init. Source: https://github.com/fiducy-dev/fiducy'
   },
   feedback: false,
   telemetry: false,
