@@ -267,13 +267,33 @@ export interface LeakCardProps {
   leak: LeakScene;
 }
 
-export interface ShaderBoxProps {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  viewWidth: number;
-  viewHeight: number;
+export type FlowCalloutName = 'browser' | 'split' | 'open' | 'database' | 'store' | 'provider';
+
+export interface FlowLayout {
+  along: readonly [number, number];
+  across: readonly [number, number];
+  step: number;
+  callouts: Record<FlowCalloutName, readonly [number, number]>;
+}
+
+export interface FlowStage {
+  until: number;
+  text: string;
+}
+
+export interface FlowChipProps {
+  at: Point;
+  label: string;
+  isSolid?: boolean;
+}
+
+export interface FlowFigureProps {
+  layout: FlowLayout;
+}
+
+export interface FlowStageSvgProps {
+  className: string;
+  children: ReactNode;
 }
 
 export interface CipherWordProps {
