@@ -52,24 +52,9 @@ Say in the PR description how your change affects the [threat model](https://fid
 - Clear names over comments. Comment the "why", not the "what".
 - No new dependencies without a reason in the PR. Pin exact versions.
 
-## Repository settings
+## GitHub Actions
 
-These settings are part of the release security, so keep them on. Maintainers set them in GitHub under Settings.
-
-**Rules, Rulesets: a ruleset for `main`** (target: default branch, enforcement: active, no bypass list):
-
-- Restrict deletions, and block force pushes.
-- Require a pull request before merging. Required approvals: 1 once there is a second maintainer. While there is one maintainer, set it to 0, since GitHub does not let you approve your own pull request.
-- Require status checks to pass: `test` and `examples` from CI, with "Require branches to be up to date" on.
-- Optional: require signed commits. This works only with "Squash and merge", where GitHub signs the one commit that lands on `main`. A regular merge commit brings the branch's unsigned commits along, and GitHub refuses it.
-
-**Actions, General:**
-
-- Workflow permissions: "Read repository contents and packages permissions". Each workflow asks for what it needs in its own `permissions` block.
-- Keep "Allow GitHub Actions to create and approve pull requests" on. The release workflow needs it to open the "Version packages" pull request.
-- Fork pull request workflows: "Require approval for all external contributors".
-
-**Every action is pinned to a commit SHA**, with the version in a trailing comment, because a tag like `@v4` can be moved to different code by whoever controls that action's repository. Dependabot (`.github/dependabot.yml`) opens one pull request a month that bumps them together. Review that diff like any other code before you merge it.
+Pin every action to a full commit SHA with the version in a comment, like `actions/checkout@<sha> # v4.4.0`. A tag like `@v4` can be moved to different code by whoever controls that action. Dependabot bumps the pins once a month.
 
 ## How releases work
 
