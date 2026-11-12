@@ -5,8 +5,8 @@ import type { AttestationDecision, AttestationPolicyInput } from './types.ts';
 import type { GatewayAttestationError } from './types.ts';
 
 export function isLocalGateway(gatewayURL: string): boolean {
-  const hostname = URL.parse(gatewayURL)?.hostname ?? '';
-  return LOCAL_GATEWAY_HOSTNAMES.includes(hostname);
+  if (!URL.canParse(gatewayURL)) return false;
+  return LOCAL_GATEWAY_HOSTNAMES.includes(new URL(gatewayURL).hostname);
 }
 
 function readPCRLists({ enclavePCR0, enclavePCR16 }: AttestationPolicyInput) {
@@ -56,4 +56,9 @@ export function describeSkippedAttestation(gatewayURL: string): string {
 
 export function describeAttestationError(error: GatewayAttestationError): string {
   return `Fiducy refused the gateway: ${ATTESTATION_ERROR_MESSAGES[error]}. No key was sent.`;
+}
+
+export function describeFailedCheck(error: unknown): string {
+  const reason = error instanceof Error ? error.message || error.name : String(error);
+  return `Fiducy refused the gateway: the enclave check failed (${reason || 'unknown error'}). No key was sent.`;
 }

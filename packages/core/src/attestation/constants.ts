@@ -38,6 +38,7 @@ export const DER_TAGS = {
 export const ATTESTATION_ROUTE = '/attestation';
 export const ATTESTATION_FORMAT = 'aws-nitro-cbor';
 export const ATTESTATION_NONCE_LENGTH = 32;
+export const ATTESTATION_TIMEOUT_MILLISECONDS = 10000;
 export const LOCAL_GATEWAY_HOSTNAMES = ['localhost', '127.0.0.1', '[::1]'];
 export const ATTESTATION_ERROR_MESSAGES = {
   attestation_unavailable: 'the gateway did not return an attestation document',

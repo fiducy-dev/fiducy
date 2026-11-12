@@ -87,6 +87,10 @@ export interface VerifyAttestationInput {
   expectedPCR16s?: string[];
 }
 
+export interface VerifyNitroAttestationInput extends VerifyAttestationInput {
+  expectedPCR16s: string[];
+}
+
 export interface PCRMeasurements {
   pcr0: string;
   pcr16: string | null;
@@ -115,7 +119,7 @@ export type GatewayAttestationError = AttestationError | 'attestation_unavailabl
 
 export type AttestationDecision = 'verify' | 'skip' | 'refuse';
 
-export type FetchAttestation = (url: string) => Promise<Response>;
+export type FetchAttestation = (url: string, init: { signal: AbortSignal }) => Promise<Response>;
 
 export interface AttestationPolicyInput {
   gatewayURL: string;
@@ -127,9 +131,17 @@ export interface AttestationPolicyInput {
 export interface VerifyGatewayInput {
   gatewayURL: string;
   enclavePCR0: string;
-  enclavePCR16?: string | null;
+  enclavePCR16: string;
   fetch?: FetchAttestation;
+  timeoutMilliseconds?: number;
 }
+
+export interface GatewayCheckInput extends AttestationPolicyInput {
+  fetch?: FetchAttestation;
+  timeoutMilliseconds?: number;
+}
+
+export type GatewayCheck = { ok: true; warning: string | null } | { ok: false; refusal: string };
 
 export interface AttestationResponseBody {
   data: { format?: string; document?: string } | null;

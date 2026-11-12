@@ -8,12 +8,13 @@ import { ECDSA_P384_COORDINATE_LENGTH, MAXIMUM_DOCUMENT_LENGTH } from './constan
 import { decodeAttestationPayload, decodeCOSESign1 } from './document.ts';
 import { encodeSignatureStructure, isES384Signed } from './document.ts';
 import { MalformedDocumentError } from './errors.ts';
-import { assertAttestationInput } from './input.ts';
+import { assertAttestationInput, assertNitroAttestationInput } from './input.ts';
 import { normalizePCR } from './pcr.ts';
 
 import type { Bytes, Result } from '../types.ts';
 import type { AttestationError, COSESignedMessage, NitroAttestationPayload } from './types.ts';
 import type { PCRMeasurements, VerifiedAttestation, VerifyAttestationInput } from './types.ts';
+import type { VerifyNitroAttestationInput } from './types.ts';
 
 async function isSignedByLeaf(message: COSESignedMessage, leaf: Bytes): Promise<boolean> {
   if (message.signature.length !== ECDSA_P384_COORDINATE_LENGTH * 2) return false;
@@ -97,7 +98,8 @@ export async function verifyAttestationWithRoot(
 }
 
 export async function verifyNitroAttestation(
-  input: VerifyAttestationInput
+  input: VerifyNitroAttestationInput
 ): Promise<Result<VerifiedAttestation, AttestationError>> {
+  assertNitroAttestationInput(input);
   return verifyAttestationWithRoot(input, AWS_NITRO_ROOT_FINGERPRINT);
 }

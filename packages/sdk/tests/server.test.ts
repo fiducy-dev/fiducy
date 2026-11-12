@@ -221,15 +221,17 @@ describe('checking the gateway enclave before importing keys', () => {
 
   function createRemoteApp(options: Partial<CreateFiducyOptions>) {
     const requestedURLs: string[] = [];
+    const requestSignals: (AbortSignal | null | undefined)[] = [];
     const fetchGateway: FetchGateway = (url, init) => {
       requestedURLs.push(url);
+      requestSignals.push(init.signal);
       return fetch(url.replace(REMOTE_GATEWAY, harness.gatewayURL), init);
     };
     const fiducy = createTestApp(harness, IMPORT_APP, memoryStorage(), fetchGateway, {
       gatewayURL: REMOTE_GATEWAY,
       ...options
     });
-    return { fiducy, requestedURLs };
+    return { fiducy, requestedURLs, requestSignals };
   }
 
   const importOneKey = (fiducy: ReturnType<typeof createTestApp>) =>
@@ -249,9 +251,10 @@ describe('checking the gateway enclave before importing keys', () => {
 
   it('refuses a gateway whose attestation does not verify, before sending any key', async () => {
     const expected = { enclavePCR0: VALID_PCR0, enclavePCR16: VALID_PCR16 };
-    const { fiducy, requestedURLs } = createRemoteApp(expected);
+    const { fiducy, requestedURLs, requestSignals } = createRemoteApp(expected);
     await expect(importOneKey(fiducy)).rejects.toThrow('did not return an attestation document');
     expect(requestedURLs).toHaveLength(1);
+    expect(requestSignals[0]).toBeInstanceOf(AbortSignal);
     expect(requestedURLs[0]).toStartWith(`${REMOTE_GATEWAY}/attestation?nonce=`);
   });
 

@@ -1,5 +1,8 @@
-import { checkGatewayBeforeMount } from './attestGateway.ts';
+import { checkGateway } from '@fiducy/core/attestation';
+
 import { WIDGET_DEFAULT_HEIGHT, WIDGET_MESSAGE_TYPES } from './constants.ts';
+
+import type { GatewayCheck } from '@fiducy/core/attestation';
 
 import type { MountKeyWidgetOptions, MountedKeyWidget, WidgetMessage } from './types.ts';
 
@@ -51,15 +54,18 @@ export function mountKeyWidget(options: MountKeyWidgetOptions): MountedKeyWidget
     if (event.data?.type === WIDGET_MESSAGE_TYPES.error) onError?.(event.data.message);
   };
 
-  const mountAfterCheck = (refusal: string | null) => {
+  const mountAfterCheck = (check: GatewayCheck) => {
     if (!isMounted) return;
-    if (refusal) return onRefused?.(refusal);
+    if (!check.ok) {
+      onRefused?.(check.refusal);
+      return;
+    }
+    if (check.warning) console.warn(check.warning);
     window.addEventListener('message', handleMessage);
     container.appendChild(iframe);
   };
-  checkGatewayBeforeMount(options)
-    .catch((error: unknown) => (error instanceof Error ? error.message : String(error)))
-    .then(mountAfterCheck);
+  const { enclavePCR0, enclavePCR16, skipAttestation } = options;
+  checkGateway({ gatewayURL, enclavePCR0, enclavePCR16, skipAttestation }).then(mountAfterCheck);
   return {
     iframe,
     unmount: () => {

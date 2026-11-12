@@ -89,6 +89,10 @@ Buttons are at least 44px tall for touch. The iframe's own look follows the gate
 - **In settings**, so users can connect, replace and remove keys ahead of time.
 - **In the chat, when a key is missing.** Your model route answers `409` with `{ data: { reason: 'no-key', provider } }` (from `respondToMissingKey`). Render `<fiducy-key provider={provider}>` where the reply would go, and send the message again on `fiducy:connected`. With assistant-ui, [`@fiducy/assistant-ui`](/docs/assistant-ui) does this for you.
 
+## Content Security Policy
+
+Before it shows the key box, the widget fetches `/attestation` from the gateway to check the enclave, then loads the key box in an iframe from the same gateway. If your app sends a Content Security Policy, add the gateway origin to both `connect-src` and `frame-src`, for example `connect-src 'self' https://gateway.yourapp.com; frame-src https://gateway.yourapp.com`. Without `connect-src` the widget refuses the gateway with "did not return an attestation document".
+
 ## Listing keys yourself
 
 `GET /api/fiducy/keys` answers `{ data: { keys: [{ keyID, provider, createdAt }] } }` and `DELETE /api/fiducy/keys/:keyID` removes one. Refresh your list on `fiducy:keys-changed`. In React with TanStack Query, [`useFiducyKeys`](/docs/widget/react#usefiducykeys) does this.
