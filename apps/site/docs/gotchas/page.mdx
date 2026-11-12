@@ -16,7 +16,7 @@ Most of what used to go wrong is now handled for you: `init` writes the files, `
 
 **SvelteKit can't find the env at all.** SvelteKit keeps `.env` out of `process.env`. Pass its env module: `createFiducy({ env, ... })` with `import * as env from '$app/env/private'` (SvelteKit 3, which also needs the names declared in `src/env.ts`) or `import { env } from '$env/dynamic/private'` (SvelteKit 2). See [SvelteKit](/docs/frameworks/sveltekit).
 
-**"NEXT_PUBLIC_FIDUCY_APP_SECRET is a public env var."** Fiducy refuses to run when the app secret is in a variable your bundler ships to the browser (`NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`, `NUXT_PUBLIC_`, `EXPO_PUBLIC_`, `REACT_APP_`). Rename it to plain `FIDUCY_APP_SECRET`, and rotate the secret in the dashboard if that build was ever deployed. The widget needs no public variables.
+**"NEXT_PUBLIC_FIDUCY_APP_SECRET is a public env var."** Fiducy refuses to run when the app secret is in a variable your bundler ships to the browser (`NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`, `NUXT_PUBLIC_`, `EXPO_PUBLIC_`, `REACT_APP_`). Rename it to plain `FIDUCY_APP_SECRET`, and rotate the secret in the dashboard if that build was ever deployed. The widget needs no public variables. `fiducy dev` refuses to start while that name is in your env files, `createFiducy` throws as soon as your server loads it (so production builds fail), and most dev servers (Next, Vite, SvelteKit, Nuxt) load it on the first request.
 
 **Build-time env.** The env is read the first time Fiducy is used, not when the module loads, so `next build` does not need the values unless a page calls Fiducy while prerendering.
 
@@ -40,7 +40,9 @@ Most of what used to go wrong is now handled for you: `init` writes the files, `
 
 **The widget says "Test gateway" or "No enclave".** It says "Sealed in an enclave" only when the gateway can prove it runs in one (it serves `/attestation`). `npx fiducy dev --mock` and other gateways with mock providers show "Test gateway" and ask for a made-up key. Any other gateway without an enclave shows "No enclave". Deploy the gateway in an enclave for production; see [Self-hosting](/docs/self-hosting).
 
-**"Fiducy will not send keys to ... until it can check the enclave."** Your gateway is not on `localhost` and the app has no expected `PCR0`. Set `FIDUCY_ENCLAVE_PCR0` to the value your deploy printed. For a test gateway with no enclave (for example a mock gateway on Vercel), set `FIDUCY_SKIP_ATTESTATION=true` instead.
+**"Fiducy will not send keys to ... until it can check the enclave."** Your gateway is not on `localhost` and the app has no expected `PCR0` or `PCR16`. Set `FIDUCY_ENCLAVE_PCR0` and `FIDUCY_ENCLAVE_PCR16` to the values your deploy printed. For a test gateway with no enclave (for example a mock gateway on Vercel), set `FIDUCY_SKIP_ATTESTATION=true` instead.
+
+**"Fiducy will not send keys to ... with only FIDUCY_ENCLAVE_PCR0 set."** Set `FIDUCY_ENCLAVE_PCR16` to the `PCR16` your deploy printed as well. `PCR0` alone would also accept the genuine image running someone else's deployment config.
 
 **"Fiducy refused the gateway: ..."** The gateway's attestation did not match. "a different deployment config" means `PCR16` changed: the gateway was redeployed with other settings, or someone runs the image with their own config; update `FIDUCY_ENCLAVE_PCR16` only if you made that deploy. "a different image" means the enclave was redeployed from other code: if you deployed it, add the new `PCR0` to `FIDUCY_ENCLAVE_PCR0` (comma-separated) and remove the old one after the rollout; if you did not, treat it as an incident. "did not return an attestation document" means the gateway is not in an enclave or is unreachable.
 
@@ -56,7 +58,7 @@ Most of what used to go wrong is now handled for you: `init` writes the files, `
 
 **"OPENAI_API_KEY is missing."** Some code still builds the provider from your own env key, usually a template's `import { openai } from '@ai-sdk/openai'`. Build it from the user's settings: `createOpenAI(settings)`.
 
-**Wrong model API.** `createOpenAI(settings)('gpt-4o-mini')` uses the Responses API and `.chat('gpt-4o-mini')` uses Chat Completions. Both go through the gateway.
+**"Function tools with reasoning_effort are not supported ... in /v1/chat/completions."** `.chat(...)` calls Chat Completions. There, OpenAI's current reasoning models (GPT-5.4 and later, all GPT-6) accept tools only with `reasoning_effort: 'none'`, and GPT-6 Astra, GPT-6.1 Sol and GPT-6.1 Terra need the Responses API for any tool call ([OpenAI's guide](https://developers.openai.com/api/docs/guides/latest-model)). Use `createOpenAI(settings).responses(...)`, which works for every OpenAI model. Both APIs go through the gateway.
 
 **Anthropic SDK paths.** `createAnthropic(settings)` works as is. The official `@anthropic-ai/sdk` adds `/v1` itself, so pass `baseURL.replace(/\/v1$/, '')`.
 

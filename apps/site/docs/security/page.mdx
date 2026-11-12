@@ -8,15 +8,15 @@ description: What Fiducy protects against, how to verify it, and its limits.
 
 ## What runs where
 
-- The gateway runs inside an **AWS Nitro enclave**: no disk, no shell, no network except a fixed egress allowlist (KMS, DynamoDB for sealed records, the instance metadata service for AWS credentials, the provider APIs, the control plane).
+- The gateway runs inside an **AWS Nitro enclave**: no disk and no shell. It only connects where its code and the pinned config say: KMS, DynamoDB for sealed records, Parameter Store for its config, the instance metadata service for AWS credentials, the provider APIs and your control plane. Private IP addresses are refused.
 - **TLS ends inside the enclave.** Caddy runs in the enclave image next to the gateway, so the parent host only forwards encrypted bytes and never sees a key in transit. The certificate's private key and Caddy's state are sealed with the KMS key, so the host never holds them either.
-- The KMS key policy denies `kms:Decrypt` to everyone, account admins included, unless the request carries an attestation document whose image hash (`PCR0`) matches the enclave image you deployed. It denies `kms:ReEncrypt*` to everyone, so a stored share cannot be moved under another key and opened there.
+- The KMS key policy denies `kms:Decrypt` to everyone, account admins included, unless the request carries an attestation document whose image hash (`PCR0`) matches the enclave image you pinned and whose `PCR16` matches the config you pinned. The enclave measures its config into `PCR16` and locks it before its first KMS call, so the same image started with another KMS key, table or control plane is refused. It denies `kms:ReEncrypt*` to everyone, so a stored share cannot be moved under another key and opened there.
 
 ## Verify the enclave
 
 **The SDK does this for you.** Set `FIDUCY_ENCLAVE_PCR0` and `FIDUCY_ENCLAVE_PCR16` on your app server to the values your deploy printed. `PCR0` pins the enclave image; `PCR16` pins this deployment's config, so the genuine image running someone else's config (and KMS key) is refused too. Before the widget shows the key box, the user's browser asks the gateway for a fresh attestation and checks it with WebCrypto; `importKeys` does the same on your server before it sends any key. If the check fails, nothing is sent and the widget says why.
 
-The check refuses: a document not signed through the AWS Nitro root, a document made for another request (nonce), an enclave in debug mode, an enclave running any image other than the `PCR0`s you listed, and, when `FIDUCY_ENCLAVE_PCR16` is set, any deployment config other than the `PCR16`s you listed. During an upgrade, list both values separated by a comma, then drop the old one.
+The check refuses: a document not signed through the AWS Nitro root, a document made for another request (nonce), an enclave in debug mode, an enclave running any image other than the `PCR0`s you listed, and any deployment config other than the `PCR16`s you listed. Setting `PCR0` without `PCR16` is refused before anything is sent, because the genuine image running someone else's config would pass. During an upgrade, list both values separated by a comma, then drop the old one.
 
 Gateways on `localhost` (such as `npx fiducy dev`) are not checked. A test gateway that is not in an enclave needs `FIDUCY_SKIP_ATTESTATION=true`; the browser console warns every time. Any other gateway with neither variable set is refused.
 
@@ -32,9 +32,9 @@ The response holds a CBOR attestation document signed by AWS. Check that:
 
 1. the certificate chain ends at the AWS Nitro root certificate,
 2. your nonce is in the document,
-3. `PCR0` equals the hash your deploy printed and locked the KMS key to.
+3. `PCR0` and `PCR16` equal the hashes your deploy printed and you locked the KMS key to.
 
-Today the enclave image is built on your host during the deploy, so `PCR0` identifies the image you built, not a build published by Fiducy, and two builds of the same source can differ. Reproducible builds with a published `PCR0` and a `fiducy verify` command are planned. You can also check a document in code with `verifyNitroAttestation` from `@fiducy/core/attestation`.
+The image holds no deployment settings, so one commit has one `PCR0` for everyone, and `PCR16` is yours alone. Today the image is still built on your host during the deploy, and two builds of the same source can differ. Images built and signed in CI, with a published `PCR0` per release, are next. You can also check a document in code with `verifyNitroAttestation` from `@fiducy/core/attestation`.
 
 ## Lock down the gateway hostname
 
@@ -67,7 +67,9 @@ Every public CA must check CAA, so no other CA, and no other Let's Encrypt accou
 | Your database leaks | Attacker gets handles. Useless without the enclave and your app secret |
 | Fiducy's storage leaks | Attacker gets records. Useless without the handles |
 | Your server logs leak | Only handles and the app secret appear; rotate the secret |
-| Someone with AWS admin on the gateway account | Cannot decrypt stored keys through KMS: it refuses `Decrypt` without the enclave's attestation and refuses `ReEncrypt` always. An admin can still rewrite the key policy, which shows in CloudTrail as `PutKeyPolicy`; watch for it |
+| Someone with AWS admin on the gateway account | Cannot decrypt stored keys through KMS: it refuses `Decrypt` without the enclave's attestation and refuses `ReEncrypt` always. Cannot rewrite the key policy either: only the key custodian role, assumed with MFA, and the account root user may. The attempt shows in CloudTrail as a denied `PutKeyPolicy`, and the stack emails you about it when `FIDUCY_ALERT_EMAIL` is set |
+| A stolen deploy credential or GitHub token | Can build and upload a new enclave image, but the key keeps trusting the old hash until a custodian pins the new one by hand. The host never starts an image that was not pinned |
+| The deploy pipeline itself (the `aws-production` job) | Can read and rotate the gateway token and run commands as root on the host through SSM. Neither opens a key: the host cannot decrypt, and a rotated token only lets the holder talk to the dashboard (see the gateway token limits). Each run needs your approval in the environment |
 
 ## Limits
 

@@ -33,7 +33,7 @@ export async function runGenerate(argv: string[], { cwd, output }: CommandContex
   const flags = parseFlags(argv, { config: { type: 'string' }, output: { type: 'string' } });
   const schema = await loadStorageSchema(cwd, readString(flags, 'config'), output);
   if (!schema) return 1;
-  output.info(`Found ${describeSchema(schema)}`);
+  output.info(`Found ${output.style.heading(describeSchema(schema))}`);
   const file = await buildFile(schema);
   if (!file) {
     output.info(`The ${schema.tableName} table already exists. Nothing to generate.`);
@@ -42,25 +42,25 @@ export async function runGenerate(argv: string[], { cwd, output }: CommandContex
   const placement = placeSchemaFile(cwd, schema.adapter, file);
   const outputPath = readString(flags, 'output') ?? placement.path;
   if (outputPath === null) {
-    output.info(file.contents);
-    output.info(placement.hint ?? '');
+    output.info(output.style.code(file.contents));
+    output.info(output.style.prose(placement.hint ?? ''));
     return 0;
   }
   const target = resolve(cwd, outputPath);
   if (readText(target) !== null) {
     if (readFileSync(target, 'utf8') === file.contents) {
-      output.info(`${target} is already up to date.`);
+      output.info(`${output.style.path(target)} ${output.style.success('is already up to date.')}`);
       return 0;
     }
     output.error(
       `${target} already exists and fiducy never overwrites files. Here is the new content:`
     );
-    output.info(file.contents);
+    output.info(output.style.code(file.contents));
     output.error('Pass --output to write it somewhere else.');
     return 1;
   }
   writeNewFile(target, file.contents);
-  output.info(`Wrote ${target}`);
-  output.info(placement.hint ?? NEXT_STEPS[schema.adapter] ?? '');
+  output.info(`${output.style.success('Wrote')} ${output.style.path(target)}`);
+  output.info(output.style.prose(placement.hint ?? NEXT_STEPS[schema.adapter] ?? ''));
   return 0;
 }

@@ -29,7 +29,7 @@ const fiducy = createFiducy({
 | `getUserID` | `(request) => string \| null` | Your signed-in user. May be async |
 | `basePath` | `string` | Where the handler is mounted. Default `/api/fiducy` |
 | `enclavePCR0` | `string` | Optional. Defaults to `FIDUCY_ENCLAVE_PCR0`. The PCR0 your deploy printed (comma-separate several during a rollover). The widget and `importKeys` refuse a gateway whose attestation does not match. See [Verify the enclave](/docs/security#verify-the-enclave) |
-| `enclavePCR16` | `string` | Optional. Defaults to `FIDUCY_ENCLAVE_PCR16`. The PCR16 your deploy printed, which pins the deployment config. Checked when set |
+| `enclavePCR16` | `string` | Defaults to `FIDUCY_ENCLAVE_PCR16`. The PCR16 your deploy printed, which pins the deployment config. Required whenever `enclavePCR0` is set |
 | `skipAttestation` | `boolean` | Optional. Defaults to `FIDUCY_SKIP_ATTESTATION=true`. Only for a test gateway that is not in an enclave. Not needed for `localhost` gateways |
 | `env` | `Record<string, string \| undefined>` | Optional. Where to read `FIDUCY_*` from when your framework keeps `.env` out of `process.env` (SvelteKit: pass its env module) |
 | `fetch` | `typeof fetch` | Optional, for tests |

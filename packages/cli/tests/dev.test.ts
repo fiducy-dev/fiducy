@@ -4,15 +4,17 @@ import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 
 import { SAMPLE_API_KEY } from '@fiducy/testing';
-import { startDevGateway } from '../src/commands/dev.ts';
+import { reportEnvironment, runDev, startDevGateway } from '../src/commands/dev.ts';
+import { describeExposedSecret } from '../src/dev/secretGuard.ts';
 import { serveOnLocalhost } from '../src/dev/server.ts';
+import { createStyle } from '../src/style.ts';
 import { createProject, removeProjects } from './fixtures.ts';
 
 import type { Output } from '../src/types.ts';
 
 afterAll(removeProjects);
 
-const silent: Output = { info: () => undefined, error: () => undefined };
+const silent: Output = { info: () => undefined, error: () => undefined, style: createStyle(false) };
 
 function choosePort(): number {
   return 20000 + Math.floor(Math.random() * 20000);
@@ -40,6 +42,34 @@ function chat(url: string, appSecret: string, handle: string) {
 }
 
 describe('fiducy dev', () => {
+  it('adds missing env lines, swaps stale dev values and leaves real ones alone', () => {
+    const lines = [
+      'FIDUCY_GATEWAY_URL=http://localhost:3438',
+      'FIDUCY_APP_ID=app_dev_new',
+      'FIDUCY_APP_SECRET=fsk_dev_new'
+    ];
+    const root = createProject({ '.env': 'EXAMPLE_SESSION_SECRET=kept' });
+    const printed: string[] = [];
+    reportEnvironment(root, lines, { ...silent, info: (line) => printed.push(line) });
+    expect(readFileSync(join(root, '.env'), 'utf8')).toBe(
+      `EXAMPLE_SESSION_SECRET=kept\n${lines.join('\n')}\n`
+    );
+    expect(printed.join('\n')).toContain(
+      'added FIDUCY_GATEWAY_URL, FIDUCY_APP_ID, FIDUCY_APP_SECRET to .env'
+    );
+
+    const stale = createProject({
+      '.env.local':
+        'FIDUCY_GATEWAY_URL=http://localhost:3438\nFIDUCY_APP_ID=app_dev_old\nFIDUCY_APP_SECRET=fsk_dev_old\nOTHER=1\n'
+    });
+    reportEnvironment(stale, lines, silent);
+    expect(readFileSync(join(stale, '.env.local'), 'utf8')).toBe(`${lines.join('\n')}\nOTHER=1\n`);
+
+    const real = createProject({ '.env': 'FIDUCY_APP_ID=app_live\n' });
+    reportEnvironment(real, lines, silent);
+    expect(readFileSync(join(real, '.env'), 'utf8')).toBe('FIDUCY_APP_ID=app_live\n');
+  });
+
   it('keeps its secrets private and its keys across restarts', async () => {
     const root = createProject({});
     const port = choosePort();
@@ -68,6 +98,32 @@ describe('fiducy dev', () => {
     await second.close();
   });
 
+  it('answers Gemini and OpenRouter calls with --mock', async () => {
+    const gateway = await startDevGateway(
+      createProject({}),
+      { port: choosePort(), origins: [], mock: true },
+      silent
+    );
+    const { data } = await storeKey(gateway.url, gateway.state.appID);
+    const headers = {
+      'content-type': 'application/json',
+      authorization: `Bearer ${gateway.state.appSecret}`,
+      'x-key-handle': data.handle
+    };
+    const gemini = await fetch(
+      `${gateway.url}/gemini/v1beta/models/gemini-2.5-flash:generateContent`,
+      { method: 'POST', headers, body: JSON.stringify({ contents: [] }) }
+    );
+    const openrouter = await fetch(`${gateway.url}/openrouter/api/v1/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ model: 'openai/gpt-4o-mini', messages: [] })
+    });
+    expect(gemini.status).toBe(200);
+    expect(openrouter.status).toBe(200);
+    await gateway.close();
+  });
+
   it('listens on loopback only', async () => {
     const root = createProject({});
     const gateway = await startDevGateway(
@@ -91,7 +147,11 @@ describe('fiducy dev', () => {
 
   it('explains how to allow an origin the widget is not allowed on', async () => {
     const lines: string[] = [];
-    const output = { info: () => undefined, error: (line: string) => lines.push(line) };
+    const output = {
+      info: () => undefined,
+      error: (line: string) => lines.push(line),
+      style: createStyle(false)
+    };
     const root = createProject({});
     const gateway = await startDevGateway(
       root,
@@ -131,5 +191,22 @@ describe('fiducy dev', () => {
       String(port)
     );
     await taken.close();
+  });
+});
+
+describe('fiducy dev refuses a public app secret', () => {
+  it('names the variable and the file, and does not start', async () => {
+    const root = createProject({ '.env.local': 'NEXT_PUBLIC_FIDUCY_APP_SECRET=fsk_dev_x\n' });
+    const errors: string[] = [];
+    const output: Output = { ...silent, error: (message) => errors.push(message) };
+    const code = await runDev([], { cwd: root, output, environment: {} });
+    expect(code).toBe(1);
+    expect(errors[0]).toContain('NEXT_PUBLIC_FIDUCY_APP_SECRET in .env.local is a public env var');
+    expect(errors[0]).not.toContain('fsk_dev_x');
+  });
+
+  it('starts when the secret has its private name', () => {
+    const root = createProject({ '.env': 'FIDUCY_APP_SECRET=fsk_dev_x\nVITE_APP_NAME=demo\n' });
+    expect(describeExposedSecret(root)).toBeNull();
   });
 });

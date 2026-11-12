@@ -13,6 +13,12 @@ export const PCR_HEX_PATTERN = /^[0-9a-f]{96}$/;
 export const ECDSA_P384_COORDINATE_LENGTH = 48;
 export const ECDSA_WITH_SHA384_OID = '2a8648ce3d040303';
 export const BASIC_CONSTRAINTS_OID = '551d13';
+export const KEY_USAGE_OID = '551d0f';
+export const KNOWN_CRITICAL_EXTENSION_OIDS: readonly string[] = [
+  BASIC_CONSTRAINTS_OID,
+  KEY_USAGE_OID
+];
+export const KEY_CERT_SIGN_MASK = 0x04;
 export const DEBUG_MODE_PCR_INDEXES = [0, 1, 2] as const;
 export const DEPLOYMENT_CONFIG_PCR_INDEX = 16;
 export const EC_P384_IMPORT_PARAMETERS = { name: 'ECDSA', namedCurve: 'P-384' } as const;
@@ -36,6 +42,8 @@ export const LOCAL_GATEWAY_HOSTNAMES = ['localhost', '127.0.0.1', '[::1]'];
 export const ATTESTATION_ERROR_MESSAGES = {
   attestation_unavailable: 'the gateway did not return an attestation document',
   malformed_document: 'the attestation document is malformed',
+  webcrypto_unavailable:
+    'this page has no WebCrypto to check the enclave with; serve it over HTTPS or from localhost',
   unsupported_algorithm: 'the attestation document is not signed with ES384',
   untrusted_certificate_chain: 'the attestation is not signed by the AWS Nitro root',
   certificate_not_valid_at_timestamp:

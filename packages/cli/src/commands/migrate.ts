@@ -33,7 +33,7 @@ export async function runMigrate(argv: string[], { cwd, output }: CommandContext
   const flags = parseFlags(argv, { config: { type: 'string' }, yes: { type: 'boolean' } });
   const schema = await loadStorageSchema(cwd, readString(flags, 'config'), output);
   if (!schema) return 1;
-  output.info(`Found ${describeSchema(schema)}`);
+  output.info(`Found ${output.style.heading(describeSchema(schema))}`);
   if (!schema.getMigrations) {
     output.error(ORM_MIGRATE_HINTS[schema.adapter] ?? 'This storage has no migrations to run.');
     return 1;
@@ -43,7 +43,7 @@ export async function runMigrate(argv: string[], { cwd, output }: CommandContext
     output.info(`The ${schema.tableName} table already exists. Nothing to migrate.`);
     return 0;
   }
-  output.info(await migrations.compileMigrations());
+  output.info(output.style.code(await migrations.compileMigrations()));
   if (!readBoolean(flags, 'yes')) {
     if (!process.stdin.isTTY) {
       output.error('Pass --yes to apply this outside a terminal.');
@@ -52,6 +52,8 @@ export async function runMigrate(argv: string[], { cwd, output }: CommandContext
     if (!(await confirm('Apply this to your database?'))) return 1;
   }
   await migrations.runMigrations();
-  output.info(`Created ${migrations.toBeCreated.join(', ')}`);
+  output.info(
+    `${output.style.success('Created')} ${output.style.path(migrations.toBeCreated.join(', '))}`
+  );
   return 0;
 }

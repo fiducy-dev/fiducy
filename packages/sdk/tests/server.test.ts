@@ -217,6 +217,7 @@ describe('importing keys an app already stores', () => {
 describe('checking the gateway enclave before importing keys', () => {
   const REMOTE_GATEWAY = 'https://gateway.notesapp.dev';
   const VALID_PCR0 = 'ab'.repeat(48);
+  const VALID_PCR16 = '11'.repeat(48);
 
   function createRemoteApp(options: Partial<CreateFiducyOptions>) {
     const requestedURLs: string[] = [];
@@ -240,8 +241,15 @@ describe('checking the gateway enclave before importing keys', () => {
     expect(requestedURLs).toEqual([]);
   });
 
-  it('refuses a gateway whose attestation does not verify, before sending any key', async () => {
+  it('refuses PCR0 without PCR16 before asking the gateway anything', async () => {
     const { fiducy, requestedURLs } = createRemoteApp({ enclavePCR0: VALID_PCR0 });
+    await expect(importOneKey(fiducy)).rejects.toThrow('Set FIDUCY_ENCLAVE_PCR16');
+    expect(requestedURLs).toEqual([]);
+  });
+
+  it('refuses a gateway whose attestation does not verify, before sending any key', async () => {
+    const expected = { enclavePCR0: VALID_PCR0, enclavePCR16: VALID_PCR16 };
+    const { fiducy, requestedURLs } = createRemoteApp(expected);
     await expect(importOneKey(fiducy)).rejects.toThrow('did not return an attestation document');
     expect(requestedURLs).toHaveLength(1);
     expect(requestedURLs[0]).toStartWith(`${REMOTE_GATEWAY}/attestation?nonce=`);

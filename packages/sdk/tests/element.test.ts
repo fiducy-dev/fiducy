@@ -114,7 +114,8 @@ describe('<fiducy-key> with no config in the browser', () => {
     const parameters = new URLSearchParams({
       gatewayURL: harness.gatewayURL,
       appID: ELEMENT_APP.appID,
-      enclavePCR0: 'ab'.repeat(48)
+      enclavePCR0: 'ab'.repeat(48),
+      enclavePCR16: '11'.repeat(48)
     });
     const page = await openPage(`/element?${parameters}`, 'user_unproven');
     await waitForState(page, 'error');

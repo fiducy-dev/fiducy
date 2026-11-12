@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 
 import { verifyGatewayWithRoot } from '../../src/attestation/gateway.ts';
 import { decideAttestation, describeAttestationError } from '../../src/attestation/index.ts';
+import { describeRefusedAttestation } from '../../src/attestation/index.ts';
 import { verifyGatewayAttestation } from '../../src/attestation/index.ts';
 import { TEST_PCR0, TEST_ROOT_FINGERPRINT, buildDocument } from './buildDocument.ts';
 
@@ -91,13 +92,39 @@ describe('verifying a gateway', () => {
 
   it('explains a refusal in words a developer can act on', () => {
     expect(describeAttestationError('unexpected_pcr0')).toContain('FIDUCY_ENCLAVE_PCR0');
+    expect(describeAttestationError('unexpected_pcr16')).toContain('FIDUCY_ENCLAVE_PCR16');
+    expect(describeAttestationError('webcrypto_unavailable')).toContain('HTTPS');
   });
 });
 
+const TEST_PCR16 = '11'.repeat(48);
+
 describe('deciding whether to check a gateway', () => {
-  it('checks whenever an expected PCR0 is set, even with the skip flag', () => {
-    const input = { gatewayURL: GATEWAY_URL, enclavePCR0: TEST_PCR0, skipAttestation: true };
+  it('checks whenever expected PCRs are set, even with the skip flag', () => {
+    const input = {
+      gatewayURL: GATEWAY_URL,
+      enclavePCR0: TEST_PCR0,
+      enclavePCR16: TEST_PCR16,
+      skipAttestation: true
+    };
     expect(decideAttestation(input)).toBe('verify');
+  });
+
+  it('refuses PCR0 without PCR16, even for a local gateway, and says to set PCR16', () => {
+    for (const gatewayURL of [GATEWAY_URL, 'http://localhost:8787']) {
+      const input = { gatewayURL, enclavePCR0: TEST_PCR0, skipAttestation: true };
+      expect(decideAttestation(input)).toBe('refuse');
+      expect(describeRefusedAttestation(input)).toContain('FIDUCY_ENCLAVE_PCR16');
+    }
+  });
+
+  it('refuses PCR16 without PCR0 and expected values that are not PCRs', () => {
+    const onlyPCR16 = { gatewayURL: GATEWAY_URL, enclavePCR16: TEST_PCR16 };
+    const invalid = { gatewayURL: GATEWAY_URL, enclavePCR0: 'abc', enclavePCR16: TEST_PCR16 };
+    expect(decideAttestation(onlyPCR16)).toBe('refuse');
+    expect(describeRefusedAttestation(onlyPCR16)).toContain('FIDUCY_ENCLAVE_PCR0');
+    expect(decideAttestation(invalid)).toBe('refuse');
+    expect(describeRefusedAttestation(invalid)).toContain('not "abc"');
   });
 
   it('skips local gateways and gateways marked as test gateways', () => {

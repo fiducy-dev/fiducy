@@ -3,7 +3,7 @@ import { parseHandle } from '@fiducy/core';
 import { DEFAULT_BASE_PATH, MAX_IMPORT_BATCH_SIZE } from '../constants.ts';
 import { createGatewayClient } from '../gatewayClient.ts';
 import { assertGatewayAttested } from './attestation.ts';
-import { resolveConnection } from './environment.ts';
+import { refuseExposedSecret, resolveConnection } from './environment.ts';
 import { FiducyGatewayError, FiducyInputError } from './errors.ts';
 import { createProviderSettingsResolver } from './providerSettings.ts';
 import { createRouter } from './routes.ts';
@@ -41,6 +41,7 @@ function createLazyConnection(options: CreateFiducyOptions) {
 }
 
 export function createFiducy(options: CreateFiducyOptions): Fiducy {
+  refuseExposedSecret(options.env);
   const { storage, getUserID } = options;
   const basePath = (options.basePath ?? DEFAULT_BASE_PATH).replace(/\/+$/, '');
   const { readConnection, readGateway } = createLazyConnection(options);

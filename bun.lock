@@ -96,6 +96,7 @@
       "dependencies": {
         "@aws-sdk/client-dynamodb": "3.1140.0",
         "@aws-sdk/client-kms": "3.1140.0",
+        "@aws-sdk/client-ssm": "3.1140.0",
         "@fiducy/core": "workspace:*",
         "@fiducy/providers": "workspace:*",
         "@fiducy/widget": "workspace:*",
@@ -149,7 +150,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.0",
+        "@fiducy/sdk": "^0.3.0-beta.5",
         "ai": "7.0.139",
         "express": "5.3.0",
       },
@@ -165,8 +166,8 @@
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
         "@farm.js/core": "0.1.40",
-        "@fiducy/farm": "^0.3.0-beta.0",
-        "@fiducy/sdk": "^0.3.0-beta.0",
+        "@fiducy/farm": "^0.3.0-beta.5",
+        "@fiducy/sdk": "^0.3.0-beta.5",
         "ai": "7.0.139",
         "react": "19.2.7",
         "react-dom": "19.2.7",
@@ -180,7 +181,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.0",
+        "@fiducy/sdk": "^0.3.0-beta.5",
         "ai": "7.0.139",
         "next": "16.4.4",
         "react": "19.2.7",
@@ -197,7 +198,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.0",
+        "@fiducy/sdk": "^0.3.0-beta.5",
         "ai": "7.0.139",
         "nuxt": "4.6.4",
         "vue": "3.5.44",
@@ -208,7 +209,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.0",
+        "@fiducy/sdk": "^0.3.0-beta.5",
         "@react-router/node": "8.5.1",
         "ai": "7.0.139",
         "isbot": "5.1.36",
@@ -229,7 +230,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.0",
+        "@fiducy/sdk": "^0.3.0-beta.5",
         "ai": "7.0.139",
       },
       "devDependencies": {
@@ -245,7 +246,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/openai": "4.0.93",
-        "@fiducy/sdk": "^0.3.0-beta.0",
+        "@fiducy/sdk": "^0.3.0-beta.5",
         "@tanstack/react-router": "1.170.46",
         "@tanstack/react-start": "1.169.4",
         "ai": "7.0.139",
@@ -262,24 +263,24 @@
     },
     "packages/assistant-ui": {
       "name": "@fiducy/assistant-ui",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.5",
       "devDependencies": {
         "@assistant-ui/react": "0.15.28",
-        "@fiducy/sdk": "0.3.0-beta.0",
+        "@fiducy/sdk": "0.3.0-beta.5",
         "@types/react": "19.2.2",
         "ai": "7.0.139",
         "react": "19.2.7",
       },
       "peerDependencies": {
         "@assistant-ui/react": "^0.15.28",
-        "@fiducy/sdk": "^0.3.0-beta.0",
+        "@fiducy/sdk": "^0.3.0-beta.5",
         "ai": "^7.0.139",
         "react": "^19.2.0",
       },
     },
     "packages/cli": {
       "name": "fiducy",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.5",
       "bin": {
         "fiducy": "./dist/index.js",
       },
@@ -287,34 +288,34 @@
         "jiti": "2.7.0",
       },
       "devDependencies": {
-        "@fiducy/core": "0.3.0-beta.0",
+        "@fiducy/core": "0.3.0-beta.5",
         "@fiducy/gateway": "workspace:*",
-        "@fiducy/providers": "0.3.0-beta.0",
-        "@fiducy/sdk": "0.3.0-beta.0",
+        "@fiducy/providers": "0.3.0-beta.5",
+        "@fiducy/sdk": "0.3.0-beta.5",
         "@fiducy/testing": "0.1.0",
       },
     },
     "packages/core": {
       "name": "@fiducy/core",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.5",
     },
     "packages/farm": {
       "name": "@fiducy/farm",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.5",
       "devDependencies": {
         "@farm.js/core": "0.1.40",
-        "@fiducy/sdk": "0.3.0-beta.0",
+        "@fiducy/sdk": "0.3.0-beta.5",
       },
       "peerDependencies": {
         "@farm.js/core": "^0.1.40",
-        "@fiducy/sdk": "^0.3.0-beta.0",
+        "@fiducy/sdk": "^0.3.0-beta.5",
       },
     },
     "packages/providers": {
       "name": "@fiducy/providers",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.5",
       "dependencies": {
-        "@fiducy/core": "0.3.0-beta.0",
+        "@fiducy/core": "0.3.0-beta.5",
       },
       "devDependencies": {
         "@fiducy/testing": "0.1.0",
@@ -322,16 +323,18 @@
     },
     "packages/sdk": {
       "name": "@fiducy/sdk",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.5",
       "dependencies": {
-        "@fiducy/core": "0.3.0-beta.0",
-        "@fiducy/widget": "0.3.0-beta.0",
+        "@fiducy/core": "0.3.0-beta.5",
+        "@fiducy/widget": "0.3.0-beta.5",
       },
       "devDependencies": {
         "@ai-sdk/anthropic": "4.0.79",
+        "@ai-sdk/google": "4.0.95",
         "@ai-sdk/openai": "4.0.93",
         "@fiducy/testing": "0.1.0",
         "@libsql/client": "0.18.0",
+        "@openrouter/ai-sdk-provider": "3.1.0",
         "@prisma/adapter-libsql": "7.10.1",
         "@prisma/adapter-mariadb": "7.10.1",
         "@prisma/adapter-pg": "7.10.1",
@@ -373,9 +376,9 @@
     },
     "packages/widget": {
       "name": "@fiducy/widget",
-      "version": "0.3.0-beta.0",
+      "version": "0.3.0-beta.5",
       "dependencies": {
-        "@fiducy/core": "0.3.0-beta.0",
+        "@fiducy/core": "0.3.0-beta.5",
       },
     },
   },
@@ -422,6 +425,8 @@
     "@aws-sdk/client-dynamodb": ["@aws-sdk/client-dynamodb@3.1140.0", "", { "dependencies": { "@aws-sdk/core": "^3.978.1", "@aws-sdk/credential-provider-node": "^3.972.84", "@aws-sdk/dynamodb-codec": "^3.973.46", "@aws-sdk/middleware-endpoint-discovery": "^3.972.31", "@aws-sdk/types": "^3.974.6", "@smithy/core": "^3.35.0", "@smithy/fetch-http-handler": "^5.8.0", "@smithy/node-http-handler": "^4.12.1", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-MNGF0wUMcxtyhkqxfmS1HiSjmRCDX51S2bnAKmO7dBPKTvAO3ybRSQT/eOTndGpY/mLSLTZH/4j2Y4+eEH/DhQ=="],
 
     "@aws-sdk/client-kms": ["@aws-sdk/client-kms@3.1140.0", "", { "dependencies": { "@aws-sdk/core": "^3.978.1", "@aws-sdk/credential-provider-node": "^3.972.84", "@aws-sdk/types": "^3.974.6", "@smithy/core": "^3.35.0", "@smithy/fetch-http-handler": "^5.8.0", "@smithy/node-http-handler": "^4.12.1", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-Wi/oCH6UrbGN1NomA+if97XraHVjXTPv8xhYA5gvaMA/hXrYRzLaD9HGOPiTiWKlvCwp7prsNHDn4F0Nrjyclg=="],
+
+    "@aws-sdk/client-ssm": ["@aws-sdk/client-ssm@3.1140.0", "", { "dependencies": { "@aws-sdk/core": "^3.978.1", "@aws-sdk/credential-provider-node": "^3.972.84", "@aws-sdk/types": "^3.974.6", "@smithy/core": "^3.35.0", "@smithy/fetch-http-handler": "^5.8.0", "@smithy/node-http-handler": "^4.12.1", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-4Twih/5t0R0yKTqqJkoTcbs8/zPZCmOrA7yA/Hc+pbOAVhm/vf8sNFCWlehJ48O++korA7J2LZzn/2fz6U0HJw=="],
 
     "@aws-sdk/core": ["@aws-sdk/core@3.979.0", "", { "dependencies": { "@aws-sdk/types": "^3.975.0", "@aws-sdk/xml-builder": "^3.972.42", "@aws/lambda-invoke-store": "^0.3.0", "@smithy/core": "^3.37.0", "@smithy/signature-v4": "^5.7.4", "@smithy/types": "^4.19.0", "bowser": "^2.11.0", "tslib": "^2.6.2" } }, "sha512-E3eeLhIOxlIc9NPsZbtpHuk8W/gEZ3YvFauNPrrrtNtF7Pq1cwSrFwA51Z1EIoUY6VFvTyltyLRNUhaa0aSKSA=="],
 
@@ -988,6 +993,8 @@
     "@oozcitak/url": ["@oozcitak/url@3.0.0", "", { "dependencies": { "@oozcitak/infra": "^2.0.2", "@oozcitak/util": "^10.0.0" } }, "sha512-ZKfET8Ak1wsLAiLWNfFkZc/BraDccuTJKR6svTYc7sVjbR+Iu0vtXdiDMY4o6jaFl5TW2TlS7jbLl4VovtAJWQ=="],
 
     "@oozcitak/util": ["@oozcitak/util@10.0.0", "", {}, "sha512-hAX0pT/73190NLqBPPWSdBVGtbY6VOhWYK3qqHqtXQ1gK7kS2yz4+ivsN07hpJ6I3aeMtKP6J6npsEKOAzuTLA=="],
+
+    "@openrouter/ai-sdk-provider": ["@openrouter/ai-sdk-provider@3.1.0", "", { "peerDependencies": { "ai": "^7.0.0", "zod": "^3.25.76 || ^4.1.8" } }, "sha512-BQy1TA9fKrh47s9ivsO6FY5QimN7GUF0i8Qon3pkxQclEgShso0dClpcWn8OIyPLEZZPFaFKgI8TW4S/O0p0Dw=="],
 
     "@opentelemetry/api": ["@opentelemetry/api@1.9.1", "", {}, "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="],
 
@@ -3194,6 +3201,8 @@
     "@assistant-ui/ai-sdk/@ai-sdk/react": ["@ai-sdk/react@4.0.160", "", { "dependencies": { "@ai-sdk/mcp": "2.0.86", "@ai-sdk/provider": "4.0.34", "@ai-sdk/provider-utils": "5.0.70", "ai": "7.0.156", "swr": "^2.4.1", "throttleit": "2.1.0" }, "peerDependencies": { "react": "^18 || ~19.0.1 || ~19.1.2 || ^19.2.1" } }, "sha512-SgvmRHKWbb2Wqs4zAPYqLAmiZTxpKItxG/EycbOkPr6KUxwzJemgaQ30RdRQBbJ5zerHh8c2T2cqm9eg8hl78A=="],
 
     "@assistant-ui/react/zod": ["zod@4.6.7", "", {}, "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg=="],
+
+    "@aws-sdk/client-ssm/@aws-sdk/core": ["@aws-sdk/core@3.979.1", "", { "dependencies": { "@aws-sdk/types": "^3.975.0", "@aws-sdk/xml-builder": "^3.972.42", "@aws/lambda-invoke-store": "^0.3.0", "@smithy/core": "^3.38.0", "@smithy/signature-v4": "^5.7.5", "@smithy/types": "^4.19.0", "bowser": "^2.11.0", "tslib": "^2.6.2" } }, "sha512-ayOlV1VhLNMiq8PW9ZkVobG4gkldnUoHjG69yy2b8j+VYFlhz/uAL7ZdYQAoQ+eShtGUdNDnnG5rxDg6yUJrOg=="],
 
     "@aws-sdk/dynamodb-codec/@aws-sdk/core": ["@aws-sdk/core@3.979.1", "", { "dependencies": { "@aws-sdk/types": "^3.975.0", "@aws-sdk/xml-builder": "^3.972.42", "@aws/lambda-invoke-store": "^0.3.0", "@smithy/core": "^3.38.0", "@smithy/signature-v4": "^5.7.5", "@smithy/types": "^4.19.0", "bowser": "^2.11.0", "tslib": "^2.6.2" } }, "sha512-ayOlV1VhLNMiq8PW9ZkVobG4gkldnUoHjG69yy2b8j+VYFlhz/uAL7ZdYQAoQ+eShtGUdNDnnG5rxDg6yUJrOg=="],
 

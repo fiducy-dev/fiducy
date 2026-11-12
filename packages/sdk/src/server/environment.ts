@@ -65,14 +65,17 @@ function readSkipAttestation(options: CreateFiducyOptions): boolean {
   return readEnvironmentVariable('FIDUCY_SKIP_ATTESTATION', options.env) === 'true';
 }
 
+export function refuseExposedSecret(variables: EnvironmentVariables | undefined) {
+  const exposedSecret = findExposedSecret(variables);
+  if (!exposedSecret) return;
+  throw new FiducyConfigurationError(
+    `${exposedSecret} is a public env var, so the app secret ships to the browser. Rename it to FIDUCY_APP_SECRET and rotate the secret in the Fiducy dashboard.`
+  );
+}
+
 export function resolveConnection(options: CreateFiducyOptions): FiducyConnection {
   const variables = options.env;
-  const exposedSecret = findExposedSecret(variables);
-  if (exposedSecret) {
-    throw new FiducyConfigurationError(
-      `${exposedSecret} is a public env var, so the app secret ships to the browser. Rename it to FIDUCY_APP_SECRET and rotate the secret in the Fiducy dashboard.`
-    );
-  }
+  refuseExposedSecret(variables);
   const gatewayURL = options.gatewayURL ?? readEnvironmentVariable('FIDUCY_GATEWAY_URL', variables);
   const appSecret = options.appSecret ?? readEnvironmentVariable('FIDUCY_APP_SECRET', variables);
   return {

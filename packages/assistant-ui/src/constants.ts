@@ -11,3 +11,7 @@ export const SERVER_TOOL_CALL_PREFIX = 'fiducy_';
 export { PROVIDER_LABELS };
 
 export const PROVIDERS = Object.keys(PROVIDER_LABELS) as GatewayProvider[];
+
+/** The gateway marks its own failures with this header; the value below means the sealed key is gone. */
+export const GATEWAY_ERROR_HEADER = 'x-fiducy-error';
+export const KEY_UNAVAILABLE_ERROR = 'key-unavailable';

@@ -2,8 +2,11 @@ import type { DeleteItemCommand, GetItemCommand, PutItemCommand } from '@aws-sdk
 import type { DeleteItemCommandOutput, GetItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import type { PutItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import type { DecryptCommand, EncryptCommand } from '@aws-sdk/client-kms';
+import type { GetParameterCommand, GetParameterCommandOutput } from '@aws-sdk/client-ssm';
 import type { Bytes, KeyWrapper, Result, SealedRecord } from '@fiducy/core';
 import type { ProviderName, ProviderRegistry, TokenUsage } from '@fiducy/providers';
+
+import type { ENCLAVE_CONFIG_FIELDS } from './constants';
 
 export type RecordStorage = 'fiducy' | 'app';
 
@@ -201,6 +204,19 @@ export interface TlsStateKeeper {
 
 export interface TlsFrontOptions extends TlsStateOptions {
   caddyConfigPath: string;
+}
+
+export type EnclaveConfigField = (typeof ENCLAVE_CONFIG_FIELDS)[number];
+
+export type EnclaveConfig = Record<EnclaveConfigField, string>;
+
+export interface EnclaveConfigMeasurement {
+  digest: Bytes;
+  expectedPCR: Bytes;
+}
+
+export interface ParameterSender {
+  send(command: GetParameterCommand): Promise<GetParameterCommandOutput>;
 }
 
 export interface InstanceRoleCredentials {
