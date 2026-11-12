@@ -3,6 +3,7 @@ import { LineBasicMaterial, LineDashedMaterial, LineSegments, Mesh } from 'three
 import { DataTexture, MeshBasicMaterial, MeshToonMaterial, NearestFilter } from 'three';
 import { Path, RedFormat, Shape } from 'three';
 
+import type { PulseRing } from '@/types';
 import type { BufferGeometry, Material } from 'three';
 
 const INK = 0x000000;
@@ -18,19 +19,20 @@ const COLLAR_HALF_HEIGHT = 0.2;
 const COLLAR_LENGTH = 0.16;
 const TONES = [188, 226, 255];
 const SPLIT_X = 0.35;
+const GLASS_LINE_GRAY = 0x8f8f8f;
 
 export const inkLines = new LineBasicMaterial({ color: INK });
 
-export const glassLines = new LineBasicMaterial({ color: 0x8f8f8f });
+export const glassLines = new LineBasicMaterial({ color: GLASS_LINE_GRAY });
 
 export function createLineArt(
   geometry: BufferGeometry,
   faces: Material,
-  lines: LineBasicMaterial = inkLines
+  edgeMaterial: LineBasicMaterial = inkLines
 ): Group {
   const group = new Group();
   group.add(new Mesh(geometry, faces));
-  group.add(new LineSegments(new EdgesGeometry(geometry, EDGE_ANGLE), lines));
+  group.add(new LineSegments(new EdgesGeometry(geometry, EDGE_ANGLE), edgeMaterial));
   return group;
 }
 
@@ -63,7 +65,7 @@ export function createGlassFaces(): MeshBasicMaterial {
   });
 }
 
-export function createPulseRing(): Mesh {
+export function createPulseRing(): PulseRing {
   const ring = new Mesh(
     new RingGeometry(0.34, 0.37, 48),
     new MeshBasicMaterial({ color: INK, transparent: true, opacity: 0, depthWrite: false })

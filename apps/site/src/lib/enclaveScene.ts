@@ -1,12 +1,12 @@
 import { AmbientLight, BoxGeometry, DirectionalLight, Group, MathUtils, Scene } from 'three';
 
+import { PROVIDERS } from '@/lib/constants';
 import { createDashedBox, createDashedTrack, createGlassFaces } from '@/lib/enclaveGeometry';
 import { createHandleHalfGeometry, createLineArt, createSolidFaces } from '@/lib/enclaveGeometry';
 import { GLASS_OPACITY, createPulseRing, createStoredHalfGeometry } from '@/lib/enclaveGeometry';
 import { glassLines } from '@/lib/enclaveGeometry';
 
-import type { EnclaveParts, KeyHalves } from '@/types';
-import type { MeshBasicMaterial } from 'three';
+import type { EnclaveParts, KeyHalves, PulseRing } from '@/types';
 
 const VAULT_SIZE = 3.0;
 const TRACK_LENGTH = 6.6;
@@ -16,9 +16,11 @@ const STEP_STARTS = [0, 0.22, 0.44, 0.74];
 const JOINED_X = 0.17;
 const SPLIT_POINT = JOINED_X + 0.35;
 const KEY_OPEN_GRAY = 0x8c8c8c;
-const PROVIDER_COUNT = 4;
 const KEY_SCALE = 1.12;
 const KEY_SEALED_WHITE = 0xffffff;
+const LIGHT_COLOR = 0xffffff;
+const LIGHT_INTENSITY = 1.6;
+const GLASS_WIPED_OPACITY = 0.95;
 
 function createKeyHalves(): KeyHalves {
   const keyFaces = createSolidFaces();
@@ -38,8 +40,8 @@ function createRequest(): Group {
 
 export function createEnclaveParts(): EnclaveParts {
   const scene = new Scene();
-  scene.add(new AmbientLight(0xffffff, 1.6));
-  const sun = new DirectionalLight(0xffffff, 1.6);
+  scene.add(new AmbientLight(LIGHT_COLOR, LIGHT_INTENSITY));
+  const sun = new DirectionalLight(LIGHT_COLOR, LIGHT_INTENSITY);
   sun.position.set(-2, 5, 6);
   scene.add(sun);
   const turntable = new Group();
@@ -81,12 +83,19 @@ function phaseProgress(cycle: number, start: number, end: number): number {
 }
 
 function settle(progress: number): number {
-  const t = MathUtils.clamp(progress, 0, 1) - 1;
-  return 1 + 2.2 * t * t * t + 1.2 * t * t;
+  const remaining = MathUtils.clamp(progress, 0, 1) - 1;
+  return 1 + 2.2 * remaining ** 3 + 1.2 * remaining ** 2;
+}
+
+function animatePulse(pulse: PulseRing, cycle: number): void {
+  const pulseProgress = MathUtils.clamp((cycle - 0.22) / 0.1, 0, 1);
+  pulse.visible = pulseProgress > 0 && pulseProgress < 1;
+  pulse.scale.setScalar(1 + pulseProgress * 2.2);
+  pulse.material.opacity = (1 - pulseProgress) * 0.8;
 }
 
 export function readProviderIndex(elapsedSeconds: number): number {
-  return Math.floor(elapsedSeconds / CYCLE_SECONDS) % PROVIDER_COUNT;
+  return Math.floor(elapsedSeconds / CYCLE_SECONDS) % PROVIDERS.length;
 }
 
 export function readEnclaveStep(elapsedSeconds: number): number {
@@ -107,11 +116,7 @@ export function animateEnclave(parts: EnclaveParts, elapsedSeconds: number): voi
   parts.request.position.x = MathUtils.lerp(0, TRACK_END, phaseProgress(cycle, 0.48, 0.72));
   parts.request.visible = cycle > 0.46 && cycle < 0.74;
   parts.attestationFrame.rotation.y = elapsedSeconds * 0.12;
-  const ring = MathUtils.clamp((cycle - 0.22) / 0.1, 0, 1);
-  const pulseMaterial = parts.pulse.material as MeshBasicMaterial;
-  parts.pulse.visible = ring > 0 && ring < 1;
-  parts.pulse.scale.setScalar(1 + ring * 2.2);
-  pulseMaterial.opacity = (1 - ring) * 0.8;
-  const wipe = Math.max(0, 1 - Math.abs(cycle - 0.75) / 0.04);
-  parts.glass.opacity = GLASS_OPACITY + (0.95 - GLASS_OPACITY) * wipe;
+  animatePulse(parts.pulse, cycle);
+  const wipeStrength = Math.max(0, 1 - Math.abs(cycle - 0.75) / 0.04);
+  parts.glass.opacity = MathUtils.lerp(GLASS_OPACITY, GLASS_WIPED_OPACITY, wipeStrength);
 }

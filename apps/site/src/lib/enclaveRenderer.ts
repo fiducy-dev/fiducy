@@ -100,7 +100,7 @@ export function startEnclaveRenderer(
 ): () => void {
   let providerIndex = -1;
   const renderer = new WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, MAX_PIXEL_RATIO));
   const camera = new PerspectiveCamera(28, 1, 0.1, 100);
   camera.position.set(0, 0, 14.5);
   const parts = createEnclaveParts();
@@ -119,9 +119,9 @@ export function startEnclaveRenderer(
     const elapsedSeconds = isReducedMotion ? REDUCED_MOTION_SECONDS : (now - startedAt) / 1000;
     animateEnclave(parts, elapsedSeconds);
     onStep(readEnclaveStep(elapsedSeconds));
-    const nextProvider = readProviderIndex(elapsedSeconds);
-    if (nextProvider !== providerIndex) {
-      providerIndex = nextProvider;
+    const nextProviderIndex = readProviderIndex(elapsedSeconds);
+    if (nextProviderIndex !== providerIndex) {
+      providerIndex = nextProviderIndex;
       labelElements.provider.textContent = PROVIDERS[providerIndex] ?? '';
     }
     renderer.render(parts.scene, camera);

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import type { Group, LineSegments, MeshBasicMaterial } from 'three';
 import type { Object3D, OrthographicCamera, PerspectiveCamera, Scene } from 'three';
-import type { Mesh, MeshToonMaterial, Vector2, WebGLRenderTarget } from 'three';
+import type { Mesh, MeshToonMaterial, RingGeometry } from 'three';
+import type { Vector2, WebGLRenderTarget } from 'three';
 
 export type DocsNavItem = {
   label: string;
@@ -38,13 +39,15 @@ export interface KeyHalves {
   keyFaces: MeshToonMaterial;
 }
 
+export type PulseRing = Mesh<RingGeometry, MeshBasicMaterial>;
+
 export interface EnclaveParts {
   scene: Scene;
   turntable: Group;
   attestationFrame: LineSegments;
   request: Group;
   halves: KeyHalves;
-  pulse: Mesh;
+  pulse: PulseRing;
   glass: MeshBasicMaterial;
 }
 
