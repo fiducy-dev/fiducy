@@ -22,7 +22,7 @@ export async function checkGatewayBeforeMount({
   const verified = await verifyGatewayAttestation({
     gatewayURL,
     enclavePCR0: enclavePCR0 ?? '',
-    enclavePCR16
+    enclavePCR16: enclavePCR16 ?? ''
   });
   return verified.ok ? null : describeAttestationError(verified.error);
 }

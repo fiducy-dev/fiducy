@@ -7,6 +7,7 @@ import { verifyGatewayAttestation } from '../../src/attestation/index.ts';
 import { TEST_PCR0, TEST_ROOT_FINGERPRINT, buildDocument } from './buildDocument.ts';
 
 const GATEWAY_URL = 'https://gateway.notesapp.dev';
+const TEST_PCR16 = '11'.repeat(48);
 
 function respondWithDocument(document: Uint8Array): Response {
   const encoded = Buffer.from(document).toString('base64');
@@ -28,7 +29,12 @@ function createEnclaveFetch(pcr0 = TEST_PCR0) {
 describe('verifying a gateway', () => {
   it('asks the gateway for a fresh document and accepts the expected enclave', async () => {
     const { requestedURLs, fetchAttestation } = createEnclaveFetch();
-    const input = { gatewayURL: GATEWAY_URL, enclavePCR0: TEST_PCR0, fetch: fetchAttestation };
+    const input = {
+      gatewayURL: GATEWAY_URL,
+      enclavePCR0: TEST_PCR0,
+      enclavePCR16: TEST_PCR16,
+      fetch: fetchAttestation
+    };
     const first = await verifyGatewayWithRoot(input, TEST_ROOT_FINGERPRINT);
     await verifyGatewayWithRoot(input, TEST_ROOT_FINGERPRINT);
     expect(first.ok).toBe(true);
@@ -41,6 +47,7 @@ describe('verifying a gateway', () => {
     const input = {
       gatewayURL: GATEWAY_URL,
       enclavePCR0: TEST_PCR0,
+      enclavePCR16: TEST_PCR16,
       fetch: async () => respondWithDocument(replayed)
     };
     const result = await verifyGatewayWithRoot(input, TEST_ROOT_FINGERPRINT);
@@ -49,7 +56,12 @@ describe('verifying a gateway', () => {
 
   it('refuses a gateway running another image', async () => {
     const { fetchAttestation } = createEnclaveFetch('ef'.repeat(48));
-    const input = { gatewayURL: GATEWAY_URL, enclavePCR0: TEST_PCR0, fetch: fetchAttestation };
+    const input = {
+      gatewayURL: GATEWAY_URL,
+      enclavePCR0: TEST_PCR0,
+      enclavePCR16: TEST_PCR16,
+      fetch: fetchAttestation
+    };
     const result = await verifyGatewayWithRoot(input, TEST_ROOT_FINGERPRINT);
     expect(result).toEqual({ ok: false, error: 'unexpected_pcr0' });
   });
@@ -66,9 +78,47 @@ describe('verifying a gateway', () => {
     expect(result).toEqual({ ok: false, error: 'unexpected_pcr16' });
   });
 
+  it('throws before asking the gateway when PCR0 or PCR16 is not given', async () => {
+    const { requestedURLs, fetchAttestation } = createEnclaveFetch();
+    const inputs = [
+      {
+        gatewayURL: GATEWAY_URL,
+        enclavePCR0: TEST_PCR0,
+        enclavePCR16: '',
+        fetch: fetchAttestation
+      },
+      {
+        gatewayURL: GATEWAY_URL,
+        enclavePCR0: ' ',
+        enclavePCR16: TEST_PCR16,
+        fetch: fetchAttestation
+      }
+    ];
+    for (const input of inputs) {
+      await expect(verifyGatewayAttestation(input)).rejects.toThrow(TypeError);
+    }
+    expect(requestedURLs).toEqual([]);
+  });
+
+  it('checks a real AWS document against the real AWS root by default', async () => {
+    const document = await Bun.file(new URL('./anjunaProduction2023.bin', import.meta.url)).bytes();
+    const input = {
+      gatewayURL: GATEWAY_URL,
+      enclavePCR0: TEST_PCR0,
+      enclavePCR16: TEST_PCR16,
+      fetch: async () => respondWithDocument(document)
+    };
+    expect(await verifyGatewayAttestation(input)).toEqual({ ok: false, error: 'nonce_mismatch' });
+  });
+
   it('trusts only the AWS root by default', async () => {
     const { fetchAttestation } = createEnclaveFetch();
-    const input = { gatewayURL: GATEWAY_URL, enclavePCR0: TEST_PCR0, fetch: fetchAttestation };
+    const input = {
+      gatewayURL: GATEWAY_URL,
+      enclavePCR0: TEST_PCR0,
+      enclavePCR16: TEST_PCR16,
+      fetch: fetchAttestation
+    };
     const result = await verifyGatewayAttestation(input);
     expect(result).toEqual({ ok: false, error: 'untrusted_certificate_chain' });
   });
@@ -82,7 +132,12 @@ describe('verifying a gateway', () => {
       }
     ];
     for (const fetchAttestation of fetches) {
-      const input = { gatewayURL: GATEWAY_URL, enclavePCR0: TEST_PCR0, fetch: fetchAttestation };
+      const input = {
+        gatewayURL: GATEWAY_URL,
+        enclavePCR0: TEST_PCR0,
+        enclavePCR16: TEST_PCR16,
+        fetch: fetchAttestation
+      };
       expect(await verifyGatewayAttestation(input)).toEqual({
         ok: false,
         error: 'attestation_unavailable'
@@ -96,8 +151,6 @@ describe('verifying a gateway', () => {
     expect(describeAttestationError('webcrypto_unavailable')).toContain('HTTPS');
   });
 });
-
-const TEST_PCR16 = '11'.repeat(48);
 
 describe('deciding whether to check a gateway', () => {
   it('checks whenever expected PCRs are set, even with the skip flag', () => {

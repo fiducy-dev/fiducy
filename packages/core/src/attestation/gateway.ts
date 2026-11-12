@@ -2,6 +2,7 @@ import { fail } from '../result.ts';
 import { decodeBase64, encodeHex } from './bytes.ts';
 import { ATTESTATION_FORMAT, ATTESTATION_NONCE_LENGTH, ATTESTATION_ROUTE } from './constants.ts';
 import { AWS_NITRO_ROOT_FINGERPRINT } from './constants.ts';
+import { assertExpectedPCRs } from './input.ts';
 import { parsePCRList } from './pcr.ts';
 import { verifyAttestationWithRoot } from './verifyAttestation.ts';
 
@@ -47,11 +48,12 @@ export async function verifyGatewayWithRoot(
   }: VerifyGatewayInput,
   trustedRootFingerprint: string
 ): Promise<Result<VerifiedAttestation, GatewayAttestationError>> {
+  const expectedPCR0s = parsePCRList(enclavePCR0);
+  const expectedPCR16s = parsePCRList(enclavePCR16);
+  assertExpectedPCRs(expectedPCR0s, expectedPCR16s);
   const nonce = createNonce();
   const document = await fetchDocument(fetchAttestation, buildAttestationURL(gatewayURL, nonce));
   if (!document) return fail('attestation_unavailable');
-  const expectedPCR0s = parsePCRList(enclavePCR0);
-  const expectedPCR16s = parsePCRList(enclavePCR16 ?? undefined);
   const encodedNonce = new TextEncoder().encode(nonce);
   return verifyAttestationWithRoot(
     { document, nonce: encodedNonce, expectedPCR0s, expectedPCR16s },

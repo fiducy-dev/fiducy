@@ -22,7 +22,7 @@ export async function assertGatewayAttested(
     return;
   }
   const fetchAttestation = (url: string) => fetchGateway(url, { method: 'GET' });
-  const expected = { enclavePCR0: enclavePCR0 ?? '', enclavePCR16 };
+  const expected = { enclavePCR0: enclavePCR0 ?? '', enclavePCR16: enclavePCR16 ?? '' };
   const input = { gatewayURL, ...expected, fetch: fetchAttestation };
   const verified = await verifyGatewayAttestation(input);
   if (!verified.ok) throw new FiducyGatewayError(describeAttestationError(verified.error));

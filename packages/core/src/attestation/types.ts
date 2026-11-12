@@ -131,7 +131,7 @@ export interface AttestationPolicyInput {
 export interface VerifyGatewayInput {
   gatewayURL: string;
   enclavePCR0: string;
-  enclavePCR16?: string | null;
+  enclavePCR16: string;
   fetch?: FetchAttestation;
 }
 
