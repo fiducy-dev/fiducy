@@ -87,6 +87,10 @@ export interface VerifyAttestationInput {
   expectedPCR16s?: string[];
 }
 
+export interface VerifyNitroAttestationInput extends VerifyAttestationInput {
+  expectedPCR16s: string[];
+}
+
 export interface PCRMeasurements {
   pcr0: string;
   pcr16: string | null;

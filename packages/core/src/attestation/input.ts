@@ -1,6 +1,6 @@
 import { isPCR } from './pcr.ts';
 
-import type { VerifyAttestationInput } from './types.ts';
+import type { VerifyAttestationInput, VerifyNitroAttestationInput } from './types.ts';
 
 function requireBytes(value: unknown, name: string): void {
   if (!(value instanceof Uint8Array)) throw new TypeError(`${name} must be a Uint8Array`);
@@ -23,4 +23,8 @@ export function assertAttestationInput(input: VerifyAttestationInput): void {
   if (input.expectedPCR16s !== undefined) {
     requirePCRList(input.expectedPCR16s, 'expectedPCR16s', true);
   }
+}
+
+export function assertNitroAttestationInput(input: VerifyNitroAttestationInput): void {
+  requirePCRList(input.expectedPCR16s, 'expectedPCR16s', false);
 }
