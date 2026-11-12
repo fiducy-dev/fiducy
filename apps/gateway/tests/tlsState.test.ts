@@ -130,4 +130,21 @@ describe('reporting the ACME account for CAA', () => {
     log.mockRestore();
     expect(accountLines).toHaveLength(1);
   });
+
+  it('logs the account when a fresh enclave restores the sealed state', async () => {
+    const blobStore = createMemoryBlobStore();
+    const keyWrapper = createLocalKeyWrapper(crypto.getRandomValues(new Uint8Array(32)));
+    const source = createDirectory();
+    await mkdir(join(source, 'acme/acme-v02.api.letsencrypt.org-directory/users/default'), {
+      recursive: true
+    });
+    await writeFile(join(source, accountPath), JSON.stringify({ location: accountURL }));
+    await createTlsStateKeeper({ directory: source, blobStore, keyWrapper }).persist();
+    const log = spyOn(console, 'log').mockImplementation(() => {});
+    const restored = createTlsStateKeeper({ directory: createDirectory(), blobStore, keyWrapper });
+    await restored.restore();
+    const accountLines = log.mock.calls.filter(([line]) => String(line).includes(accountURL));
+    log.mockRestore();
+    expect(accountLines).toHaveLength(1);
+  });
 });
