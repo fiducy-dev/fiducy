@@ -1,12 +1,26 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
+import { DEFAULT_DATA_DIRECTORY, LOCAL_SECRET_FILE, MINIMUM_SECRET_LENGTH } from './constants.ts';
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from './constants.ts';
 import { readExampleSetting } from './environment.ts';
 
+function readLocalSecret(): string {
+  const directory = resolve(readExampleSetting('EXAMPLE_DATA_DIR') ?? DEFAULT_DATA_DIRECTORY);
+  const path = join(directory, LOCAL_SECRET_FILE);
+  if (existsSync(path)) return readFileSync(path, 'utf8').trim();
+  const secret = randomBytes(32).toString('hex');
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(path, secret, { mode: 0o600 });
+  return secret;
+}
+
 function readSessionSecret(): string {
   const secret = readExampleSetting('EXAMPLE_SESSION_SECRET');
-  if (!secret || secret.length < 32) {
-    throw new Error('Set EXAMPLE_SESSION_SECRET to 32 or more random characters');
+  if (secret === undefined || secret === '') return readLocalSecret();
+  if (secret.length < MINIMUM_SECRET_LENGTH) {
+    throw new Error(`EXAMPLE_SESSION_SECRET must be ${MINIMUM_SECRET_LENGTH} or more characters`);
   }
   return secret;
 }
