@@ -1,35 +1,35 @@
 import type { Bytes } from '../types.ts';
 
-export type CborKey = number | string;
+export type CBORKey = number | string;
 
-export type CborValue =
+export type CBORValue =
   | number
   | string
   | boolean
   | null
   | Bytes
-  | CborValue[]
-  | Map<CborKey, CborValue>
-  | CborTaggedValue;
+  | CBORValue[]
+  | Map<CBORKey, CBORValue>
+  | CBORTaggedValue;
 
-export interface CborTaggedValue {
+export interface CBORTaggedValue {
   tag: number;
-  value: CborValue;
+  value: CBORValue;
 }
 
-export interface CborCursor {
+export interface CBORCursor {
   bytes: Bytes;
   offset: number;
 }
 
-export interface DerElement {
+export interface DERElement {
   tag: number;
   start: number;
   contentStart: number;
   end: number;
 }
 
-export interface DerLength {
+export interface DERLength {
   length: number;
   headerEnd: number;
 }
@@ -45,11 +45,25 @@ export interface ParsedCertificate {
   validFrom: Date;
   validUntil: Date;
   isCertificateAuthority: boolean;
+  pathLengthConstraint: number | null;
+  canSignCertificates: boolean;
+  hasUnknownCriticalExtension: boolean;
+}
+
+export interface CertificateExtension {
+  identifier: string;
+  isCritical: boolean;
+  value: Bytes;
+}
+
+export interface BasicConstraints {
+  isCertificateAuthority: boolean;
+  pathLengthConstraint: number | null;
 }
 
 export type ChainVerdict = 'trusted' | 'untrusted' | 'expired';
 
-export interface CoseSignedMessage {
+export interface COSESignedMessage {
   protectedHeader: Bytes;
   payload: Bytes;
   signature: Bytes;
@@ -73,9 +87,16 @@ export interface VerifyAttestationInput {
   expectedPCR16s?: string[];
 }
 
-export interface VerifiedAttestation {
+export interface VerifyNitroAttestationInput extends VerifyAttestationInput {
+  expectedPCR16s: string[];
+}
+
+export interface PCRMeasurements {
   pcr0: string;
-  pcr16: string;
+  pcr16: string | null;
+}
+
+export interface VerifiedAttestation extends PCRMeasurements {
   moduleID: string;
   timestamp: Date;
   userData: Bytes | null;
@@ -84,6 +105,7 @@ export interface VerifiedAttestation {
 
 export type AttestationError =
   | 'malformed_document'
+  | 'webcrypto_unavailable'
   | 'unsupported_algorithm'
   | 'untrusted_certificate_chain'
   | 'certificate_not_valid_at_timestamp'
