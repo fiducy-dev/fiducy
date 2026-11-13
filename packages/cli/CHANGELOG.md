@@ -1,5 +1,11 @@
 # fiducy
 
+## 0.3.0-beta.6
+
+### Patch Changes
+
+- [#128](https://github.com/fiducy-dev/fiducy/pull/128) [`20a8c59`](https://github.com/fiducy-dev/fiducy/commit/20a8c5973b338059062ef600787539f5c5723358) Thanks [@Benonii](https://github.com/Benonii)! - Published through npm trusted publishing with a maintainer's approval. No code changes.
+
 ## 0.3.0-beta.5
 
 ### Patch Changes
