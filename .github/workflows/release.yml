@@ -7,28 +7,64 @@ on:
 concurrency: release
 
 permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+  contents: read
 
 jobs:
-  release:
+  # Opens or updates the "Version packages" pull request while changesets are pending, and
+  # reports whether package.json holds a version npm does not have yet. It cannot publish.
+  version:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      unpublished: ${{ steps.unpublished.outputs.unpublished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.2
-      - uses: actions/setup-node@v4
+      - run: bun install --frozen-lockfile
+      - uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          version-script: bun run version-packages
+          commit-message: Version packages
+          pr-title: Version packages
+      - name: Find versions npm does not have yet
+        id: unpublished
+        run: |
+          unpublished=false
+          for manifest in packages/*/package.json; do
+            if [ "$(jq -r '.private // false' "$manifest")" = "true" ]; then continue; fi
+            spec="$(jq -r '.name + "@" + .version' "$manifest")"
+            if ! npm view "$spec" version >/dev/null 2>&1; then
+              echo "Not on npm yet: $spec"
+              unpublished=true
+            fi
+          done
+          echo "unpublished=$unpublished" >> "$GITHUB_OUTPUT"
+
+  # Publishes only after a maintainer approves the run in the npm-release environment. npm's
+  # trusted publisher names that environment, so an upload from any other job is refused.
+  publish:
+    needs: version
+    if: needs.version.outputs.unpublished == 'true'
+    runs-on: ubuntu-24.04
+    environment: npm-release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
       - run: bun install --frozen-lockfile
       - run: bun x semver@7.7.3 --range '>=11.5.1' "$(npm --version)"
-      - uses: changesets/action@v2
-        with:
-          version-script: bun run version-packages
-          publish-script: bun run release
-          commit-message: Version packages
-          pr-title: Version packages
+      - run: bun run release
         env:
           NPM_CONFIG_PROVENANCE: 'true'
+      - run: git push origin --tags
