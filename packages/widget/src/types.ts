@@ -12,6 +12,10 @@ export interface MountKeyWidgetOptions {
   container: HTMLElement;
   onHandle: (handle: string, record?: WidgetSealedRecord) => void;
   onError?: (message: string) => void;
+  onRefused?: (message: string) => void;
+  enclavePCR0?: string | null;
+  enclavePCR16?: string | null;
+  skipAttestation?: boolean;
 }
 
 export interface MountedKeyWidget {

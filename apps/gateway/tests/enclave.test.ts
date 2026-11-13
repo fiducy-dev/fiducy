@@ -179,6 +179,13 @@ describe('serving attestation documents', () => {
     expect(Buffer.from(body.data.document, 'base64').toString()).toBe('doc:n123');
   });
 
+  it('lets any page read the document, so the widget can check it in the browser', async () => {
+    const gateway = await createTestGateway(async () => new Uint8Array([1]));
+    const response = await gateway(new Request('http://gateway/attestation?nonce=n123'));
+    expect(response.headers.get('access-control-allow-origin')).toBe('*');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
   it('says so when it is not in an enclave', async () => {
     const gateway = await createTestGateway();
     const response = await gateway(new Request('http://gateway/attestation'));

@@ -2,8 +2,10 @@ import { describe, expect, it } from 'bun:test';
 
 import { GetParameterCommand } from '@aws-sdk/client-ssm';
 
-import { encodeCbor } from '../src/cbor';
+import { encodeCBOR } from '@fiducy/core/attestation';
+
 import { fetchEnclaveConfig, measureEnclaveConfig, parseEnclaveConfig } from '../src/enclaveConfig';
+import { createSecureModuleRequest } from '../src/nsm';
 
 import type { ParameterSender } from '../src/types';
 
@@ -58,12 +60,16 @@ describe('enclave config', () => {
 
 describe('secure module requests', () => {
   it('encode like the NSM driver expects', () => {
-    expect(toHex(encodeCbor({ LockPCR: { index: 16 } }))).toBe(
+    expect(toHex(encodeCBOR(createSecureModuleRequest('LockPCR', [['index', 16]])))).toBe(
       'a1674c6f636b504352a165696e64657810'
     );
-    expect(toHex(encodeCbor('LockPCR'))).toBe('674c6f636b504352');
+    expect(toHex(encodeCBOR('LockPCR'))).toBe('674c6f636b504352');
     const data = new Uint8Array(48).fill(1);
-    const encoded = encodeCbor({ ExtendPCR: { index: 16, data } });
+    const request = createSecureModuleRequest('ExtendPCR', [
+      ['index', 16],
+      ['data', data]
+    ]);
+    const encoded = encodeCBOR(request);
     expect(toHex(encoded.slice(0, 26))).toBe(
       'a169457874656e64504352a265696e6465781064646174615830'
     );

@@ -103,7 +103,8 @@ function svelteKitFiles(project: ProjectInfo, serverModulePath: string): Framewo
     });
   } else files.push({ path: hooksPath, contents: `${hooksImports}\n\n${handleLine}\n` });
   if (project.frameworkMajor >= 3) {
-    const variables = '  FIDUCY_GATEWAY_URL: {},\n  FIDUCY_APP_ID: {},\n  FIDUCY_APP_SECRET: {}';
+    const optional = '{ schema: (value: string | undefined) => value }';
+    const variables = `  FIDUCY_GATEWAY_URL: {},\n  FIDUCY_APP_ID: {},\n  FIDUCY_APP_SECRET: {},\n  FIDUCY_ENCLAVE_PCR0: ${optional},\n  FIDUCY_ENCLAVE_PCR16: ${optional},\n  FIDUCY_SKIP_ATTESTATION: ${optional}`;
     const envPath = 'src/env.ts';
     if (existsSync(join(project.root, envPath))) {
       snippets.push({

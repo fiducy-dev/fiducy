@@ -6,6 +6,9 @@ import type { ConnectKeyWidgetProps } from './types.ts';
 export function ConnectKeyWidget({
   gatewayURL,
   appID,
+  enclavePCR0,
+  enclavePCR16,
+  skipAttestation,
   provider,
   basePath = '/api/fiducy',
   onConnected,
@@ -16,6 +19,9 @@ export function ConnectKeyWidget({
     <KeyWidget
       gatewayURL={gatewayURL}
       appID={appID}
+      enclavePCR0={enclavePCR0}
+      enclavePCR16={enclavePCR16}
+      skipAttestation={skipAttestation}
       className={className}
       onError={onError}
       onHandle={(handle, record) => {

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, it, spyOn } from 'bun:test';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 
@@ -9,7 +9,8 @@ import { APP_URL, appRequest, connectKey, createTestApp } from './fixtures';
 
 import type { SealedRecord } from '@fiducy/core';
 import type { AppRegistration } from '../../../apps/gateway/src/types';
-import type { FiducyStorage, KeyValueDriver, StoredUserKey } from '../src/server';
+import type { CreateFiducyOptions, FiducyStorage } from '../src/server';
+import type { KeyValueDriver, StoredUserKey } from '../src/server';
 import type { FetchGateway } from '../src/types';
 import type { GatewayHarness } from './fixtures';
 
@@ -210,6 +211,60 @@ describe('importing keys an app already stores', () => {
     await expect(
       fiducy.importKeys([{ userID: 'blocked', provider: 'openai', apiKey: 'sk-blocked' }])
     ).rejects.toThrow('Key import is off');
+  });
+});
+
+describe('checking the gateway enclave before importing keys', () => {
+  const REMOTE_GATEWAY = 'https://gateway.notesapp.dev';
+  const VALID_PCR0 = 'ab'.repeat(48);
+  const VALID_PCR16 = '11'.repeat(48);
+
+  function createRemoteApp(options: Partial<CreateFiducyOptions>) {
+    const requestedURLs: string[] = [];
+    const requestSignals: (AbortSignal | null | undefined)[] = [];
+    const fetchGateway: FetchGateway = (url, init) => {
+      requestedURLs.push(url);
+      requestSignals.push(init.signal);
+      return fetch(url.replace(REMOTE_GATEWAY, harness.gatewayURL), init);
+    };
+    const fiducy = createTestApp(harness, IMPORT_APP, memoryStorage(), fetchGateway, {
+      gatewayURL: REMOTE_GATEWAY,
+      ...options
+    });
+    return { fiducy, requestedURLs, requestSignals };
+  }
+
+  const importOneKey = (fiducy: ReturnType<typeof createTestApp>) =>
+    fiducy.importKeys([{ userID: 'remote_1', provider: 'openai', apiKey: SAMPLE_API_KEY }]);
+
+  it('refuses a remote gateway when no expected PCR0 is set', async () => {
+    const { fiducy, requestedURLs } = createRemoteApp({});
+    await expect(importOneKey(fiducy)).rejects.toThrow('Set FIDUCY_ENCLAVE_PCR0');
+    expect(requestedURLs).toEqual([]);
+  });
+
+  it('refuses PCR0 without PCR16 before asking the gateway anything', async () => {
+    const { fiducy, requestedURLs } = createRemoteApp({ enclavePCR0: VALID_PCR0 });
+    await expect(importOneKey(fiducy)).rejects.toThrow('Set FIDUCY_ENCLAVE_PCR16');
+    expect(requestedURLs).toEqual([]);
+  });
+
+  it('refuses a gateway whose attestation does not verify, before sending any key', async () => {
+    const expected = { enclavePCR0: VALID_PCR0, enclavePCR16: VALID_PCR16 };
+    const { fiducy, requestedURLs, requestSignals } = createRemoteApp(expected);
+    await expect(importOneKey(fiducy)).rejects.toThrow('did not return an attestation document');
+    expect(requestedURLs).toHaveLength(1);
+    expect(requestSignals[0]).toBeInstanceOf(AbortSignal);
+    expect(requestedURLs[0]).toStartWith(`${REMOTE_GATEWAY}/attestation?nonce=`);
+  });
+
+  it('imports through a test gateway marked with skipAttestation, with a warning', async () => {
+    const { fiducy } = createRemoteApp({ skipAttestation: true });
+    const warn = spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await importOneKey(fiducy);
+    expect(result.imported).toHaveLength(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('FIDUCY_SKIP_ATTESTATION is on'));
+    warn.mockRestore();
   });
 });
 

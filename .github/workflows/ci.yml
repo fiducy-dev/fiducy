@@ -72,3 +72,15 @@ jobs:
       - run: bunx playwright@1.56.1 install chromium
         timeout-minutes: 3
       - run: bun run test:examples
+
+  caddy:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Validate the enclave Caddyfile with the Caddy version the image ships
+        run: >-
+          docker run --rm -e FIDUCY_PUBLIC_HOST=gateway.example.com
+          -v "$PWD/enclave/Caddyfile:/etc/caddy/Caddyfile:ro"
+          caddy:2.10.2 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
