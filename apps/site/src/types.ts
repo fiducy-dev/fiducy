@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Group, LineSegments, MeshBasicMaterial } from 'three';
 import type { Object3D, OrthographicCamera, PerspectiveCamera, Scene } from 'three';
+import type { Mesh, MeshToonMaterial, RingGeometry } from 'three';
 import type { Vector2, WebGLRenderTarget } from 'three';
 
 export type DocsNavItem = {
@@ -35,8 +36,10 @@ export interface LeakScene {
 export interface KeyHalves {
   storedHalf: Group;
   handleHalf: Group;
-  keyFaces: MeshBasicMaterial;
+  keyFaces: MeshToonMaterial;
 }
+
+export type PulseRing = Mesh<RingGeometry, MeshBasicMaterial>;
 
 export interface EnclaveParts {
   scene: Scene;
@@ -44,6 +47,8 @@ export interface EnclaveParts {
   attestationFrame: LineSegments;
   request: Group;
   halves: KeyHalves;
+  pulse: PulseRing;
+  glass: MeshBasicMaterial;
 }
 
 export interface DitherKeyParts {
@@ -79,6 +84,7 @@ export interface SceneLabelElements {
   handleHalf: HTMLElement;
   storedHalf: HTMLElement;
   request: HTMLElement;
+  provider: HTMLElement;
 }
 
 export interface InfoSection {

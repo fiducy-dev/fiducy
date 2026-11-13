@@ -11,9 +11,12 @@ export async function serveAttestation(request: Request, { attest }: GatewayDepe
   }
   const document = await attest(nonce ? new TextEncoder().encode(nonce) : null);
   if (!document) return respondWith(502, null, 'The enclave could not produce an attestation');
-  return respondWith(
+  const response = respondWith(
     200,
     { format: 'aws-nitro-cbor', document: Buffer.from(document).toString('base64') },
     'Attestation document issued by the Nitro hypervisor'
   );
+  response.headers.set('access-control-allow-origin', '*');
+  response.headers.set('cache-control', 'no-store');
+  return response;
 }

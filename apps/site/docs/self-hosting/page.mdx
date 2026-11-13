@@ -54,6 +54,8 @@ aws ssm get-parameter --name /fiducy/gateway-token --with-decryption --query Par
 
 To replace the token, run the workflow by hand with **rotate_token** ticked, then put the new value in the dashboard's `FIDUCY_GATEWAY_TOKEN` and restart it. The old token stops working, and the gateway can't load app settings until the dashboard has the new one.
 
+Set `FIDUCY_ENCLAVE_PCR0` and `FIDUCY_ENCLAVE_PCR16` on every app that uses this gateway to the values in the deploy output, so the widget and `importKeys` refuse any other enclave. A deploy that changes the enclave image changes `PCR0`: add the new value next to the old one (comma-separated) before the rollout, then remove the old one.
+
 ## Trust a new enclave image
 
 The enclave image holds nothing specific to your deployment, so every deployment of the same commit has the same `PCR0`. Your settings (KMS key, table, region, dashboard URL, gateway host and the sealed gateway token) are the enclave config. The host publishes it to Parameter Store as `/fiducy/enclave-config`, and the enclave reads it at boot and measures it into `PCR16` before it makes any KMS call. Changing the code changes `PCR0`; changing a setting or rotating the token changes `PCR16`. A config the host made up, such as one that points at another KMS key or dashboard, measures to a `PCR16` nobody pinned, and the key refuses that enclave. The KMS key only decrypts for the two hashes in its policy, so someone has to tell it to trust new ones. That someone is the key custodian role, assumed with MFA from your own machine, never CI. Add a profile once:

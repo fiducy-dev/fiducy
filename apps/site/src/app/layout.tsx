@@ -8,7 +8,9 @@ import {
   SITE_DESCRIPTION,
   SITE_NAME,
   SITE_TITLE,
-  SITE_URL
+  SITE_URL,
+  SOFTWARE_JSON_LD,
+  WEBSITE_JSON_LD
 } from '@/lib/site';
 
 import type { LayoutProps, Metadata } from '@farm.js/core';
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION
   },
   twitter: { card: 'summary_large_image', title: SITE_TITLE, description: SITE_DESCRIPTION },
-  jsonLd: ORGANIZATION_JSON_LD
+  jsonLd: [ORGANIZATION_JSON_LD, WEBSITE_JSON_LD, SOFTWARE_JSON_LD]
 };
 
 export default function RootLayout({ children }: LayoutProps) {

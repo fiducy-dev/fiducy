@@ -1,6 +1,6 @@
 {
   "name": "@fiducy/sdk",
-  "version": "0.3.0-beta.5",
+  "version": "0.3.0-beta.6",
   "description": "Fiducy app SDK: server instance, framework helpers, database storage, and the <fiducy-key> element with React, Vue, Svelte and Solid wrappers",
   "license": "Apache-2.0",
   "repository": {
@@ -114,8 +114,8 @@
     "build": "rm -rf dist && bun build src/react.ts src/reactQuery.ts src/element.ts src/vue.ts src/svelte.ts src/solid.ts --outdir dist --target browser --packages external --sourcemap=linked && bun build src/index.ts src/server.ts src/next.ts src/tanstack.ts src/reactRouter.ts src/sveltekit.ts src/nuxt.ts src/node.ts src/storage/index.ts src/storage/kysely/index.ts src/storage/drizzle/index.ts src/storage/prisma/index.ts --outdir dist --root src --target node --packages external --sourcemap=linked && tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@fiducy/core": "0.3.0-beta.5",
-    "@fiducy/widget": "0.3.0-beta.5"
+    "@fiducy/core": "0.3.0-beta.6",
+    "@fiducy/widget": "0.3.0-beta.6"
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.104.2",

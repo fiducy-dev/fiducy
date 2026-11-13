@@ -1,31 +1,55 @@
-import { BoxGeometry, EdgesGeometry, ExtrudeGeometry, Group } from 'three';
+import { BoxGeometry, EdgesGeometry, ExtrudeGeometry, Group, RingGeometry } from 'three';
 import { LineBasicMaterial, LineDashedMaterial, LineSegments, Mesh } from 'three';
-import { MeshBasicMaterial, Path, Shape } from 'three';
+import { DataTexture, MeshBasicMaterial, MeshToonMaterial, NearestFilter } from 'three';
+import { Path, RedFormat, Shape } from 'three';
 
+import type { PulseRing } from '@/types';
 import type { BufferGeometry, Material } from 'three';
 
 const INK = 0x000000;
 const SURFACE = 0xffffff;
 const EDGE_ANGLE = 20;
-const KEY_DEPTH = 0.16;
+export const GLASS_OPACITY = 0.62;
+const KEY_DEPTH = 0.24;
 const HEAD_CENTER_X = -1.1;
 const HEAD_RADIUS = 0.55;
 const HOLE_RADIUS = 0.24;
 const SHAFT_HALF_HEIGHT = 0.12;
+const COLLAR_HALF_HEIGHT = 0.2;
+const COLLAR_LENGTH = 0.16;
+const TONES = [188, 226, 255];
 const SPLIT_X = 0.35;
+const GLASS_LINE_GRAY = 0x8f8f8f;
 
 export const inkLines = new LineBasicMaterial({ color: INK });
 
-export function createLineArt(geometry: BufferGeometry, faces: Material): Group {
+export const glassLines = new LineBasicMaterial({ color: GLASS_LINE_GRAY });
+
+export function createLineArt(
+  geometry: BufferGeometry,
+  faces: Material,
+  edgeMaterial: LineBasicMaterial = inkLines
+): Group {
   const group = new Group();
   group.add(new Mesh(geometry, faces));
-  group.add(new LineSegments(new EdgesGeometry(geometry, EDGE_ANGLE), inkLines));
+  group.add(new LineSegments(new EdgesGeometry(geometry, EDGE_ANGLE), edgeMaterial));
   return group;
 }
 
-export function createSolidFaces(): MeshBasicMaterial {
-  return new MeshBasicMaterial({
+function createToneMap(): DataTexture {
+  const texture = new DataTexture(new Uint8Array(TONES), TONES.length, 1, RedFormat);
+  texture.minFilter = NearestFilter;
+  texture.magFilter = NearestFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+const toneMap = createToneMap();
+
+export function createSolidFaces(): MeshToonMaterial {
+  return new MeshToonMaterial({
     color: SURFACE,
+    gradientMap: toneMap,
     polygonOffset: true,
     polygonOffsetFactor: 1,
     polygonOffsetUnits: 1
@@ -36,9 +60,18 @@ export function createGlassFaces(): MeshBasicMaterial {
   return new MeshBasicMaterial({
     color: SURFACE,
     transparent: true,
-    opacity: 0.62,
+    opacity: GLASS_OPACITY,
     depthWrite: false
   });
+}
+
+export function createPulseRing(): PulseRing {
+  const ring = new Mesh(
+    new RingGeometry(0.34, 0.37, 48),
+    new MeshBasicMaterial({ color: INK, transparent: true, opacity: 0, depthWrite: false })
+  );
+  ring.rotation.y = Math.PI / 2;
+  return ring;
 }
 
 export function createDashedBox(size: number): LineSegments {
@@ -68,13 +101,18 @@ function extrudeKeyShape(shape: Shape): ExtrudeGeometry {
 }
 
 export function createHandleHalfGeometry(): ExtrudeGeometry {
-  const joinAngle = Math.asin(SHAFT_HALF_HEIGHT / HEAD_RADIUS);
+  const joinAngle = Math.asin(COLLAR_HALF_HEIGHT / HEAD_RADIUS);
   const joinX = HEAD_CENTER_X + HEAD_RADIUS * Math.cos(joinAngle);
+  const collarEnd = joinX + COLLAR_LENGTH;
   const shape = new Shape();
-  shape.moveTo(joinX, SHAFT_HALF_HEIGHT);
+  shape.moveTo(joinX, COLLAR_HALF_HEIGHT);
+  shape.lineTo(collarEnd, COLLAR_HALF_HEIGHT);
+  shape.lineTo(collarEnd, SHAFT_HALF_HEIGHT);
   shape.lineTo(SPLIT_X, SHAFT_HALF_HEIGHT);
   shape.lineTo(SPLIT_X, -SHAFT_HALF_HEIGHT);
-  shape.lineTo(joinX, -SHAFT_HALF_HEIGHT);
+  shape.lineTo(collarEnd, -SHAFT_HALF_HEIGHT);
+  shape.lineTo(collarEnd, -COLLAR_HALF_HEIGHT);
+  shape.lineTo(joinX, -COLLAR_HALF_HEIGHT);
   shape.absarc(HEAD_CENTER_X, 0, HEAD_RADIUS, -joinAngle, joinAngle - Math.PI * 2, true);
   const hole = new Path();
   hole.absarc(HEAD_CENTER_X, 0, HOLE_RADIUS, 0, Math.PI * 2, true);
@@ -84,7 +122,8 @@ export function createHandleHalfGeometry(): ExtrudeGeometry {
 
 export function createStoredHalfGeometry(): ExtrudeGeometry {
   const outline: [number, number][] = [
-    [1.3, SHAFT_HALF_HEIGHT],
+    [1.22, SHAFT_HALF_HEIGHT],
+    [1.3, 0.04],
     [1.3, -0.28],
     [1.12, -0.28],
     [1.12, -SHAFT_HALF_HEIGHT],

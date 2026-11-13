@@ -1,5 +1,12 @@
 # @fiducy/assistant-ui
 
+## 0.3.0-beta.6
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fiducy/sdk@0.3.0-beta.6
+
 ## 0.3.0-beta.5
 
 ### Minor Changes
