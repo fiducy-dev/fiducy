@@ -31,7 +31,7 @@ export const DEFAULT_SPEND_LIMITS = {
   dailyDollarLimitPerApp: 200,
   minuteDollarLimitPerApp: 20,
   concurrentRequestLimitPerKey: 4,
-  maximumOutputTokens: 16384
+  maximumOutputTokens: 32768
 };
 export const SPEND_LIMIT_NAMES = [
   'dailyDollarLimitPerKey',
