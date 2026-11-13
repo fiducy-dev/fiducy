@@ -64,7 +64,7 @@ An app can set spend limits. The gateway enforces them inside the enclave, befor
 | `dailyDollarLimitPerApp` | Estimated US dollars across all of the app's keys per UTC day |
 | `minuteDollarLimitPerApp` | Estimated US dollars across all of the app's keys per minute |
 | `concurrentRequestLimitPerKey` | Requests running at once with one key |
-| `maximumOutputTokens` | Output tokens one request may ask for. Default `16384` once any spend limit is set |
+| `maximumOutputTokens` | Output tokens one request may ask for. Default `32768` once any spend limit is set |
 
 How it works:
 
@@ -89,7 +89,7 @@ Set them in the dashboard under the app's settings, or in `FIDUCY_APPS_JSON`:
     "dailyDollarLimitPerApp": 200,
     "minuteDollarLimitPerApp": 10,
     "concurrentRequestLimitPerKey": 4,
-    "maximumOutputTokens": 16384
+    "maximumOutputTokens": 32768
   }
 }]
 ```

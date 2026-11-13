@@ -44,7 +44,7 @@ export const SPEND_EXPIRY_ATTRIBUTE = 'expiresAt';
 export const MICRODOLLARS_PER_DOLLAR = 1000000;
 export const DAY_COUNTER_LIFETIME_SECONDS = 2 * 24 * 60 * 60;
 export const MINUTE_COUNTER_LIFETIME_SECONDS = 2 * 60;
-export const DEFAULT_MAXIMUM_OUTPUT_TOKENS = 16384;
+export const DEFAULT_MAXIMUM_OUTPUT_TOKENS = 32768;
 export const SPEND_COUNTER_SWEEP_INTERVAL_MILLISECONDS = 60000;
 export const ADD_SPEND_EXPRESSION = 'ADD #spent :amount SET #expiresAt = :expiresAt';
 export const SPEND_CONDITION = 'attribute_not_exists(#spent) OR #spent <= :headroom';
