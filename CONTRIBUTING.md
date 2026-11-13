@@ -52,6 +52,20 @@ Say in the PR description how your change affects the [threat model](https://fid
 - Clear names over comments. Comment the "why", not the "what".
 - No new dependencies without a reason in the PR. Pin exact versions.
 
+## GitHub Actions
+
+Pin every action to a full commit SHA with the version in a comment, like `actions/checkout@<sha> # v4.4.0`. A tag like `@v4` can be moved to different code by whoever controls that action. Dependabot bumps the pins once a month.
+
+## How releases work
+
+Releases come only from `main`, through `.github/workflows/release.yml`:
+
+1. Merging a pull request with a changeset opens a "Version packages" pull request.
+2. Merging that one bumps the versions. Publishing then waits for a maintainer to approve the run in the `npm-release` environment.
+3. npm accepts the upload through [trusted publishing](https://docs.npmjs.com/trusted-publishers), so there is no npm token to leak. Every release links to the exact commit that built it.
+
+A new package needs one first publish by hand before trusted publishing can be set up for it. Every package published so far, including the `fiducy` CLI, already has one.
+
 ## License
 
 By contributing you agree that your work is released under the [Apache-2.0 License](LICENSE).

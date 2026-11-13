@@ -4,8 +4,8 @@ import { QuietLine } from '@/components/Emphasis';
 import { Faq } from '@/components/Faq';
 import { HeroHeadline } from '@/components/HeroHeadline';
 import { HeroStage } from '@/components/HeroStage';
+import { HowItWorks } from '@/components/HowItWorks';
 import { InstallCommand } from '@/components/InstallCommand';
-import { KeyFlow } from '@/components/KeyFlow';
 import { LeakScenes } from '@/components/LeakScenes';
 import { PlanCard } from '@/components/PlanCard';
 import { ProviderStrip } from '@/components/ProviderStrip';
@@ -16,7 +16,7 @@ import { WaitlistForm } from '@/components/WaitlistForm';
 import { buttonVariants } from '@/components/ui/button';
 import { FAQ } from '@/lib/faq';
 import { NEW_TAB } from '@/lib/site';
-import { DESCRIPTION_CLASS, SECTION_CLASS, SECTION_HEAD_CLASS } from '@/lib/styles';
+import { DESCRIPTION_CLASS, LABEL_CLASS, SECTION_CLASS, SECTION_HEAD_CLASS } from '@/lib/styles';
 import { TITLE_CLASS } from '@/lib/styles';
 import { faqPage } from '@farm.js/core/json-ld';
 
@@ -70,8 +70,9 @@ export default function HomePage() {
           <Showcase />
           <ProviderStrip />
 
-          <section className={SECTION_CLASS}>
+          <section id="how-it-works" className={SECTION_CLASS}>
             <div className={SECTION_HEAD_CLASS}>
+              <p className={LABEL_CLASS}>How it works</p>
               <h2 className={TITLE_CLASS}>
                 <QuietLine text="A breach can't leak" word="leak" />
                 <QuietLine text="what you never stored" word="never" />
@@ -81,7 +82,7 @@ export default function HomePage() {
                 sealed enclave, then it is gone.
               </p>
             </div>
-            <KeyFlow />
+            <HowItWorks />
           </section>
 
           <section
