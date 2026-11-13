@@ -49,7 +49,7 @@ Errors from the gateway itself:
 | --- | --- |
 | `400` | Missing or malformed handle or record |
 | `401` | Bad app secret |
-| `403` | The handle belongs to another app or cannot open its key, a key was added outside the widget, or the endpoint can't be priced while spend limits are on |
+| `403` | The handle belongs to another app or cannot open its key, a key was added outside the widget, or the endpoint or model can't be priced while spend limits are on |
 | `404` | No key with this ID for this app |
 | `409` | Revoke through the gateway on an app that stores its own records. Delete the record instead |
 | `429` | The key reached its monthly request limit, a spend limit was reached, or the key has too many requests running at once. The message says which |
@@ -72,7 +72,7 @@ How it works:
 - After the call, it replaces the reservation with the real cost from the provider's token counts. A provider error refunds it. A stream that stops early keeps the full reservation, since the provider may still bill for it.
 - It sets or lowers `max_tokens`, `max_completion_tokens`, `max_output_tokens` or Gemini's `maxOutputTokens` to `maximumOutputTokens`, and turns on `stream_options.include_usage` for OpenAI streams so the real cost can be read.
 - Only endpoints it can price are allowed: chat completions, completions, Responses, embeddings, Anthropic messages and token counts, Gemini generate, count and embed calls, and OpenRouter completions. Other `POST` endpoints (files, batches, images, audio) answer `403`. `GET` requests pass.
-- Prices come from a table in `@fiducy/providers` (`packages/providers/src/prices.ts`). A model it doesn't know is priced at the dearest model in the table, so a new model is never cheaper than it should be.
+- Prices come from a table in `@fiducy/providers` (`packages/providers/src/prices.ts`). A model missing from the table answers `403` while spend limits are on, since its cost can't be counted.
 - With `FIDUCY_KEYS_TABLE` set, the totals live in that DynamoDB table and hold across restarts and enclaves. Without it they live in memory. The running-request count is per gateway process.
 
 Set them in the dashboard under the app's settings, or in `FIDUCY_APPS_JSON`:

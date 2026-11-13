@@ -118,6 +118,16 @@ describe('an app with spend limits', () => {
     expect(response.status).toBe(404);
   });
 
+  it('blocks a model it has no price for, before the call', async () => {
+    const callsBefore = harness.mockProvider.recordedRequests.length;
+    const response = await callCappedApp('/v1/chat/completions', {
+      model: 'mystery-model-9',
+      messages: [{ role: 'user', content: 'Hi' }]
+    });
+    expect(response.status).toBe(403);
+    expect(harness.mockProvider.recordedRequests.length).toBe(callsBefore);
+  });
+
   it('refuses endpoints that bypass per-request pricing', async () => {
     const response = await callCappedApp('/v1/files', { purpose: 'batch' });
     expect(response.status).toBe(403);

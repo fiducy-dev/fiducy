@@ -6,21 +6,13 @@ function readBareModelName(model: string): string {
   return model.toLowerCase().split('/').at(-1) ?? '';
 }
 
-function findDearestPrice(prices: ModelPrice[]): ModelPrice {
-  return prices.reduce((dearest, price) =>
-    price.outputDollarsPerMillionTokens > dearest.outputDollarsPerMillionTokens ? price : dearest
-  );
-}
-
-export const DEAREST_MODEL_PRICE = findDearestPrice(MODEL_PRICES);
-
-export function findModelPrice(model: string): ModelPrice {
+export function findModelPrice(model: string): ModelPrice | null {
   const bareModelName = readBareModelName(model);
   const matches = MODEL_PRICES.filter((price) => bareModelName.startsWith(price.modelPrefix));
   const longestMatch = matches.sort(
     (first, second) => second.modelPrefix.length - first.modelPrefix.length
   )[0];
-  return longestMatch ?? DEAREST_MODEL_PRICE;
+  return longestMatch ?? null;
 }
 
 export function estimateCostInMicrodollars(price: ModelPrice, usage: TokenUsage): number {
