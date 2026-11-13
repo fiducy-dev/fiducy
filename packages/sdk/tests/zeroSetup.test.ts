@@ -12,7 +12,10 @@ const ENVIRONMENT_NAMES = [
   'FIDUCY_GATEWAY_URL',
   'FIDUCY_APP_ID',
   'FIDUCY_APP_SECRET',
-  'NEXT_PUBLIC_FIDUCY_APP_SECRET'
+  'NEXT_PUBLIC_FIDUCY_APP_SECRET',
+  'FIDUCY_ENCLAVE_PCR0',
+  'FIDUCY_ENCLAVE_PCR16',
+  'FIDUCY_SKIP_ATTESTATION'
 ];
 
 let harness: GatewayHarness;
@@ -77,10 +80,33 @@ describe('setup from server env', () => {
     expect(body.data).toEqual({
       gatewayURL: harness.gatewayURL,
       appID: CHAT_APP.appID,
-      basePath: '/api/fiducy'
+      basePath: '/api/fiducy',
+      enclavePCR0: null,
+      enclavePCR16: null,
+      skipAttestation: false
     });
     expect(JSON.stringify(body)).not.toContain(CHAT_APP.appSecret);
     expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('tells the browser which enclave to expect, from FIDUCY_ENCLAVE_PCR0', async () => {
+    setConnectionEnvironment();
+    const rollover = `${'AB'.repeat(48)}, ${'cd'.repeat(48)}`;
+    process.env.FIDUCY_ENCLAVE_PCR0 = rollover;
+    process.env.FIDUCY_ENCLAVE_PCR16 = '11'.repeat(48);
+    process.env.FIDUCY_SKIP_ATTESTATION = 'true';
+    const body = await readBody(await createFromEnvironment().handler(appRequest('/config', null)));
+    expect(body.data?.enclavePCR0).toBe(`${'ab'.repeat(48)},${'cd'.repeat(48)}`);
+    expect(body.data?.enclavePCR16).toBe('11'.repeat(48));
+    expect(body.data?.skipAttestation).toBe(true);
+  });
+
+  it('names a FIDUCY_ENCLAVE_PCR0 that is not a PCR0', async () => {
+    setConnectionEnvironment();
+    process.env.FIDUCY_ENCLAVE_PCR0 = 'sha384:abc';
+    const response = await createFromEnvironment().handler(appRequest('/config', null));
+    expect(response.status).toBe(500);
+    expect((await readBody(response)).message).toContain('96-character hex PCR0');
   });
 
   it('names the missing env var instead of failing later', async () => {

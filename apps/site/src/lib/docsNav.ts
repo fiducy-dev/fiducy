@@ -44,3 +44,13 @@ export const DOCS_NAV: DocsNavItem[] = [
   ]),
   group('Security', [page('Security model', 'security'), page('Gotchas', 'gotchas')])
 ];
+
+function slugsOf(items: DocsNavItem[]): string[] {
+  return items.flatMap((item) => [
+    ...(item.slug === undefined ? [] : [item.slug]),
+    ...slugsOf(item.children ?? [])
+  ]);
+}
+
+/** Every docs page slug, in sidebar order ('' is the docs index). */
+export const DOCS_SLUGS = slugsOf(DOCS_NAV);

@@ -15,6 +15,9 @@ export interface FiducyToolkitOptions {
   /** Optional: by default the key box reads these from your Fiducy route. */
   gatewayURL?: string;
   appID?: string;
+  enclavePCR0?: string;
+  enclavePCR16?: string;
+  skipAttestation?: boolean;
   /** Where the app mounted its Fiducy handler. Defaults to /api/fiducy. */
   basePath?: string;
   /** Runs after a key is saved, for example to refresh a keys list. */

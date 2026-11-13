@@ -93,8 +93,11 @@ export function createFiducyKeyElement(): CustomElementConstructor {
     async #readConfig(): Promise<FiducyBrowserConfig> {
       const gatewayURL = this.getAttribute('gateway-url');
       const appID = this.getAttribute('app-id');
-      if (gatewayURL && appID) return { gatewayURL, appID };
-      return fetchBrowserConfig(this.basePath);
+      if (!gatewayURL || !appID) return fetchBrowserConfig(this.basePath);
+      const enclavePCR0 = this.getAttribute('enclave-pcr0');
+      const enclavePCR16 = this.getAttribute('enclave-pcr16');
+      const skipAttestation = this.hasAttribute('skip-attestation');
+      return { gatewayURL, appID, enclavePCR0, enclavePCR16, skipAttestation };
     }
 
     #showSignedOut(provider: GatewayProvider) {
@@ -137,7 +140,8 @@ export function createFiducyKeyElement(): CustomElementConstructor {
         ...config,
         container: frame,
         onHandle: (handle, record) => this.#save(provider, config, handle, record),
-        onError: (message) => this.#emit(FIDUCY_KEY_EVENTS.error, { message })
+        onError: (message) => this.#emit(FIDUCY_KEY_EVENTS.error, { message }),
+        onRefused: (message) => this.#showFailure(message)
       });
     }
 

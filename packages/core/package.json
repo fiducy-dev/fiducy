@@ -1,6 +1,6 @@
 {
   "name": "@fiducy/core",
-  "version": "0.3.0-beta.5",
+  "version": "0.3.0-beta.6",
   "description": "Crypto core for Fiducy key custody: AES-256-GCM sealed records, split data keys and key handles",
   "license": "Apache-2.0",
   "repository": {
@@ -19,6 +19,11 @@
       "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./attestation": {
+      "bun": "./src/attestation/index.ts",
+      "types": "./dist/attestation/index.d.ts",
+      "default": "./dist/attestation/index.js"
     }
   },
   "files": ["dist", "src"],
@@ -26,6 +31,6 @@
     "access": "public"
   },
   "scripts": {
-    "build": "rm -rf dist && bun build src/index.ts --outdir dist --target node --packages external --sourcemap=linked && tsc -p tsconfig.build.json"
+    "build": "rm -rf dist && bun build src/index.ts src/attestation/index.ts --outdir dist --root src --target node --packages external --sourcemap=linked && tsc -p tsconfig.build.json"
   }
 }

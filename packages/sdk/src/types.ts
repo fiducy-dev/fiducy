@@ -49,7 +49,13 @@ export interface GatewayResponseBody<T> {
   message: string;
 }
 
-export interface KeyWidgetProps {
+export interface GatewayAttestationOptions {
+  enclavePCR0?: string | null;
+  enclavePCR16?: string | null;
+  skipAttestation?: boolean;
+}
+
+export interface KeyWidgetProps extends GatewayAttestationOptions {
   gatewayURL: string;
   appID: string;
   onHandle: (handle: string, record?: WidgetSealedRecord) => void;
@@ -63,7 +69,7 @@ export interface UserKeySummaryView {
   createdAt: string;
 }
 
-export interface ConnectKeyWidgetProps {
+export interface ConnectKeyWidgetProps extends GatewayAttestationOptions {
   gatewayURL: string;
   appID: string;
   provider: GatewayProvider;
@@ -83,12 +89,12 @@ export interface FiducyKeysState {
 
 export type FiducyKeyState = 'loading' | 'signed-out' | 'connect' | 'connected' | 'error';
 
-export interface FiducyBrowserConfig {
+export interface FiducyBrowserConfig extends GatewayAttestationOptions {
   gatewayURL: string;
   appID: string;
 }
 
-export interface FiducyKeyOptions {
+export interface FiducyKeyOptions extends GatewayAttestationOptions {
   provider: GatewayProvider;
   basePath?: string;
   gatewayURL?: string;
