@@ -126,7 +126,7 @@ describe('reporting the ACME account for CAA', () => {
     await keeper.persist();
     await writeFile(join(directory, 'certificates.txt'), 'renewed');
     await keeper.persist();
-    const accountLines = log.mock.calls.filter(([line]) => String(line).includes(accountURL));
+    const accountLines = log.mock.calls.filter(([line]) => line === `ACME account for the CAA accounturi: ${accountURL}`);
     log.mockRestore();
     expect(accountLines).toHaveLength(1);
   });
@@ -143,7 +143,7 @@ describe('reporting the ACME account for CAA', () => {
     const log = spyOn(console, 'log').mockImplementation(() => {});
     const restored = createTlsStateKeeper({ directory: createDirectory(), blobStore, keyWrapper });
     await restored.restore();
-    const accountLines = log.mock.calls.filter(([line]) => String(line).includes(accountURL));
+    const accountLines = log.mock.calls.filter(([line]) => line === `ACME account for the CAA accounturi: ${accountURL}`);
     log.mockRestore();
     expect(accountLines).toHaveLength(1);
   });
