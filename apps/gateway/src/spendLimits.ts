@@ -4,7 +4,7 @@ import { estimateCostInMicrodollars, findModelPrice } from '@fiducy/providers';
 import { DAY_COUNTER_LIFETIME_SECONDS, MICRODOLLARS_PER_DOLLAR } from './constants';
 import { MINUTE_COUNTER_LIFETIME_SECONDS, SPEND_COUNTER_PREFIX } from './constants';
 import { DAILY_APP_LIMIT_MESSAGE, DAILY_KEY_LIMIT_MESSAGE } from './constants';
-import { MINUTE_APP_LIMIT_MESSAGE } from './constants';
+import { MINUTE_APP_LIMIT_MESSAGE, UNPRICED_MODEL_MESSAGE } from './constants';
 import { describeFailure } from './responses';
 
 import type { MeteredRequest, TokenUsage, UsageOutcome } from '@fiducy/providers';
@@ -62,6 +62,7 @@ export async function reserveSpend(
   now = new Date()
 ): Promise<GatewayResult<SpendReservation>> {
   const price = findModelPrice(metered.model);
+  if (!price) return fail(describeFailure(403, UNPRICED_MODEL_MESSAGE));
   const reservedAmount = estimateCostInMicrodollars(price, estimateWorstCase(metered));
   const scopes = listSpendScopes(app, keyID, now);
   const charges = scopes.map((scope) => toCharge(scope, reservedAmount, now));
