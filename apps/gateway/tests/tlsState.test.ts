@@ -3,10 +3,11 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, it, spyOn } from 'bun:test';
 
 import { createLocalKeyWrapper } from '@fiducy/core';
 
+import { findACMEAccountURLs } from '../src/acmeAccounts';
 import { TLS_STATE_BLOB_NAME } from '../src/constants';
 import { createMemoryBlobStore } from '../src/memoryStores';
 import { openBlob, sealBlob } from '../src/sealedBlob';
@@ -84,5 +85,70 @@ describe('the TLS state keeper', () => {
     const keeper = createTlsStateKeeper({ directory: target, blobStore, keyWrapper: otherWrapper });
     await expect(keeper.restore()).rejects.toThrow('could not be opened');
     expect(await readdir(target)).toEqual([]);
+  });
+});
+
+describe('reporting the ACME account for CAA', () => {
+  const accountPath = 'acme/acme-v02.api.letsencrypt.org-directory/users/default/default.json';
+  const accountURL = 'https://acme-v02.api.letsencrypt.org/acme/acct/2794013655';
+  const encode = (text: string) => Buffer.from(text).toString('base64');
+
+  it('finds the account URL Caddy stored after registering', () => {
+    const snapshot = {
+      [accountPath]: encode(JSON.stringify({ status: 'valid', location: accountURL })),
+      'acme/acme-v02.api.letsencrypt.org-directory/users/default/default.key': encode('key'),
+      'certificates/acme-v02.api.letsencrypt.org-directory/gw.example/gw.example.json': encode(
+        JSON.stringify({ location: 'https://elsewhere.example/acct/1' })
+      )
+    };
+    expect(findACMEAccountURLs(snapshot)).toEqual([accountURL]);
+  });
+
+  it('ignores account files without an https location or with broken JSON', () => {
+    const snapshot = {
+      [accountPath]: encode('{"status":"valid"}'),
+      'acme/other/users/default/default.json': encode('not json'),
+      'acme/plain/users/default/default.json': encode('{"location":"http://insecure/acct/1"}')
+    };
+    expect(findACMEAccountURLs(snapshot)).toEqual([]);
+  });
+
+  it('logs each account once while the state keeps being persisted', async () => {
+    const directory = createDirectory();
+    const blobStore = createMemoryBlobStore();
+    const keyWrapper = createLocalKeyWrapper(crypto.getRandomValues(new Uint8Array(32)));
+    const keeper = createTlsStateKeeper({ directory, blobStore, keyWrapper });
+    await mkdir(join(directory, 'acme/acme-v02.api.letsencrypt.org-directory/users/default'), {
+      recursive: true
+    });
+    await writeFile(join(directory, accountPath), JSON.stringify({ location: accountURL }));
+    const log = spyOn(console, 'log').mockImplementation(() => {});
+    await keeper.persist();
+    await writeFile(join(directory, 'certificates.txt'), 'renewed');
+    await keeper.persist();
+    const accountLines = log.mock.calls.filter(
+      ([line]) => line === `ACME account for the CAA accounturi: ${accountURL}`
+    );
+    log.mockRestore();
+    expect(accountLines).toHaveLength(1);
+  });
+
+  it('logs the account when a fresh enclave restores the sealed state', async () => {
+    const blobStore = createMemoryBlobStore();
+    const keyWrapper = createLocalKeyWrapper(crypto.getRandomValues(new Uint8Array(32)));
+    const source = createDirectory();
+    await mkdir(join(source, 'acme/acme-v02.api.letsencrypt.org-directory/users/default'), {
+      recursive: true
+    });
+    await writeFile(join(source, accountPath), JSON.stringify({ location: accountURL }));
+    await createTlsStateKeeper({ directory: source, blobStore, keyWrapper }).persist();
+    const log = spyOn(console, 'log').mockImplementation(() => {});
+    const restored = createTlsStateKeeper({ directory: createDirectory(), blobStore, keyWrapper });
+    await restored.restore();
+    const accountLines = log.mock.calls.filter(
+      ([line]) => line === `ACME account for the CAA accounturi: ${accountURL}`
+    );
+    log.mockRestore();
+    expect(accountLines).toHaveLength(1);
   });
 });

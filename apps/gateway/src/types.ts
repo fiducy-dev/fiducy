@@ -186,6 +186,10 @@ export interface BlobStore {
 
 export type DirectorySnapshot = Record<string, string>;
 
+export interface ACMEAccountFile {
+  location?: string;
+}
+
 export interface TlsStateOptions {
   directory: string;
   blobStore: BlobStore;
