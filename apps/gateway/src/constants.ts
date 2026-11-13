@@ -52,6 +52,8 @@ export const SPEND_ATTRIBUTE_NAMES = {
   '#spent': SPEND_AMOUNT_ATTRIBUTE,
   '#expiresAt': SPEND_EXPIRY_ATTRIBUTE
 };
+export const UNPRICED_MODEL_MESSAGE =
+  'Fiducy has no price for this model, so it is blocked while spend limits are on';
 export const DAILY_KEY_LIMIT_MESSAGE = 'This key reached its daily spend limit';
 export const DAILY_APP_LIMIT_MESSAGE = 'This app reached its daily spend limit';
 export const MINUTE_APP_LIMIT_MESSAGE =

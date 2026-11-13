@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { DEAREST_MODEL_PRICE, estimateCostInMicrodollars, findModelPrice } from '../src';
+import { estimateCostInMicrodollars, findModelPrice } from '../src';
 import { meterRequest } from '../src';
 import { observeUsageInBody } from '../src/stream';
 import { readUsage } from '../src/usage';
@@ -82,16 +82,18 @@ describe('capping how much one request can generate', () => {
 
 describe('pricing a request', () => {
   it('matches the most specific model name, also behind an OpenRouter vendor prefix', () => {
-    expect(findModelPrice('gpt-4o-mini-2024-07-18').modelPrefix).toBe('gpt-4o-mini');
-    expect(findModelPrice('openai/gpt-4o').modelPrefix).toBe('gpt-4o');
+    expect(findModelPrice('gpt-4o-mini-2024-07-18')?.modelPrefix).toBe('gpt-4o-mini');
+    expect(findModelPrice('openai/gpt-4o')?.modelPrefix).toBe('gpt-4o');
   });
 
-  it('charges unknown models at the dearest known price', () => {
-    expect(findModelPrice('mystery-model-9')).toEqual(DEAREST_MODEL_PRICE);
+  it('has no price for a model missing from the table', () => {
+    expect(findModelPrice('mystery-model-9')).toBeNull();
+    expect(findModelPrice('')).toBeNull();
   });
 
   it('counts dollars in millionths', () => {
     const price = findModelPrice('gpt-4o');
+    if (!price) throw new Error('gpt-4o should have a price');
     const usage = { inputTokens: 1000, outputTokens: 500 };
     expect(estimateCostInMicrodollars(price, usage)).toBe(7500);
   });

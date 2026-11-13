@@ -1,6 +1,6 @@
 export { createProviderRegistry } from './registry.ts';
 export { meterRequest } from './meter.ts';
-export { DEAREST_MODEL_PRICE, estimateCostInMicrodollars, findModelPrice } from './pricing.ts';
+export { estimateCostInMicrodollars, findModelPrice } from './pricing.ts';
 export { relayResponse } from './relay.ts';
 export { redactSecrets } from './redaction.ts';
 export { buildUpstreamRequest, isPathAllowed } from './request.ts';
