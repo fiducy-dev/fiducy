@@ -186,6 +186,10 @@ export interface BlobStore {
 
 export type DirectorySnapshot = Record<string, string>;
 
+export interface ACMEAccountFile {
+  location?: string;
+}
+
 export interface TlsStateOptions {
   directory: string;
   blobStore: BlobStore;
@@ -201,8 +205,6 @@ export interface TlsStateKeeper {
 export interface TlsFrontOptions extends TlsStateOptions {
   caddyConfigPath: string;
 }
-
-export type CborValue = number | string | Uint8Array | { [key: string]: CborValue };
 
 export type EnclaveConfigField = (typeof ENCLAVE_CONFIG_FIELDS)[number];
 

@@ -61,6 +61,9 @@ export interface CreateFiducyOptions {
   basePath?: string;
   fetch?: FetchGateway;
   env?: EnvironmentVariables;
+  enclavePCR0?: string;
+  enclavePCR16?: string;
+  skipAttestation?: boolean;
 }
 
 export type EnvironmentVariables = Record<string, string | undefined>;
@@ -69,12 +72,18 @@ export interface FiducyConnection {
   gatewayURL: string;
   appID: string | null;
   appSecret: string;
+  enclavePCR0: string | null;
+  enclavePCR16: string | null;
+  skipAttestation: boolean;
 }
 
 export interface PublicFiducyConfig {
   gatewayURL: string;
   appID: string;
   basePath: string;
+  enclavePCR0: string | null;
+  enclavePCR16: string | null;
+  skipAttestation: boolean;
 }
 
 export interface SaveKeyInput {

@@ -101,6 +101,30 @@ describe('<fiducy-key> with no config in the browser', () => {
     await page.context().close();
   }, 30000);
 
+  it('refuses to show the key box for a remote gateway with no expected PCR0', async () => {
+    const query = `gatewayURL=https://gateway.notesapp.dev&appID=${ELEMENT_APP.appID}`;
+    const page = await openPage(`/element?${query}`, 'user_remote');
+    await waitForState(page, 'error');
+    expect(await page.getByText('Set FIDUCY_ENCLAVE_PCR0').isVisible()).toBe(true);
+    expect(await page.locator('fiducy-key iframe').count()).toBe(0);
+    await page.context().close();
+  });
+
+  it('refuses a gateway that cannot prove which enclave it runs', async () => {
+    const parameters = new URLSearchParams({
+      gatewayURL: harness.gatewayURL,
+      appID: ELEMENT_APP.appID,
+      enclavePCR0: 'ab'.repeat(48),
+      enclavePCR16: '11'.repeat(48)
+    });
+    const page = await openPage(`/element?${parameters}`, 'user_unproven');
+    await waitForState(page, 'error');
+    const refusal = page.getByText('did not return an attestation document. No key was sent.');
+    expect(await refusal.isVisible()).toBe(true);
+    expect(await page.locator('fiducy-key iframe').count()).toBe(0);
+    await page.context().close();
+  });
+
   it('says where the route is missing and which attribute is wrong', async () => {
     const wrongPath = await openPage('/element?basePath=/api/keys', 'element_user');
     await waitForState(wrongPath, 'error');

@@ -29,6 +29,7 @@ export const BLOB_ATTRIBUTE = 'blob';
 export const TLS_STATE_BLOB_NAME = 'tls-state';
 export const TLS_STATE_SCOPE = 'tls-state';
 export const TLS_STATE_PERSIST_INTERVAL_MILLISECONDS = 10000;
+export const ACME_ACCOUNT_PATH_PATTERN = /^acme\/[^/]+\/users\/[^/]+\/[^/]+\.json$/;
 export const SEALED_BLOB_KEY_LENGTH_BYTES = 2;
 export const KEY_UPLOAD_BUCKET_CAPACITY = 10;
 export const KEY_UPLOAD_REFILL_PER_SECOND = 10 / 60;

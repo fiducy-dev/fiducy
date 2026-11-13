@@ -16,7 +16,9 @@ function respondToError(error: unknown): Response {
 export function createRouter({ basePath, getUserID, readConnection, actions }: RouterInput) {
   const serveConfig = () => {
     const connection = readConnection();
-    const config = { gatewayURL: connection.gatewayURL, appID: requireAppID(connection), basePath };
+    const { gatewayURL, enclavePCR0, enclavePCR16, skipAttestation } = connection;
+    const appID = requireAppID(connection);
+    const config = { gatewayURL, appID, basePath, enclavePCR0, enclavePCR16, skipAttestation };
     return respondWith(200, config, 'Fiducy config loaded');
   };
 

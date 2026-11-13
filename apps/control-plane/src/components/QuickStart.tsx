@@ -7,12 +7,15 @@ function buildSteps({ appID, gatewayURL }: QuickStartProps) {
   return [
     {
       title: 'Let users paste their key into the widget',
-      detail: 'You get back a handle. Store it next to the user.',
+      detail:
+        'The widget checks the enclave PCR0 and PCR16 before it shows the key box. You get back a handle. Store it next to the user.',
       code: `import { mountKeyWidget } from '@fiducy/widget';
 
 mountKeyWidget({
   gatewayURL: '${gatewayURL}',
   appID: '${appID}',
+  enclavePCR0: 'PCR0 printed by your deploy',
+  enclavePCR16: 'PCR16 printed by your deploy',
   container: document.querySelector('#key-widget'),
   onHandle: (handle) => saveHandleForUser(handle)
 });`

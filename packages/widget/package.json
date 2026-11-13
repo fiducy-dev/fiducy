@@ -29,5 +29,8 @@
   },
   "scripts": {
     "build": "rm -rf dist && bun build src/index.ts src/constants.ts --outdir dist --target browser --packages external --sourcemap=linked && tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@fiducy/core": "0.3.0-beta.6"
   }
 }

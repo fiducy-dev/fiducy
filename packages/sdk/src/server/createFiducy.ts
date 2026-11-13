@@ -2,6 +2,7 @@ import { parseHandle } from '@fiducy/core';
 
 import { DEFAULT_BASE_PATH, MAX_IMPORT_BATCH_SIZE } from '../constants.ts';
 import { createGatewayClient } from '../gatewayClient.ts';
+import { assertGatewayAttested } from './attestation.ts';
 import { refuseExposedSecret, resolveConnection } from './environment.ts';
 import { FiducyGatewayError, FiducyInputError } from './errors.ts';
 import { createProviderSettingsResolver } from './providerSettings.ts';
@@ -107,6 +108,7 @@ export function createFiducy(options: CreateFiducyOptions): Fiducy {
         pending.push(key);
       }
     }
+    if (pending.length > 0) await assertGatewayAttested(readConnection(), options.fetch);
     for (const batch of chunk(pending, MAX_IMPORT_BATCH_SIZE)) {
       result.imported.push(...(await importBatch(batch)));
     }
