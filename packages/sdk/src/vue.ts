@@ -13,7 +13,10 @@ export const FiducyKey = defineComponent({
     provider: { type: String as PropType<GatewayProvider>, required: true },
     basePath: { type: String, default: undefined },
     gatewayURL: { type: String, default: undefined },
-    appID: { type: String, default: undefined }
+    appID: { type: String, default: undefined },
+    enclavePCR0: { type: String, default: undefined },
+    enclavePCR16: { type: String, default: undefined },
+    skipAttestation: { type: Boolean, default: false }
   },
   emits: {
     connected: (_key: UserKeySummaryView) => true,

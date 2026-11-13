@@ -1,4 +1,8 @@
+import { checkGateway } from '@fiducy/core/attestation';
+
 import { WIDGET_DEFAULT_HEIGHT, WIDGET_MESSAGE_TYPES } from './constants.ts';
+
+import type { GatewayCheck } from '@fiducy/core/attestation';
 
 import type { MountKeyWidgetOptions, MountedKeyWidget, WidgetMessage } from './types.ts';
 
@@ -35,16 +39,13 @@ function assertWidgetOptions(gatewayURL: string, appID: string): void {
     );
 }
 
-export function mountKeyWidget({
-  gatewayURL,
-  appID,
-  container,
-  onHandle,
-  onError
-}: MountKeyWidgetOptions): MountedKeyWidget {
+export function mountKeyWidget(options: MountKeyWidgetOptions): MountedKeyWidget {
+  const { gatewayURL, appID, container, onHandle, onError } = options;
+  const onRefused = options.onRefused ?? onError;
   assertWidgetOptions(gatewayURL, appID);
   const gatewayOrigin = new URL(gatewayURL).origin;
   const iframe = createWidgetFrame(gatewayURL, appID);
+  let isMounted = true;
 
   const handleMessage = (event: MessageEvent<WidgetMessage>) => {
     if (event.origin !== gatewayOrigin || event.source !== iframe.contentWindow) return;
@@ -53,11 +54,22 @@ export function mountKeyWidget({
     if (event.data?.type === WIDGET_MESSAGE_TYPES.error) onError?.(event.data.message);
   };
 
-  window.addEventListener('message', handleMessage);
-  container.appendChild(iframe);
+  const mountAfterCheck = (check: GatewayCheck) => {
+    if (!isMounted) return;
+    if (!check.ok) {
+      onRefused?.(check.refusal);
+      return;
+    }
+    if (check.warning) console.warn(check.warning);
+    window.addEventListener('message', handleMessage);
+    container.appendChild(iframe);
+  };
+  const { enclavePCR0, enclavePCR16, skipAttestation } = options;
+  checkGateway({ gatewayURL, enclavePCR0, enclavePCR16, skipAttestation }).then(mountAfterCheck);
   return {
     iframe,
     unmount: () => {
+      isMounted = false;
       window.removeEventListener('message', handleMessage);
       iframe.remove();
     }

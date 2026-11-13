@@ -43,6 +43,9 @@ Importing `@fiducy/sdk/element` defines the tag once. The wrappers do this for y
 | `provider` | required | `openai`, `anthropic`, `gemini` or `openrouter` |
 | `base-path` | `/api/fiducy` | Where your key route is mounted |
 | `gateway-url`, `app-id` | from `/config` | Only to skip the config request |
+| `enclave-pcr0` | from `/config` | With `gateway-url`: the PCR0 to expect. The widget checks the gateway's attestation before it shows the key box |
+| `enclave-pcr16` | from `/config` | With `gateway-url`: the PCR16 (deployment config) to expect. Required with `enclave-pcr0` |
+| `skip-attestation` | off | With `gateway-url`: only for a test gateway that is not in an enclave |
 
 ## Events
 
@@ -85,6 +88,10 @@ Buttons are at least 44px tall for touch. The iframe's own look follows the gate
 
 - **In settings**, so users can connect, replace and remove keys ahead of time.
 - **In the chat, when a key is missing.** Your model route answers `409` with `{ data: { reason: 'no-key', provider } }` (from `respondToMissingKey`). Render `<fiducy-key provider={provider}>` where the reply would go, and send the message again on `fiducy:connected`. With assistant-ui, [`@fiducy/assistant-ui`](/docs/assistant-ui) does this for you.
+
+## Content Security Policy
+
+Before it shows the key box, the widget fetches `/attestation` from the gateway to check the enclave, then loads the key box in an iframe from the same gateway. If your app sends a Content Security Policy, add the gateway origin to both `connect-src` and `frame-src`, for example `connect-src 'self' https://gateway.yourapp.com; frame-src https://gateway.yourapp.com`. Without `connect-src` the widget refuses the gateway with "did not return an attestation document".
 
 ## Listing keys yourself
 

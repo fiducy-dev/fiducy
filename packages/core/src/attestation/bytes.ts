@@ -30,3 +30,7 @@ export function isAllZero(bytes: Bytes): boolean {
 export async function hashSHA256(bytes: Bytes): Promise<string> {
   return encodeHex(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)));
 }
+
+export function decodeBase64(text: string): Bytes {
+  return Uint8Array.from(atob(text), (character) => character.charCodeAt(0));
+}

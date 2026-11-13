@@ -28,3 +28,8 @@ export function assertAttestationInput(input: VerifyAttestationInput): void {
 export function assertNitroAttestationInput(input: VerifyNitroAttestationInput): void {
   requirePCRList(input.expectedPCR16s, 'expectedPCR16s', false);
 }
+
+export function assertExpectedPCRs(expectedPCR0s: string[], expectedPCR16s: string[]): void {
+  requirePCRList(expectedPCR0s, 'enclavePCR0', false);
+  requirePCRList(expectedPCR16s, 'enclavePCR16', false);
+}
