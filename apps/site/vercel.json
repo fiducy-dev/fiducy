@@ -3,7 +3,7 @@
   "framework": null,
   "installCommand": "bun install --linker hoisted",
   "buildCommand": "bash scripts/vercel-build.sh",
-  "ignoreCommand": "git diff --quiet \"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\" HEAD -- . ../../packages ../../package.json ../../bun.lock ../../bunfig.toml",
+  "ignoreCommand": "git diff --quiet \"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\" HEAD -- . ../../packages ../../package.json ../../bun.lock ../../bunfig.toml ../../patches",
   "git": {
     "deploymentEnabled": {
       "**": false,
