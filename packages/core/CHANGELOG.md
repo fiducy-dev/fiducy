@@ -1,5 +1,9 @@
 # @fiducy/core
 
+## 0.3.0-beta.8
+
+No changes in this release.
+
 ## 0.3.0-beta.7
 
 ### Minor Changes
