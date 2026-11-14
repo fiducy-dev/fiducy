@@ -73,8 +73,25 @@ Every public CA must check CAA, so no other CA, and no other Let's Encrypt accou
 
 ## Limits
 
-- **Your app secret plus a handle can use a key** through the gateway. Monthly limits per key cap the damage; rotate the secret if it leaks.
+- **Your app secret plus a handle can use a key** through the gateway, until a [spend limit](/docs/gateway-api#spend-limits) or a freeze stops it. Rotate the secret if it leaks.
 - **No plaintext comes back.** There is no endpoint that returns a stored key to your server. The gateway proxy is the only way to use one; ask for a provider the proxy does not cover.
 - **The provider sees the key**, as it always does.
 - **The attestation check trusts TLS for the hostname.** It proves an approved enclave answered `/attestation`. Someone who controls the gateway's host and can also get a certificate for its hostname could relay that answer from the real enclave while serving a fake key box. [Lock down the gateway hostname](#lock-down-the-gateway-hostname) to close this.
 - **Hosting**: a flaw in Nitro or KMS would break the guarantees. Self-hosting moves that trust to your own account.
+
+## If your app is breached
+
+Your users' keys can't be stolen from your servers, because they were never there. What an attacker with your app secret and handles can do is use those keys through the gateway. Cut that off:
+
+1. **Freeze the app.** Dashboard, Settings, "Freeze app". The gateway refuses every AI call, key upload and import for the app at once. To freeze from your own alerting, send the app secret:
+
+   ```bash
+   curl -X POST https://your-dashboard.example.com/api/freeze \
+     -H "authorization: Bearer $FIDUCY_APP_SECRET"
+   ```
+
+   The app secret can freeze its app but never unfreeze it. Only a signed-in owner can.
+2. **Rotate the app secret.** Settings, "Secret and removal", "Rotate app secret". Put the new value in `FIDUCY_APP_SECRET` and redeploy. The old secret stops working at once.
+3. **Unfreeze.** Your users keep their keys and rotate nothing with their provider: no plaintext key was ever on your server.
+
+"Revoke all keys" in the same panel deletes every sealed key the dashboard has seen and makes every handle useless. Each user has to connect their key again. Use it when you are shutting the app down, or when your users must start over. A freeze already stops all use, including keys the dashboard never heard about.

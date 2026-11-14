@@ -1,7 +1,8 @@
 import { fail, succeed } from './result';
 
-import { APP_NOT_FOUND } from './failures';
+import { APP_NOT_FOUND, APP_SECRET_NOT_VALID } from './failures';
 import { generateAppID, generateAppSecret, hashSecret, previewAppSecret } from './secrets';
+import { matchesToken } from './secrets';
 
 import type { AppSettings, AppView, ControlResult, ControlStore } from './types';
 import type { CreatedApp, GatewayApp, StoredApp } from './types';
@@ -11,7 +12,7 @@ export function toAppView({ appSecretHash, ownerID, ...app }: StoredApp): AppVie
 }
 
 export function toGatewayApp(
-  { ownerID, appSecretPreview, createdAt, ...app }: StoredApp,
+  { ownerID, appSecretPreview, createdAt, frozenAt, ...app }: StoredApp,
   revokedKeyIDs: string[] = []
 ): GatewayApp {
   return { ...app, revokedKeyIDs };
@@ -84,6 +85,34 @@ export async function rotateAppSecret(
   const updated = { ...owned.value, ...secretFields };
   await store.saveApp(updated);
   return succeed({ app: toAppView(updated), appSecret });
+}
+
+export async function setAppFrozen(
+  store: ControlStore,
+  ownerID: string,
+  appID: string,
+  isFrozen: boolean
+): Promise<ControlResult<AppView>> {
+  const owned = await findOwnedApp(store, ownerID, appID);
+  if (!owned.ok) return owned;
+  const frozenAt = isFrozen ? new Date().toISOString() : null;
+  const updated = { ...owned.value, isFrozen, frozenAt };
+  await store.saveApp(updated);
+  return succeed(toAppView(updated));
+}
+
+export async function freezeAppBySecret(
+  store: ControlStore,
+  appSecret: string
+): Promise<ControlResult<string>> {
+  const appSecretHash = await hashSecret(appSecret);
+  const apps = await store.listAllApps();
+  const app = apps.find((candidate) => matchesToken(candidate.appSecretHash, appSecretHash));
+  if (!app) return fail(APP_SECRET_NOT_VALID);
+  if (!app.isFrozen) {
+    await store.saveApp({ ...app, isFrozen: true, frozenAt: new Date().toISOString() });
+  }
+  return succeed(app.appID);
 }
 
 export async function deleteApp(

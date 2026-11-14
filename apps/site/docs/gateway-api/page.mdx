@@ -23,7 +23,8 @@ Server calls send the app secret: `authorization: Bearer fsk_...`. The widget's 
 | `GET /widget?app=&origin=` | the iframe | Key entry page. CSP locks `frame-ancestors` to `origin` |
 | `POST /keys` | the iframe | Seal a key. Returns `{ handle }` or `{ handle, record }` |
 | `POST /keys/import` | your server | Seal up to 100 keys you already store: `{ apiKeys: [...] }`. Returns `{ keys: [{ handle, record? }] }` in the same order. Off unless the app turns on key import |
-| `DELETE /keys/:keyID` | your server | Revoke (Fiducy-stored records only) |
+| `DELETE /keys/:keyID` | your server | Revoke (Fiducy-stored records only). Works while the app is frozen |
+| `POST /apps/refresh` | the control plane | Reload app configs now, after a freeze, unfreeze or secret rotation |
 | `ANY /{provider}/...` | your server | Proxy to the provider with the user's key |
 
 ## Provider proxy
@@ -49,7 +50,7 @@ Errors from the gateway itself:
 | --- | --- |
 | `400` | Missing or malformed handle or record |
 | `401` | Bad app secret |
-| `403` | The handle belongs to another app or cannot open its key, a key was added outside the widget, or the endpoint or model can't be priced while spend limits are on |
+| `403` | The handle belongs to another app or cannot open its key, a key was added outside the widget, the endpoint or model can't be priced while spend limits are on, or the app is frozen |
 | `404` | No key with this ID for this app |
 | `409` | Revoke through the gateway on an app that stores its own records. Delete the record instead |
 | `429` | The key reached its monthly request limit, a spend limit was reached, or the key has too many requests running at once. The message says which |

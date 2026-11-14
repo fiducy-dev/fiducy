@@ -1,4 +1,6 @@
 import { KEY_IMPORT_PATH, KEY_ROUTE_PATTERN, PROVIDER_ROUTE_PATTERN } from './constants';
+import { APP_REFRESH_PATH } from './constants';
+import { refreshApps } from './controllers/apps';
 import { serveAttestation } from './controllers/attestation';
 import { importKeys, revokeKey, storeKey } from './controllers/keys';
 import { proxyProviderRequest } from './controllers/proxy';
@@ -21,6 +23,8 @@ async function routeRequest(request: Request, dependencies: ResolvedGatewayDepen
   if (request.method === 'POST' && pathname === '/keys') return storeKey(request, dependencies);
   if (request.method === 'POST' && pathname === KEY_IMPORT_PATH)
     return importKeys(request, dependencies);
+  if (request.method === 'POST' && pathname === APP_REFRESH_PATH)
+    return refreshApps(request, dependencies);
 
   const keyRoute = KEY_ROUTE_PATTERN.exec(pathname);
   if (request.method === 'DELETE' && keyRoute?.[1])

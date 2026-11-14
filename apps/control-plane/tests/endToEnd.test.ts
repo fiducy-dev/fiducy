@@ -176,6 +176,61 @@ describe('a developer managing an app', () => {
   }, 90000);
 });
 
+describe('a developer responding to a breach', () => {
+  it('freezes the app at once, lets its secret freeze it, and revokes every key', async () => {
+    const page = await browser.newPage();
+    await signUp(page, 'oncall@chatforge.example');
+    const { appID, appSecret } = await createAppInDashboard(page);
+    const handle = await storeUserKey(appID);
+    const callGateway = () =>
+      fetch(`${stack.gatewayURL}/openai/v1/chat/completions`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${appSecret}`, 'x-key-handle': handle },
+        body: JSON.stringify({ model: 'gpt-4o-mini', messages: [] })
+      });
+    const setFrozen = (isFrozen: boolean) =>
+      page.evaluate(
+        async ([id, frozen]) => {
+          const response = await fetch(`/api/apps/${id}/freeze`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ isFrozen: frozen })
+          });
+          return response.status;
+        },
+        [appID, isFrozen] as const
+      );
+
+    expect((await callGateway()).status).toBe(200);
+    expect(await setFrozen(true)).toBe(200);
+    expect((await callGateway()).status).toBe(403);
+    expect(await setFrozen(false)).toBe(200);
+    expect((await callGateway()).status).toBe(200);
+
+    const frozenBySecret = await fetch(`${stack.controlPlaneURL}/api/freeze`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${appSecret}` }
+    });
+    expect(frozenBySecret.status).toBe(200);
+    expect((await callGateway()).status).toBe(403);
+    const unfreezeBySecret = await fetch(`${stack.controlPlaneURL}/api/apps/${appID}/freeze`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${appSecret}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isFrozen: false })
+    });
+    expect(unfreezeBySecret.status).toBe(401);
+
+    expect(await setFrozen(false)).toBe(200);
+    const revoked = await page.evaluate(async (id) => {
+      const response = await fetch(`/api/apps/${id}/keys`, { method: 'DELETE' });
+      return response.json();
+    }, appID);
+    expect(revoked.data).toEqual({ revokedCount: 1, failedCount: 0 });
+    expect((await callGateway()).status).toBe(404);
+    await page.close();
+  }, 90000);
+});
+
 describe('control plane access rules', () => {
   it('refuses the gateway feed without the gateway token', async () => {
     const response = await fetch(`${stack.controlPlaneURL}/api/gateway/apps`, {

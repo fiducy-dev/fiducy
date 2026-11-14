@@ -1,13 +1,14 @@
 import { fail, succeed } from './result';
 
 import { findOwnedApp } from './appService';
-import { groupBy } from './common';
-import { UNKNOWN_PROVIDER } from './constants';
+import { groupBy, splitIntoBatches } from './common';
+import { REVOKE_ALL_BATCH_SIZE, UNKNOWN_PROVIDER } from './constants';
 import { KEY_NOT_FOUND } from './failures';
 import { toUsageMonth } from './usageService';
 
 import type { AppKeyView, ControlResult, ControlStore, StoredKeyEntry } from './types';
-import type { GatewayClient, KeyEvent, UsageEvent } from './types';
+import type { GatewayClient, KeyEvent, RevokedKeys } from './types';
+import type { StoredApp, UsageEvent } from './types';
 
 function laterTime(first: string | null, second: string): string {
   return first && first > second ? first : second;
@@ -103,6 +104,41 @@ export async function revokeAppKey(
   }
   await noteRevokedKey(store, appID, keyID);
   return succeed(keyID);
+}
+
+async function revokeKeyEntry(
+  store: ControlStore,
+  gateway: GatewayClient,
+  app: StoredApp,
+  keyID: string
+): Promise<boolean> {
+  if (app.recordStorage !== 'app') {
+    const deleted = await gateway.deleteRecord(app.appID, keyID);
+    if (!deleted.ok) return false;
+  }
+  await noteRevokedKey(store, app.appID, keyID);
+  return true;
+}
+
+export async function revokeAllAppKeys(
+  store: ControlStore,
+  gateway: GatewayClient,
+  ownerID: string,
+  appID: string
+): Promise<ControlResult<RevokedKeys>> {
+  const owned = await findOwnedApp(store, ownerID, appID);
+  if (!owned.ok) return fail(owned.error);
+  const entries = await store.listKeyEntries(appID);
+  const activeKeyIDs = entries
+    .filter((entry) => entry.status === 'active')
+    .map((entry) => entry.keyID);
+  const results: boolean[] = [];
+  for (const batch of splitIntoBatches(activeKeyIDs, REVOKE_ALL_BATCH_SIZE)) {
+    const revoked = batch.map((keyID) => revokeKeyEntry(store, gateway, owned.value, keyID));
+    results.push(...(await Promise.all(revoked)));
+  }
+  const revokedCount = results.filter(Boolean).length;
+  return succeed({ revokedCount, failedCount: results.length - revokedCount });
 }
 
 export async function noteRevokedKey(store: ControlStore, appID: string, keyID: string) {
