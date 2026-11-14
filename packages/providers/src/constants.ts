@@ -117,3 +117,6 @@ export const METERED_ENDPOINTS: MeteredEndpoint[] = [
     requestsStreamUsage: false
   }
 ];
+
+export const SNAPSHOT_SUFFIX_PATTERN =
+  /^(-\d{4}(-\d{2}-\d{2})?|-\d{8}|-latest|-preview(-[a-z0-9-]+)?|-exp(-[a-z0-9-]+)?)?$/;

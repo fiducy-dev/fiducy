@@ -72,7 +72,7 @@ How it works:
 - After the call, it replaces the reservation with the real cost from the provider's token counts. A provider error refunds it. A stream that stops early keeps the full reservation, since the provider may still bill for it.
 - It sets or lowers `max_tokens`, `max_completion_tokens`, `max_output_tokens` or Gemini's `maxOutputTokens` to `maximumOutputTokens`, and turns on `stream_options.include_usage` for OpenAI streams so the real cost can be read.
 - Only endpoints it can price are allowed: chat completions, completions, Responses, embeddings, Anthropic messages and token counts, Gemini generate, count and embed calls, and OpenRouter completions. Other `POST` endpoints (files, batches, images, audio) answer `403`. `GET` requests pass.
-- Prices come from a table in `@fiducy/providers` (`packages/providers/src/prices.ts`). A model missing from the table answers `403` while spend limits are on, since its cost can't be counted.
+- Prices come from `packages/providers/src/prices.json` in `@fiducy/providers`, in dollars per million tokens at each provider's standard rate. A request matches a listed name or a dated snapshot of it (`claude-opus-4-1-20250805`, `gpt-4o-mini-2024-07-18`, `-latest`, `-preview-*`); dots and dashes in version numbers count as the same. A model missing from the table answers `403` while spend limits are on, since its cost can't be counted.
 - With `FIDUCY_KEYS_TABLE` set, the totals live in that DynamoDB table and hold across restarts and enclaves. Without it they live in memory. The running-request count is per gateway process.
 
 Set them in the dashboard under the app's settings, or in `FIDUCY_APPS_JSON`:

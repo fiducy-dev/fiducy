@@ -1,18 +1,34 @@
-import { MODEL_PRICES } from './prices.ts';
+import { SNAPSHOT_SUFFIX_PATTERN } from './constants.ts';
+import PRICE_TABLE from './prices.json' with { type: 'json' };
 
-import type { ModelPrice, TokenUsage } from './types.ts';
+import type { ModelPrice, PriceEntry, TokenUsage } from './types.ts';
 
-function readBareModelName(model: string): string {
-  return model.toLowerCase().split('/').at(-1) ?? '';
+function normalizeModelName(model: string): string {
+  const bareModelName = model.toLowerCase().split('/').at(-1) ?? '';
+  return (bareModelName.split(':')[0] ?? '').replaceAll('.', '-');
+}
+
+function toModelPrice([model, entry]: [string, PriceEntry]): ModelPrice {
+  return {
+    model: normalizeModelName(model),
+    inputDollarsPerMillionTokens: entry.input,
+    outputDollarsPerMillionTokens: entry.output
+  };
+}
+
+const MODEL_PRICES: ModelPrice[] = Object.entries(PRICE_TABLE as Record<string, PriceEntry>)
+  .map(toModelPrice)
+  .sort((first, second) => second.model.length - first.model.length);
+
+function matchesPrice(modelName: string, price: ModelPrice): boolean {
+  if (!modelName.startsWith(price.model)) return false;
+  return SNAPSHOT_SUFFIX_PATTERN.test(modelName.slice(price.model.length));
 }
 
 export function findModelPrice(model: string): ModelPrice | null {
-  const bareModelName = readBareModelName(model);
-  const matches = MODEL_PRICES.filter((price) => bareModelName.startsWith(price.modelPrefix));
-  const longestMatch = matches.sort(
-    (first, second) => second.modelPrefix.length - first.modelPrefix.length
-  )[0];
-  return longestMatch ?? null;
+  const modelName = normalizeModelName(model);
+  if (!modelName) return null;
+  return MODEL_PRICES.find((price) => matchesPrice(modelName, price)) ?? null;
 }
 
 export function estimateCostInMicrodollars(price: ModelPrice, usage: TokenUsage): number {
