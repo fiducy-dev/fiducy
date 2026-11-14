@@ -21,7 +21,7 @@ export function DangerZone({ appID, appName }: DangerZoneProps) {
         window.location.href = '/dashboard';
       },
       onError: (error) => {
-        if (isSignedOut(error)) signInAgain(`/dashboard/${appID}?tab=settings`);
+        if (isSignedOut(error)) signInAgain(appID);
       }
     });
   }

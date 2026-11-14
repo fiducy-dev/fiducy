@@ -18,7 +18,7 @@ export function IncidentControls({ app }: AppProps) {
   function confirmRevokeAll() {
     revokeAllKeys.mutate(undefined, {
       onError: (error) => {
-        if (isSignedOut(error)) signInAgain(`/dashboard/${app.appID}?tab=settings`);
+        if (isSignedOut(error)) signInAgain(app.appID);
       }
     });
   }

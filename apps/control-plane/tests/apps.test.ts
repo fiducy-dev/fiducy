@@ -187,12 +187,13 @@ describe('confirming a destructive change', () => {
     expect(isRecentSignIn(signedInAt, now + 6 * 60 * 1000)).toBe(false);
   });
 
-  it('only returns to a path on this dashboard after signing in', () => {
-    expect(readReturnPath('?next=%2Fdashboard%2Fapp_1%3Ftab%3Dsettings')).toBe(
-      '/dashboard/app_1?tab=settings'
+  it('only returns to an app on this dashboard after signing in', () => {
+    expect(readReturnPath('?app=app_Rk9_4HuntyOyhHz1')).toBe(
+      '/dashboard/app_Rk9_4HuntyOyhHz1?tab=settings'
     );
-    expect(readReturnPath('?next=https%3A%2F%2Fevil.example')).toBe('/dashboard');
-    expect(readReturnPath('?next=%2F%2Fevil.example')).toBe('/dashboard');
+    expect(readReturnPath('?app=%2F%09%2Fevil.example')).toBe('/dashboard');
+    expect(readReturnPath('?app=app_1%2F..%2F..%2F%2Fevil.example')).toBe('/dashboard');
+    expect(readReturnPath('?app=javascript%3Aalert(1)')).toBe('/dashboard');
     expect(readReturnPath('')).toBe('/dashboard');
   });
 });

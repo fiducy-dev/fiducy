@@ -1,4 +1,4 @@
-import { SPEND_LIMIT_NAMES } from './constants';
+import { APP_ID_PATTERN, SPEND_LIMIT_NAMES } from './constants';
 
 import type { AppSettings, SpendLimits } from './types';
 
@@ -65,11 +65,11 @@ export function readAppSettingsForm(form: HTMLFormElement): AppSettings {
 }
 
 export function readReturnPath(search: string): string {
-  const next = new URLSearchParams(search).get('next') ?? '';
-  const isLocalPath = next.startsWith('/') && !next.startsWith('//') && !next.includes('\\');
-  return isLocalPath ? next : '/dashboard';
+  const appID = new URLSearchParams(search).get('app') ?? '';
+  if (!APP_ID_PATTERN.test(appID)) return '/dashboard';
+  return `/dashboard/${appID}?tab=settings`;
 }
 
-export function signInAgain(returnPath: string) {
-  window.location.assign(`/sign-in?next=${encodeURIComponent(returnPath)}`);
+export function signInAgain(appID: string) {
+  window.location.assign(`/sign-in?app=${encodeURIComponent(appID)}`);
 }

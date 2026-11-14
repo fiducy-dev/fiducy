@@ -15,8 +15,8 @@ import type { AuthFormProps, Credentials } from './types';
 
 export function AuthForm({ mode }: AuthFormProps) {
   const isSignUp = mode === 'sign-up';
-  const returnPath = useSearchParam('next');
-  const isConfirming = !isSignUp && returnPath !== null;
+  const returnAppID = useSearchParam('app');
+  const isConfirming = !isSignUp && returnAppID !== null;
   const authenticate = useMutation({
     mutationFn: async ({ email, password, name }: Credentials) => {
       const response = isSignUp

@@ -42,3 +42,4 @@ export const SPEND_LIMIT_NAMES = [
 ] as const;
 export const RECENT_SIGN_IN_MILLISECONDS = 5 * 60 * 1000;
 export const SIGN_IN_AGAIN_MESSAGE = 'Sign in again to confirm this';
+export const APP_ID_PATTERN = /^app_[A-Za-z0-9_-]{1,64}$/;
