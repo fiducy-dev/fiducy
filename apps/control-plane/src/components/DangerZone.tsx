@@ -32,7 +32,7 @@ export function DangerZone({ appID, appName }: DangerZoneProps) {
       defaultOpen={false}
       className="border-dashed"
       title="Secret and removal"
-      description="Rotating breaks servers still using the old secret. Deleting breaks every stored key handle."
+      description="Rotating ends the old secret. Deleting ends every key handle."
     >
       <div className="flex flex-wrap gap-2">
         <ConfirmAction
@@ -42,7 +42,7 @@ export function DangerZone({ appID, appName }: DangerZoneProps) {
             </Button>
           }
           title="Rotate the app secret?"
-          description="Your servers must switch to the new secret. The old one stops working shortly."
+          description="Update your servers. The old secret stops working shortly."
           confirmLabel="Rotate secret"
           onConfirm={() => rotateSecret.mutate()}
         />
@@ -53,7 +53,7 @@ export function DangerZone({ appID, appName }: DangerZoneProps) {
             </Button>
           }
           title="Delete this app?"
-          description="Every user key handle it holds stops working. This cannot be undone."
+          description="Every key handle stops working. This cannot be undone."
           confirmLabel="Delete app"
           confirmPhrase={appName}
           onConfirm={confirmDelete}

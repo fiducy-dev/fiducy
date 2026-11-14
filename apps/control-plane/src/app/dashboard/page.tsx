@@ -35,9 +35,7 @@ export default function DashboardPage() {
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div className="grid gap-1.5">
             <h1 className="font-semibold text-2xl text-foreground tracking-tight">Your apps</h1>
-            <p className="text-ink-quiet text-sm">
-              Each app gets its own secret, origins, limits, and usage.
-            </p>
+            <p className="text-ink-quiet text-sm">Each app has its own secret and limits.</p>
           </div>
           {hasApps ? (
             <CreateAppDialog isOpen={isDialogOpen} onOpenChange={setIsDialogOpen} {...formProps} />
@@ -57,7 +55,7 @@ export default function DashboardPage() {
           <Panel
             className="max-w-xl"
             title="No apps yet"
-            description="Create your first app. You get an app ID for the widget and a secret for your server."
+            description="Create one to get an app ID and secret."
           >
             <CreateAppForm {...formProps} />
           </Panel>

@@ -24,9 +24,8 @@ export function SpendLimitFields({ spendLimits }: SpendLimitFieldsProps) {
         Spend limits
       </legend>
       <p className="-mt-2 text-muted-foreground text-xs">
-        Checked by the gateway before each call, from token counts and list prices. Leave a field
-        empty for no limit. While any limit is set, only endpoints Fiducy can price are allowed,
-        such as chat, messages and embeddings.
+        Checked before each call. Empty means no limit. With any limit set, only priced endpoints
+        work.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         {SPEND_LIMIT_FIELDS.map((field) => (

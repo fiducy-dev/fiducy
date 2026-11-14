@@ -46,9 +46,7 @@ export function AppSettingsFields({ defaults }: AppSettingsFieldsProps) {
           spellCheck={false}
           defaultValue={defaults?.allowedOrigins.join('\n')}
         />
-        <FieldDescription>
-          Sites that may embed the key widget, one per line, such as https://chat.example.com
-        </FieldDescription>
+        <FieldDescription>One per line, like https://chat.example.com</FieldDescription>
       </Field>
       <Field>
         <FieldLabel>Monthly request limit per user key</FieldLabel>
@@ -81,17 +79,14 @@ export function AppSettingsFields({ defaults }: AppSettingsFieldsProps) {
           </SelectPopup>
         </Select>
         <FieldDescription>
-          Lets your server move keys you already store into Fiducy with fiducy.importKeys(). Turn it
-          off when the move is done, so new keys only come in through the widget.
+          Lets your server move existing keys in with fiducy.importKeys(). Turn off when done.
         </FieldDescription>
       </Field>
       {defaults ? (
         <Field>
           <FieldLabel>Where sealed keys live</FieldLabel>
           <Input readOnly value={describeRecordStorage(defaults.recordStorage)} />
-          <FieldDescription>
-            Set when the app is created. Create a new app to store keys the other way.
-          </FieldDescription>
+          <FieldDescription>Fixed when the app is created.</FieldDescription>
         </Field>
       ) : (
         <Field>
@@ -109,8 +104,8 @@ export function AppSettingsFields({ defaults }: AppSettingsFieldsProps) {
             </SelectPopup>
           </Select>
           <FieldDescription>
-            With Fiducy, your app stores only a handle. In your database, your app sends the sealed
-            record with each call. You can't change this after the app is created.
+            With Fiducy, you store a handle. In your database, you send the sealed record each call.
+            Can't change later.
           </FieldDescription>
         </Field>
       )}

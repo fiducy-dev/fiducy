@@ -13,9 +13,7 @@ export function SecretReveal({ appSecret }: SecretRevealProps) {
   const copySecret = useMutation({ mutationFn: () => navigator.clipboard.writeText(appSecret) });
   return (
     <Alert>
-      <AlertTitle>
-        Copy your app secret now. Fiducy only stores its hash and cannot show it again.
-      </AlertTitle>
+      <AlertTitle>Copy your secret now. It won't be shown again.</AlertTitle>
       <AlertDescription className="grid gap-3">
         <code
           className="block select-all break-all border border-foreground border-dashed p-2.5 text-foreground"

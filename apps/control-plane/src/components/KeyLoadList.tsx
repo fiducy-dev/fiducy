@@ -18,8 +18,8 @@ export function KeyLoadList({ usage, monthlyLimit }: KeyLoadListProps) {
   if (!keys.length) {
     return (
       <QuietState
-        title="No key has made a request this month"
-        description="Keys show here with their share of the monthly limit once users start chatting."
+        title="No requests this month"
+        description="Keys show here once users start chatting."
       />
     );
   }

@@ -30,7 +30,7 @@ function UsageBody({ days, metric, isTable }: UsageBodyProps) {
     return (
       <QuietState
         title="No requests in the last 30 days"
-        description="Each call through the gateway adds to this chart. Fiducy counts requests and tokens, never prompts or replies."
+        description="Gateway calls show here. Prompts are never stored."
       />
     );
   }
@@ -58,12 +58,7 @@ export function UsageChart({ appID }: AppReferenceProps) {
     </div>
   );
   return (
-    <Panel
-      collapsible
-      title="Last 30 days"
-      description="Daily traffic through the gateway, in UTC."
-      action={controls}
-    >
+    <Panel collapsible title="Last 30 days" description="Daily, in UTC." action={controls}>
       {series.isPending ? <Skeleton className="h-56 w-full" /> : null}
       {series.isError ? (
         <QuietState title="Usage history is not available" description={series.error.message} />

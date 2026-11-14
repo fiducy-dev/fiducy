@@ -51,7 +51,11 @@ export default function AppPage({ params = {} }: PageProps) {
           <Tabs value={tab} onValueChange={(value) => setTab(value as AppTab)}>
             <TabsList className="w-full justify-start overflow-x-auto border-b" variant="underline">
               {TABS.map((option) => (
-                <TabsTab key={option.value} className="grow-0" value={option.value}>
+                <TabsTab
+                  key={option.value}
+                  className="grow px-1 text-sm sm:grow-0 sm:px-[calc(--spacing(2.5)-1px)]"
+                  value={option.value}
+                >
                   {option.label}
                 </TabsTab>
               ))}
