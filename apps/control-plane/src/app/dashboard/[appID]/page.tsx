@@ -13,6 +13,7 @@ import { FreezeNotice } from '@/components/FreezeNotice';
 import { IncidentControls } from '@/components/IncidentControls';
 import { PageStatus } from '@/components/PageStatus';
 import { QuickStart } from '@/components/QuickStart';
+import { TwoFactorPanel } from '@/components/TwoFactorPanel';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
 import { useSignInRedirect } from '@/components/useSignInRedirect';
 import { useSearchParam } from '@/hooks/useSearchParam';
@@ -64,6 +65,7 @@ export default function AppPage({ params = {} }: PageProps) {
             </TabsPanel>
             <TabsPanel className="grid gap-6 pt-4" value="settings">
               <IncidentControls app={app.data} />
+              <TwoFactorPanel appID={appID} />
               <AppSettingsForm app={app.data} />
               <DangerZone appID={appID} appName={app.data.name} />
             </TabsPanel>

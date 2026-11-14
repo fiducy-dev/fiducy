@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { base32 } from '@better-auth/utils/base32';
+import { createOTP } from '@better-auth/utils/otp';
 import OpenAI from 'openai';
 import { chromium } from 'playwright';
 
@@ -49,6 +51,30 @@ async function storeUserKey(appID: string) {
   });
   const body = (await response.json()) as { data: { handle: string } };
   return body.data.handle;
+}
+
+async function createCode(secret: string, stepOffset: number) {
+  const step = Math.floor(Date.now() / 30000) + stepOffset;
+  return createOTP(base32.decode(secret), { period: 30 }).hotp(step);
+}
+
+async function turnOnTwoFactor(page: Page) {
+  const secret = await page.evaluate(async () => {
+    const response = await fetch('/api/two-factor', { method: 'POST' });
+    const body = (await response.json()) as { data: { secret: string } };
+    return body.data.secret;
+  });
+  const code = await createCode(secret, 0);
+  const status = await page.evaluate(async (confirmCode) => {
+    const response = await fetch('/api/two-factor/confirm', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: confirmCode })
+    });
+    return response.status;
+  }, code);
+  expect(status).toBe(200);
+  return createCode(secret, 1);
 }
 
 describe('a developer onboarding through the dashboard', () => {
@@ -166,11 +192,23 @@ describe('a developer managing an app', () => {
     const page = await browser.newPage();
     await signUp(page, 'ops@chatforge.example');
     const { appID } = await createAppInDashboard(page);
-    const statuses = await page.evaluate(async (id) => {
-      const rotated = await fetch(`/api/apps/${id}/secret`, { method: 'POST' });
-      const deleted = await fetch(`/api/apps/${id}`, { method: 'DELETE' });
-      return [rotated.status, deleted.status];
+    const refusedStatus = await page.evaluate(async (id) => {
+      const response = await fetch(`/api/apps/${id}`, { method: 'DELETE' });
+      return response.status;
     }, appID);
+    expect(refusedStatus).toBe(403);
+    const code = await turnOnTwoFactor(page);
+    const statuses = await page.evaluate(
+      async ([id, deleteCode]) => {
+        const rotated = await fetch(`/api/apps/${id}/secret`, { method: 'POST' });
+        const deleted = await fetch(`/api/apps/${id}`, {
+          method: 'DELETE',
+          headers: { 'x-fiducy-otp': deleteCode }
+        });
+        return [rotated.status, deleted.status];
+      },
+      [appID, code] as const
+    );
     expect(statuses).toEqual([200, 200]);
     await page.close();
   }, 90000);
@@ -221,10 +259,17 @@ describe('a developer responding to a breach', () => {
     expect(unfreezeBySecret.status).toBe(401);
 
     expect(await setFrozen(false)).toBe(200);
-    const revoked = await page.evaluate(async (id) => {
-      const response = await fetch(`/api/apps/${id}/keys`, { method: 'DELETE' });
-      return response.json();
-    }, appID);
+    const code = await turnOnTwoFactor(page);
+    const revoked = await page.evaluate(
+      async ([id, revokeCode]) => {
+        const response = await fetch(`/api/apps/${id}/keys`, {
+          method: 'DELETE',
+          headers: { 'x-fiducy-otp': revokeCode }
+        });
+        return response.json();
+      },
+      [appID, code] as const
+    );
     expect(revoked.data).toEqual({ revokedCount: 1, failedCount: 0 });
     expect((await callGateway()).status).toBe(404);
     await page.close();

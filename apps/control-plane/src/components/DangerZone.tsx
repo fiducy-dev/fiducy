@@ -15,8 +15,8 @@ export function DangerZone({ appID, appName }: DangerZoneProps) {
   const rotateSecret = useRotateSecret(appID);
   const deleteApp = useDeleteApp(appID);
 
-  function confirmDelete() {
-    deleteApp.mutate(undefined, {
+  function confirmDelete(code: string) {
+    deleteApp.mutate(code, {
       onSuccess: () => {
         window.location.href = '/dashboard';
       },
@@ -56,6 +56,7 @@ export function DangerZone({ appID, appName }: DangerZoneProps) {
           description="Every user key handle it holds stops working. This cannot be undone."
           confirmLabel="Delete app"
           confirmPhrase={appName}
+          requiresCode
           onConfirm={confirmDelete}
         />
       </div>
