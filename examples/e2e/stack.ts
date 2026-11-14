@@ -41,7 +41,10 @@ async function waitForApp(url: string, process: Bun.Subprocess) {
 }
 
 export function chooseExamplePort(): number {
-  return 5200 + Math.floor(Math.random() * 600);
+  const listener = Bun.listen({ hostname: '0.0.0.0', port: 0, socket: { data() {} } });
+  const { port } = listener;
+  listener.stop(true);
+  return port;
 }
 
 export async function startExample(
