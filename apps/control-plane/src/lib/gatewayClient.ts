@@ -1,6 +1,7 @@
 import { fail, succeed } from './result';
 
 import { DEFAULT_GATEWAY_URL, GATEWAY_RECORD_GONE_STATUSES } from './constants';
+import { GATEWAY_APP_REFRESH_PATH } from './constants';
 import { GATEWAY_UNAVAILABLE } from './failures';
 
 import type { GatewayClient, GatewayConnection } from './types';
@@ -31,8 +32,22 @@ async function requestRecordDeletion(
   }
 }
 
+async function requestAppsRefresh({ gatewayURL, gatewayToken }: GatewayConnection) {
+  try {
+    const response = await fetch(new URL(GATEWAY_APP_REFRESH_PATH, gatewayURL), {
+      method: 'POST',
+      headers: { authorization: `Bearer ${gatewayToken ?? ''}` }
+    });
+    return response.ok;
+  } catch (error) {
+    console.error(`Gateway unreachable: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 export function createGatewayClient(connection: GatewayConnection): GatewayClient {
   return {
+    refreshApps: () => requestAppsRefresh(connection),
     deleteRecord: async (appID, keyID) => {
       const status = await requestRecordDeletion(connection, appID, keyID);
       if (status === null || !GATEWAY_RECORD_GONE_STATUSES.includes(status)) {

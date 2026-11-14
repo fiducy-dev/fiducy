@@ -32,5 +32,48 @@ export interface TokenUsage {
 export interface RelayResponseInput {
   upstreamResponse: Response;
   apiKey: string;
-  onUsage: (usage: TokenUsage) => void;
+  onUsage: (usage: TokenUsage, outcome: UsageOutcome) => void;
 }
+
+export type UsageOutcome = 'complete' | 'interrupted';
+
+export interface PriceEntry {
+  input: number;
+  output: number;
+}
+
+export interface ModelPrice {
+  model: string;
+  inputDollarsPerMillionTokens: number;
+  outputDollarsPerMillionTokens: number;
+}
+
+export type OutputLimitStyle = 'top-level' | 'gemini' | 'none';
+
+export interface MeteredEndpoint {
+  provider: ProviderName;
+  pathPattern: RegExp;
+  outputLimitStyle: OutputLimitStyle;
+  outputLimitField: string;
+  clampedFields: string[];
+  requestsStreamUsage: boolean;
+}
+
+export interface MeteredRequest {
+  body: string;
+  model: string;
+  estimatedInputTokens: number;
+  outputTokenCeiling: number;
+  responseCount: number;
+}
+
+export interface MeterRequestInput {
+  provider: ProviderName;
+  path: string;
+  body: string;
+  maximumOutputTokens: number;
+}
+
+export type MeterRequestError = 'endpoint_not_metered' | 'invalid_body';
+
+export type JSONObject = Record<string, unknown>;

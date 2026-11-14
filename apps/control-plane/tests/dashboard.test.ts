@@ -4,6 +4,7 @@ import { createApp, listGatewayApps } from '../src/lib/appService';
 import { createControlStore, createMemoryKeyValueStore } from '../src/lib/controlStore';
 import { noteGatewayContact, readGatewayStatus } from '../src/lib/gatewayStatusService';
 import { listAppKeys, noteKeyEvent, revokeAppKey } from '../src/lib/keyService';
+import { revokeAllAppKeys } from '../src/lib/keyService';
 import { readUsageSeries, recordUsageBatch } from '../src/lib/usageService';
 import { usageSeriesQuerySchema } from '../src/lib/validators';
 import { CHAT_SETTINGS, OTHER_OWNER_ID, OWNER_ID } from './fixtures';
@@ -15,6 +16,45 @@ const EARLIER_TODAY = new Date(NOW.getTime() - 60 * 1000).toISOString();
 function savedKey(appID: string, keyID: string) {
   return { type: 'saved' as const, appID, keyID };
 }
+
+describe('revoking every key of an app', () => {
+  it('revokes active keys through the gateway and reports the ones that failed', async () => {
+    const store = createTestStore();
+    const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
+    for (const keyID of ['key_one', 'key_two', 'key_three']) {
+      await noteKeyEvent(store, savedKey(app.appID, keyID));
+    }
+    const reachable = createFakeGateway();
+    const revoked = await revokeAllAppKeys(store, reachable.client, OWNER_ID, app.appID);
+    expect(revoked).toEqual({ ok: true, value: { revokedCount: 3, failedCount: 0 } });
+    expect(reachable.deletedRecords.map((record) => record.keyID).sort()).toEqual([
+      'key_one',
+      'key_three',
+      'key_two'
+    ]);
+    const again = await revokeAllAppKeys(store, reachable.client, OWNER_ID, app.appID);
+    expect(again).toEqual({ ok: true, value: { revokedCount: 0, failedCount: 0 } });
+  });
+
+  it('leaves keys active when the gateway cannot delete them', async () => {
+    const store = createTestStore();
+    const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
+    await noteKeyEvent(store, savedKey(app.appID, 'key_one'));
+    const unreachable = createFakeGateway(false);
+    const revoked = await revokeAllAppKeys(store, unreachable.client, OWNER_ID, app.appID);
+    expect(revoked).toEqual({ ok: true, value: { revokedCount: 0, failedCount: 1 } });
+    const keys = await listAppKeys(store, OWNER_ID, app.appID);
+    expect(keys.ok && keys.value[0]?.status).toBe('active');
+  });
+
+  it('refuses another owner', async () => {
+    const store = createTestStore();
+    const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
+    const gateway = createFakeGateway();
+    const attempt = await revokeAllAppKeys(store, gateway.client, OTHER_OWNER_ID, app.appID);
+    expect(attempt).toMatchObject({ ok: false, error: { status: 404 } });
+  });
+});
 
 describe('listing an app keys', () => {
   it('shows stored and used keys with their provider, last use and requests this month', async () => {

@@ -14,6 +14,7 @@ export function EnclaveCanvas() {
   const handleLabelRef = useRef<HTMLSpanElement>(null);
   const storedLabelRef = useRef<HTMLSpanElement>(null);
   const requestLabelRef = useRef<HTMLSpanElement>(null);
+  const providerLabelRef = useRef<HTMLSpanElement>(null);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -22,8 +23,14 @@ export function EnclaveCanvas() {
     const handleHalf = handleLabelRef.current;
     const storedHalf = storedLabelRef.current;
     const request = requestLabelRef.current;
-    if (!host || !canvas || !handleHalf || !storedHalf || !request) return;
-    return startEnclaveRenderer(canvas, host, { handleHalf, storedHalf, request }, setStep);
+    const provider = providerLabelRef.current;
+    if (!host || !canvas || !handleHalf || !storedHalf || !request || !provider) return;
+    return startEnclaveRenderer(
+      canvas,
+      host,
+      { handleHalf, storedHalf, request, provider },
+      setStep
+    );
   }, []);
 
   return (
@@ -37,7 +44,7 @@ export function EnclaveCanvas() {
           half 2 · lives with us
         </span>
         <span ref={requestLabelRef} className={`${LABEL_CLASS} -translate-x-1/2 max-sm:hidden`}>
-          one call to OpenAI
+          one call to <span ref={providerLabelRef}>OpenAI</span>
         </span>
       </div>
       <p className="flex min-h-[3em] gap-3 text-sm leading-[1.5] text-ink-body">

@@ -1,6 +1,6 @@
 import { fail, succeed } from '@fiducy/core';
 
-import { APP_ID_QUERY_PARAMETER, APP_SECRET_HEADERS } from './constants';
+import { APP_ID_QUERY_PARAMETER, APP_SECRET_HEADERS, FROZEN_APP_MESSAGE } from './constants';
 import { describeFailure } from './responses';
 
 import type { AppDirectory, GatewayResult, RegisteredApp, RevokeCaller } from './types';
@@ -54,4 +54,9 @@ export async function identifyRevokeCaller(
   const appID = new URL(request.url).searchParams.get(APP_ID_QUERY_PARAMETER);
   if (!appID) return fail(describeFailure(400, `Send the app ID as ?${APP_ID_QUERY_PARAMETER}=`));
   return succeed({ appID, isControlPlane: true });
+}
+
+export function refuseFrozenApp(app: RegisteredApp): GatewayResult<RegisteredApp> {
+  if (app.isFrozen) return fail(describeFailure(403, FROZEN_APP_MESSAGE));
+  return succeed(app);
 }

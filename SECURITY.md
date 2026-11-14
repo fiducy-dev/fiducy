@@ -30,8 +30,10 @@ Out of scope:
 
 - `demo.fiducy.dev`, `dashboard.fiducy.dev` and `gateway.fiducy.dev`: test deployments on a mock gateway with no enclave. Don't store real keys there.
 - issues that need a compromised AWS Nitro hypervisor or KMS
+- use of keys through the gateway by someone who holds a customer's app secret and handles. That is by design: spend limits and freezing the app bound it, and no request returns a plaintext key. A way around a spend limit or a freeze is in scope
+- anything that needs a customer's AWS root user
 - denial of service by volume, and missing best-practice headers with no shown impact
 
 ## What Fiducy promises
 
-The [security docs](https://fiducy.dev/docs/security) describe the threat model: what the enclave, the KMS key policy and attestation protect against, and the known limits. A report that breaks any guarantee listed there is in scope, even when the cause is outside this repository.
+The [security docs](https://fiducy.dev/docs/security) describe the threat model: what the enclave, the KMS key policy and attestation protect against, and the known limits. A report that breaks any guarantee listed there is in scope, even when the cause is outside this repository. The same page lists what each self-hosting customer is responsible for.

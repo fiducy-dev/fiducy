@@ -1,7 +1,8 @@
 import { createEndpoint } from '@farm.js/core/api';
 
 import { deleteApp, findOwnedApp, toAppView, updateApp } from '@/lib/appService';
-import { requireOwner } from '@/lib/middleware';
+import { getGatewayClient } from '@/lib/gatewayClient';
+import { requireOwner, requireRecentSignIn } from '@/lib/middleware';
 import { respondWith, respondWithFailure } from '@/lib/responses';
 import { getControlStore } from '@/lib/storage';
 import { appSettingsUpdateSchema } from '@/lib/validators';
@@ -18,15 +19,17 @@ export const PATCH = createEndpoint(
     const store = getControlStore();
     const updated = await updateApp(store, context.ownerID, String(params.appID), body);
     if (!updated.ok) return respondWithFailure(updated.error);
+    await getGatewayClient().refreshApps();
     return respondWith(200, updated.value, 'App updated');
   }
 );
 
 export const DELETE = createEndpoint(
-  { middleware: [requireOwner] },
+  { middleware: [requireRecentSignIn] },
   async ({ context, params }) => {
     const deleted = await deleteApp(getControlStore(), context.ownerID, String(params.appID));
     if (!deleted.ok) return respondWithFailure(deleted.error);
+    await getGatewayClient().refreshApps();
     return respondWith(200, { appID: deleted.value }, 'App deleted');
   }
 );

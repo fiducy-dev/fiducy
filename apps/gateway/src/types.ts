@@ -1,10 +1,13 @@
 import type { DeleteItemCommand, GetItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb';
 import type { DeleteItemCommandOutput, GetItemCommandOutput } from '@aws-sdk/client-dynamodb';
-import type { PutItemCommandOutput } from '@aws-sdk/client-dynamodb';
+import type { PutItemCommandOutput, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb';
+import type { TransactWriteItemsCommandOutput, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
+import type { UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb';
 import type { DecryptCommand, EncryptCommand } from '@aws-sdk/client-kms';
 import type { GetParameterCommand, GetParameterCommandOutput } from '@aws-sdk/client-ssm';
 import type { Bytes, KeyWrapper, Result, SealedRecord } from '@fiducy/core';
-import type { ProviderName, ProviderRegistry, TokenUsage } from '@fiducy/providers';
+import type { ModelPrice, ProviderName, ProviderRegistry } from '@fiducy/providers';
+import type { TokenUsage, UsageOutcome } from '@fiducy/providers';
 
 import type { ENCLAVE_CONFIG_FIELDS } from './constants';
 
@@ -20,6 +23,16 @@ export interface RegisteredApp {
   recordStorage?: RecordStorage;
   allowKeyImport?: boolean;
   revokedKeyIDs?: string[];
+  spendLimits?: SpendLimits;
+  isFrozen?: boolean;
+}
+
+export interface SpendLimits {
+  dailyDollarLimitPerKey?: number;
+  dailyDollarLimitPerApp?: number;
+  minuteDollarLimitPerApp?: number;
+  concurrentRequestLimitPerKey?: number;
+  maximumOutputTokens?: number;
 }
 
 export interface AppRegistration extends RegisteredApp {
@@ -35,6 +48,7 @@ export interface KeyStore {
 export interface AppDirectory {
   findApp: (appID: string) => Promise<RegisteredApp | null>;
   findAppBySecret: (appSecret: string) => Promise<RegisteredApp | null>;
+  refresh?: () => Promise<void>;
 }
 
 export interface UsageEvent {
@@ -63,6 +77,13 @@ export interface GatewayDependencies {
   keyEvents?: KeyEventReporter;
   controlPlaneToken?: string;
   rateLimiter?: RateLimiter;
+  spendCounter?: SpendCounter;
+  concurrencyTracker?: ConcurrencyTracker;
+}
+
+export interface ResolvedGatewayDependencies extends GatewayDependencies {
+  spendCounter: SpendCounter;
+  concurrencyTracker: ConcurrencyTracker;
 }
 
 export interface StoreKeyBody {
@@ -144,6 +165,8 @@ export interface DynamoSender {
   send(command: GetItemCommand): Promise<GetItemCommandOutput>;
   send(command: PutItemCommand): Promise<PutItemCommandOutput>;
   send(command: DeleteItemCommand): Promise<DeleteItemCommandOutput>;
+  send(command: UpdateItemCommand): Promise<UpdateItemCommandOutput>;
+  send(command: TransactWriteItemsCommand): Promise<TransactWriteItemsCommandOutput>;
 }
 
 export interface KmsSettings {
@@ -272,5 +295,46 @@ export interface CachingKeyWrapperOptions {
 
 export interface CachedShare {
   share: Bytes;
+  expiresAt: number;
+}
+
+export interface SpendCharge {
+  counterID: string;
+  amount: number;
+  limit: number;
+  expiresAt: number;
+}
+
+export interface SpendCounter {
+  reserveSpend: (charges: SpendCharge[]) => Promise<Result<null, number>>;
+  adjustSpend: (charges: SpendCharge[]) => Promise<void>;
+}
+
+export interface SpendScope {
+  counterID: string;
+  dollarLimit: number | undefined;
+  lifetimeSeconds: number;
+  limitMessage: string;
+}
+
+export interface SpendReservation {
+  charges: SpendCharge[];
+  reservedAmount: number;
+  price: ModelPrice;
+}
+
+export interface ConcurrencyTracker {
+  acquireSlot: (keyID: string, limit: number) => boolean;
+  releaseSlot: (keyID: string) => void;
+}
+
+export interface MeteredCall {
+  body: string;
+  settle: (usage: TokenUsage, outcome: UsageOutcome) => void;
+  refund: () => void;
+}
+
+export interface SpendTotal {
+  spent: number;
   expiresAt: number;
 }

@@ -1,7 +1,9 @@
 import { MathUtils, Object3D, PerspectiveCamera, Vector3 } from 'three';
 import { WebGLRenderer } from 'three';
 
+import { PROVIDERS } from '@/lib/constants';
 import { animateEnclave, createEnclaveParts, readEnclaveStep } from '@/lib/enclaveScene';
+import { readProviderIndex } from '@/lib/enclaveScene';
 
 import type { EnclaveParts, PointerState } from '@/types';
 import type { SceneLabel, SceneLabelElements } from '@/types';
@@ -96,10 +98,11 @@ export function startEnclaveRenderer(
   labelElements: SceneLabelElements,
   onStep: (step: number) => void
 ): () => void {
+  let providerIndex = -1;
   const renderer = new WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio ?? 1, MAX_PIXEL_RATIO));
   const camera = new PerspectiveCamera(28, 1, 0.1, 100);
-  camera.position.set(0, 0, 16);
+  camera.position.set(0, 0, 14.5);
   const parts = createEnclaveParts();
   const pointer = createPointerState();
   const labels = pinLabels(parts, labelElements);
@@ -116,6 +119,11 @@ export function startEnclaveRenderer(
     const elapsedSeconds = isReducedMotion ? REDUCED_MOTION_SECONDS : (now - startedAt) / 1000;
     animateEnclave(parts, elapsedSeconds);
     onStep(readEnclaveStep(elapsedSeconds));
+    const nextProviderIndex = readProviderIndex(elapsedSeconds);
+    if (nextProviderIndex !== providerIndex) {
+      providerIndex = nextProviderIndex;
+      labelElements.provider.textContent = PROVIDERS[providerIndex] ?? '';
+    }
     renderer.render(parts.scene, camera);
     placeLabels(labels, camera, host);
     frame = isVisible && !document.hidden ? requestAnimationFrame(render) : 0;

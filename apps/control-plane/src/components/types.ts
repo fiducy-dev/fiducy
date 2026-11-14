@@ -7,6 +7,7 @@ import type {
   UsageDay,
   UsageSummary
 } from '@/lib/types';
+import type { SpendLimits } from '@/lib/types';
 import type { ReactElement, ReactNode } from 'react';
 
 export type AuthMode = 'sign-in' | 'sign-up';
@@ -49,6 +50,11 @@ export interface AppNavigationProps {
 
 export interface AppReferenceProps {
   appID: string;
+}
+
+export interface DangerZoneProps {
+  appID: string;
+  appName: string;
 }
 
 export interface AppProps {
@@ -181,6 +187,14 @@ export interface AppSettingsFieldsProps {
   defaults?: AppSettings;
 }
 
+export interface FreezeNoticeProps {
+  frozenAt: string | null;
+}
+
+export interface SpendLimitFieldsProps {
+  spendLimits?: SpendLimits;
+}
+
 export interface CreateAppFormProps {
   isPending: boolean;
   error: Error | null;
@@ -201,6 +215,7 @@ export interface ConfirmActionProps {
   title: string;
   description: string;
   confirmLabel: string;
+  confirmPhrase?: string;
   onConfirm: () => void;
 }
 

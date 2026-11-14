@@ -1,6 +1,6 @@
 import type { TokenUsage } from './types.ts';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
@@ -22,9 +22,15 @@ function findUsageObject(payload: Record<string, unknown>): unknown {
 export function readUsage(payload: unknown): TokenUsage {
   if (!isRecord(payload)) return { inputTokens: 0, outputTokens: 0 };
   const usage = findUsageObject(payload);
+  const cacheTokens =
+    readNumber(usage, ['cache_creation_input_tokens']) +
+    readNumber(usage, ['cache_read_input_tokens']);
   return {
-    inputTokens: readNumber(usage, ['prompt_tokens', 'input_tokens', 'promptTokenCount']),
-    outputTokens: readNumber(usage, ['completion_tokens', 'output_tokens', 'candidatesTokenCount'])
+    inputTokens:
+      readNumber(usage, ['prompt_tokens', 'input_tokens', 'promptTokenCount']) + cacheTokens,
+    outputTokens:
+      readNumber(usage, ['completion_tokens', 'output_tokens', 'candidatesTokenCount']) +
+      readNumber(usage, ['thoughtsTokenCount'])
   };
 }
 

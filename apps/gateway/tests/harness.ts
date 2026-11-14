@@ -9,7 +9,7 @@ import {
 } from '../src/memoryStores';
 import { createGateway } from '../src/router';
 
-import type { AppRegistration, RateLimiter } from '../src/types';
+import type { AppRegistration, RateLimiter, SpendCounter } from '../src/types';
 import type { StoreKeyResponseBody } from './types';
 
 export const CHAT_APP: AppRegistration = {
@@ -32,7 +32,8 @@ export const DESK_APP: AppRegistration = {
 
 export async function startGatewayHarness(
   extraApps: AppRegistration[] = [],
-  rateLimiter?: RateLimiter
+  rateLimiter?: RateLimiter,
+  spendCounter?: SpendCounter
 ) {
   const mockProvider = startMockProvider();
   const usageLedger = createMemoryUsageLedger();
@@ -49,7 +50,8 @@ export async function startGatewayHarness(
       openrouter: mockProvider.baseURL
     }),
     controlPlaneToken: CONTROL_PLANE_TOKEN,
-    rateLimiter
+    rateLimiter,
+    spendCounter
   });
   const server = Bun.serve({ port: 0, fetch: gateway });
   const gatewayURL = `http://localhost:${server.port}`;

@@ -96,7 +96,7 @@ Resources:
                 Action: [kms:Encrypt, kms:Decrypt, kms:DescribeKey]
                 Resource: !GetAtt WrappingKey.Arn
               - Effect: Allow
-                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:DeleteItem]
+                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:DeleteItem, dynamodb:UpdateItem]
                 Resource: !GetAtt KeysTable.Arn
               - Effect: Allow
                 Action: [ssm:GetParameter]
@@ -336,6 +336,9 @@ Resources:
         PointInTimeRecoveryEnabled: true
       SSESpecification:
         SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
 
   HostSecurityGroup:
     Type: AWS::EC2::SecurityGroup
