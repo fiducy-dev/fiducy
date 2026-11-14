@@ -29,6 +29,7 @@ export const DELETE = createEndpoint(
   async ({ context, params }) => {
     const deleted = await deleteApp(getControlStore(), context.ownerID, String(params.appID));
     if (!deleted.ok) return respondWithFailure(deleted.error);
+    await getGatewayClient().refreshApps();
     return respondWith(200, { appID: deleted.value }, 'App deleted');
   }
 );
