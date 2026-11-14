@@ -50,10 +50,10 @@ export function AuthForm({ mode }: AuthFormProps) {
         </h1>
         <p className="text-muted-foreground text-sm">
           {isSignUp
-            ? 'One account manages every app, its handles and its usage. Free while you self-host.'
+            ? 'One account for all your apps. Free to self-host.'
             : isConfirming
-              ? 'Sign in again to confirm this change.'
-              : 'Your apps, their keys and their usage are where you left them.'}
+              ? 'Sign in again to confirm.'
+              : 'Pick up where you left off.'}
         </p>
       </div>
       <div className="grid gap-5">

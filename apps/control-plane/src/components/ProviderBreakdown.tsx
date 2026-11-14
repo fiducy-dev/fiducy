@@ -6,12 +6,7 @@ import type { ProviderBreakdownProps } from './types';
 export function ProviderBreakdown({ providers }: ProviderBreakdownProps) {
   const total = providers.reduce((sum, provider) => sum + provider.requestCount, 0);
   if (!total) {
-    return (
-      <QuietState
-        title="No provider traffic yet"
-        description="Requests split by OpenAI, Anthropic, and the rest once calls come in."
-      />
-    );
+    return <QuietState title="No provider traffic yet" description="Shows once calls come in." />;
   }
   return (
     <ul className="grid gap-3">

@@ -18,7 +18,7 @@ function isBareOrigin(value: string): boolean {
 const originSchema = z
   .string()
   .trim()
-  .refine(isBareOrigin, 'Use a bare origin such as https://example.com with no path');
+  .refine(isBareOrigin, 'Use an origin like https://example.com, no path');
 
 const dollarLimitSchema = z.number().min(0).max(MAXIMUM_DOLLAR_LIMIT).optional();
 

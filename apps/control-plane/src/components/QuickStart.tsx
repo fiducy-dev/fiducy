@@ -7,8 +7,7 @@ function buildSteps({ appID, gatewayURL }: QuickStartProps) {
   return [
     {
       title: 'Let users paste their key into the widget',
-      detail:
-        'The widget checks the enclave PCR0 and PCR16 before it shows the key box. You get back a handle. Store it next to the user.',
+      detail: 'The widget checks the enclave, then returns a handle. Store it with the user.',
       code: `import { mountKeyWidget } from '@fiducy/widget';
 
 mountKeyWidget({
@@ -22,7 +21,7 @@ mountKeyWidget({
     },
     {
       title: 'Call the provider through the gateway',
-      detail: 'Use your app secret and the user handle. The key itself never reaches your server.',
+      detail: 'Use your app secret and the handle. The key never reaches your server.',
       code: `import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -36,10 +35,7 @@ const openai = new OpenAI({
 
 export function QuickStart(props: QuickStartProps) {
   return (
-    <Panel
-      title="Connect your app"
-      description="Two steps. Both values below are already filled in for this app."
-    >
+    <Panel title="Connect your app" description="Two steps, filled in for this app.">
       <ol className="grid min-w-0 gap-6">
         {buildSteps(props).map((step, index) => (
           <li key={step.title} className="grid min-w-0 gap-2">
