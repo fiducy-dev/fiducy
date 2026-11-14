@@ -2,6 +2,7 @@ import { fail, succeed } from '@fiducy/core';
 import { meterRequest } from '@fiducy/providers';
 
 import { DEFAULT_MAXIMUM_OUTPUT_TOKENS, UNMETERED_METHODS } from './constants';
+import { UNMETERED_TIER_MESSAGE } from './constants';
 import { describeFailure } from './responses';
 import { refundSpend, reserveSpend, settleSpend } from './spendLimits';
 
@@ -12,6 +13,7 @@ import type { ResolvedGatewayDependencies, SpendLimits, SpendReservation } from 
 function describeMeterFailure(error: MeterRequestError): GatewayFailure {
   if (error === 'invalid_body')
     return describeFailure(400, 'Send a JSON object as the request body');
+  if (error === 'tier_not_metered') return describeFailure(403, UNMETERED_TIER_MESSAGE);
   return describeFailure(403, 'This endpoint is not available while spend limits are on');
 }
 

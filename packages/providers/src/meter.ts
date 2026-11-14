@@ -1,6 +1,7 @@
 import { CHARACTERS_PER_ESTIMATED_TOKEN, GEMINI_MODEL_PATTERN } from './constants.ts';
 import { MAXIMUM_ESTIMATED_INPUT_TOKENS, METERED_ENDPOINTS } from './constants.ts';
 import { fail, succeed } from './result.ts';
+import { enforceServiceTier } from './serviceTier.ts';
 import { isRecord, parseJSON } from './usage.ts';
 
 import type { Result } from '@fiducy/core';
@@ -65,6 +66,7 @@ export function meterRequest({
   if (!endpoint) return fail('endpoint_not_metered');
   const parsedBody = parseJSON(body);
   if (!isRecord(parsedBody) || Array.isArray(parsedBody)) return fail('invalid_body');
+  if (!enforceServiceTier(parsedBody, endpoint.serviceTierRule)) return fail('tier_not_metered');
   const outputLimitTarget = readOutputLimitTarget(endpoint, parsedBody);
   if (!outputLimitTarget) return fail('invalid_body');
 

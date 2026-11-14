@@ -50,6 +50,12 @@ export interface ModelPrice {
 
 export type OutputLimitStyle = 'top-level' | 'gemini' | 'none';
 
+export interface ServiceTierRule {
+  fields: string[];
+  allowedValues: string[];
+  pinnedValue: string | null;
+}
+
 export interface MeteredEndpoint {
   provider: ProviderName;
   pathPattern: RegExp;
@@ -57,6 +63,7 @@ export interface MeteredEndpoint {
   outputLimitField: string;
   clampedFields: string[];
   requestsStreamUsage: boolean;
+  serviceTierRule: ServiceTierRule | null;
 }
 
 export interface MeteredRequest {
@@ -74,6 +81,6 @@ export interface MeterRequestInput {
   maximumOutputTokens: number;
 }
 
-export type MeterRequestError = 'endpoint_not_metered' | 'invalid_body';
+export type MeterRequestError = 'endpoint_not_metered' | 'invalid_body' | 'tier_not_metered';
 
 export type JSONObject = Record<string, unknown>;
