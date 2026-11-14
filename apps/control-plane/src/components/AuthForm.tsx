@@ -7,12 +7,16 @@ import { ErrorAlert } from '@/components/ErrorAlert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { useSearchParam } from '@/hooks/useSearchParam';
+import { readReturnPath } from '@/lib/client';
 
 import type { FormEvent } from 'react';
 import type { AuthFormProps, Credentials } from './types';
 
 export function AuthForm({ mode }: AuthFormProps) {
   const isSignUp = mode === 'sign-up';
+  const returnAppID = useSearchParam('app');
+  const isConfirming = !isSignUp && returnAppID !== null;
   const authenticate = useMutation({
     mutationFn: async ({ email, password, name }: Credentials) => {
       const response = isSignUp
@@ -21,7 +25,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       if (response.error) throw new Error(response.error.message ?? 'That did not work. Try again');
     },
     onSuccess: () => {
-      window.location.href = '/dashboard';
+      window.location.href = readReturnPath(window.location.search);
     }
   });
 
@@ -47,7 +51,9 @@ export function AuthForm({ mode }: AuthFormProps) {
         <p className="text-muted-foreground text-sm">
           {isSignUp
             ? 'One account manages every app, its handles and its usage. Free while you self-host.'
-            : 'Your apps, their keys and their usage are where you left them.'}
+            : isConfirming
+              ? 'Sign in again to confirm this change.'
+              : 'Your apps, their keys and their usage are where you left them.'}
         </p>
       </div>
       <div className="grid gap-5">

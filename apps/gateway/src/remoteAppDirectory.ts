@@ -48,6 +48,11 @@ export function createRemoteAppDirectory(options: RemoteAppDirectoryOptions): Ap
   };
 
   return {
+    refresh: async () => {
+      await pendingRefresh;
+      pendingRefresh = loadApps();
+      return pendingRefresh;
+    },
     findApp: (appID) => findWithRefresh(() => appsByID.get(appID)),
     findAppBySecret: async (appSecret) => {
       const appSecretHash = await hashSecret(appSecret);

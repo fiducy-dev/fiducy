@@ -10,6 +10,7 @@ import { KEY_UPLOAD_BUCKET_CAPACITY, KEY_UPLOAD_MAXIMUM_TRACKED_CLIENTS } from '
 import { KEY_UPLOAD_REFILL_PER_SECOND } from './constants';
 import { createDynamoBlobStore } from './dynamoBlobStore';
 import { createDynamoClient, createDynamoKeyStore } from './dynamoKeyStore';
+import { createDynamoSpendCounter } from './dynamoSpendCounter';
 import { createKmsClient, createKmsKeyWrapper, decryptBootSecret } from './kmsKeyWrapper';
 import { readMasterKey } from './masterKey';
 import { createMemoryAppDirectory, createMemoryBlobStore } from './memoryStores';
@@ -19,12 +20,13 @@ import { createRemoteAppDirectory } from './remoteAppDirectory';
 import { createRemoteKeyEvents } from './remoteKeyEvents';
 import { createRemoteUsageLedger } from './remoteUsageLedger';
 import { createGateway } from './router';
+import { createMemorySpendCounter } from './spendCounters';
 import { startTlsFront } from './tlsFront';
 import { createTokenBucketRateLimiter } from './tokenBucketRateLimiter';
 
 import type { KeyWrapper } from '@fiducy/core';
 import type { AppRegistration, ControlPlaneConnection, GatewayRuntime } from './types';
-import type { BlobStore, KeyStore, KmsSettings } from './types';
+import type { BlobStore, KeyStore, KmsSettings, SpendCounter } from './types';
 import type { RequestHandler } from './types';
 
 function readKmsSettings(): KmsSettings | null {
@@ -74,6 +76,13 @@ function selectBlobStore(): BlobStore {
   return createDynamoBlobStore({ client, tableName });
 }
 
+function selectSpendCounter(): SpendCounter {
+  const tableName = process.env.FIDUCY_KEYS_TABLE;
+  if (!tableName) return createMemorySpendCounter();
+  const client = createDynamoClient(process.env.AWS_REGION ?? 'us-east-1');
+  return createDynamoSpendCounter({ client, tableName });
+}
+
 function selectKeyWrapper(kms: KmsSettings | null): KeyWrapper {
   if (!kms) return createLocalKeyWrapper(readMasterKey());
   return createCachingKeyWrapper({
@@ -111,6 +120,7 @@ export async function createGatewayFromEnvironment(): Promise<GatewayRuntime> {
   const gateway = createGateway({
     keyWrapper,
     keyStore: selectKeyStore(),
+    spendCounter: selectSpendCounter(),
     keyEvents: connection ? createRemoteKeyEvents(connection) : undefined,
     appDirectory: connection
       ? createRemoteAppDirectory({ ...connection, refreshIntervalMilliseconds: 30000 })

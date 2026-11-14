@@ -21,7 +21,10 @@ export function AppSettingsForm({ app }: AppProps) {
   }
 
   return (
-    <Panel title="Settings" description="The gateway picks up changes within 30 seconds.">
+    <Panel
+      title="Settings"
+      description="The gateway picks up changes at once, or within 30 seconds if it can't be reached."
+    >
       <form className="grid max-w-xl gap-4" onSubmit={save}>
         <AppSettingsFields defaults={app} />
         <Button className="justify-self-start" loading={updateApp.isPending} type="submit">

@@ -1,6 +1,6 @@
 import { sealSecret } from '@fiducy/core';
 
-import { authenticateApp, identifyRevokeCaller } from '../authentication';
+import { authenticateApp, identifyRevokeCaller, refuseFrozenApp } from '../authentication';
 import { respondWith, respondWithFailure, respondWithRateLimit } from '../responses';
 import { identifyClient } from '../tokenBucketRateLimiter';
 import { readJSONBody, validateImportKeysBody, validateStoreKeyBody } from '../validators';
@@ -44,6 +44,9 @@ export async function storeKey(request: Request, dependencies: GatewayDependenci
   if (!body.ok) return respondWithFailure(body.error);
   const app = await dependencies.appDirectory.findApp(body.value.appID);
   if (!app) return respondWith(404, null, 'No app is registered with this appID');
+  // active: ok when the app is not frozen
+  const active = refuseFrozenApp(app);
+  if (!active.ok) return respondWithFailure(active.error);
 
   const sealed = await sealAndStore(app, body.value.apiKey, 'widget', dependencies);
   if (sealed.record) {
@@ -57,6 +60,9 @@ export async function importKeys(request: Request, dependencies: GatewayDependen
     return respondWith(403, null, 'Import keys from your server, not from a browser');
   const app = await authenticateApp(dependencies.appDirectory, request.headers);
   if (!app.ok) return respondWithFailure(app.error);
+  // active: ok when the app is not frozen
+  const active = refuseFrozenApp(app.value);
+  if (!active.ok) return respondWithFailure(active.error);
   if (!app.value.allowKeyImport) {
     return respondWith(403, null, 'Key import is off for this app. Turn it on in the dashboard');
   }

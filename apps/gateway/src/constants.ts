@@ -38,6 +38,29 @@ export const SHARE_CACHE_TIME_TO_LIVE_MILLISECONDS = 300000;
 export const SHARE_CACHE_MAXIMUM_ENTRIES = 10000;
 export const POSTGRES_KEYS_TABLE = 'fiducy_sealed_records';
 export const MOCK_PROVIDER_PATH_PREFIX = '/v1/';
+export const SPEND_COUNTER_PREFIX = 'spend:';
+export const SPEND_AMOUNT_ATTRIBUTE = 'spent';
+export const SPEND_EXPIRY_ATTRIBUTE = 'expiresAt';
+export const MICRODOLLARS_PER_DOLLAR = 1000000;
+export const DAY_COUNTER_LIFETIME_SECONDS = 2 * 24 * 60 * 60;
+export const MINUTE_COUNTER_LIFETIME_SECONDS = 2 * 60;
+export const DEFAULT_MAXIMUM_OUTPUT_TOKENS = 32768;
+export const SPEND_COUNTER_SWEEP_INTERVAL_MILLISECONDS = 60000;
+export const ADD_SPEND_EXPRESSION = 'ADD #spent :amount SET #expiresAt = :expiresAt';
+export const SPEND_CONDITION = 'attribute_not_exists(#spent) OR #spent <= :headroom';
+export const SPEND_ATTRIBUTE_NAMES = {
+  '#spent': SPEND_AMOUNT_ATTRIBUTE,
+  '#expiresAt': SPEND_EXPIRY_ATTRIBUTE
+};
+export const UNPRICED_MODEL_MESSAGE =
+  'Fiducy has no price for this model, so it is blocked while spend limits are on';
+export const DAILY_KEY_LIMIT_MESSAGE = 'This key reached its daily spend limit';
+export const DAILY_APP_LIMIT_MESSAGE = 'This app reached its daily spend limit';
+export const MINUTE_APP_LIMIT_MESSAGE =
+  'This app reached its spend limit for this minute. Try again shortly';
+export const UNMETERED_METHODS = ['GET', 'HEAD'];
+export const APP_REFRESH_PATH = '/apps/refresh';
+export const FROZEN_APP_MESSAGE = 'This app is frozen. Its owner can unfreeze it in the dashboard';
 export const IMDS_REGION_PATH = '/latest/meta-data/placement/region';
 export const ENCLAVE_CONFIG_PCR_INDEX = 16;
 export const ENCLAVE_CONFIG_FIELDS = [

@@ -26,6 +26,6 @@ export async function relayResponse({
   }
 
   const bodyText = await upstreamResponse.text();
-  onUsage(readUsage(parseJSON(bodyText)));
+  onUsage(readUsage(parseJSON(bodyText)), 'complete');
   return new Response(bodyText, responseInit);
 }

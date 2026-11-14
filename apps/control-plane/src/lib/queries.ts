@@ -11,6 +11,7 @@ import type {
   UsageSeries,
   UsageSummary
 } from './types';
+import type { RevokedKeys } from './types';
 
 export const queryKeys = {
   apps: ['apps'] as const,
@@ -101,6 +102,30 @@ export function useDeleteApp(appID: string) {
       queryClient.removeQueries({ queryKey: queryKeys.app(appID) });
       queryClient.invalidateQueries({ queryKey: queryKeys.apps, exact: true });
     }
+  });
+}
+
+export function useFreezeApp(appID: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (isFrozen: boolean) =>
+      requestControlPlane<AppView>(`/api/apps/${appID}/freeze`, {
+        method: 'POST',
+        body: JSON.stringify({ isFrozen })
+      }),
+    onSuccess: (app) => {
+      queryClient.setQueryData(queryKeys.app(appID), app);
+      queryClient.invalidateQueries({ queryKey: queryKeys.apps, exact: true });
+    }
+  });
+}
+
+export function useRevokeAllKeys(appID: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      requestControlPlane<RevokedKeys>(`/api/apps/${appID}/keys`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.keys(appID) })
   });
 }
 

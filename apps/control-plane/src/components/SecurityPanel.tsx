@@ -34,6 +34,34 @@ function describeKeyImport(app: AppView): SecurityRow {
   };
 }
 
+function formatDollars(amount: number): string {
+  return `$${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+}
+
+function listDollarLimits(app: AppView): string[] {
+  const limits = app.spendLimits ?? {};
+  const parts = [
+    [limits.dailyDollarLimitPerKey, 'per key a day'],
+    [limits.dailyDollarLimitPerApp, 'for the app a day'],
+    [limits.minuteDollarLimitPerApp, 'a minute']
+  ] as const;
+  return parts
+    .filter(([amount]) => typeof amount === 'number')
+    .map(([amount, period]) => `${formatDollars(Number(amount))} ${period}`);
+}
+
+function describeSpendLimits(app: AppView): SecurityRow {
+  const dollarLimits = listDollarLimits(app);
+  const isOn = Object.values(app.spendLimits ?? {}).some((limit) => typeof limit === 'number');
+  return {
+    label: 'Spend limits',
+    value: isOn ? 'On' : 'Off',
+    detail: isOn
+      ? `${dollarLimits.join(', ') || 'Output and concurrency caps only'}.`
+      : 'Set them in Settings to cap what a leaked app secret can spend.'
+  };
+}
+
 function describeAttestation(status: GatewayStatus | undefined): SecurityRow {
   if (!status?.pcr0) {
     return {
@@ -73,6 +101,7 @@ export function SecurityPanel({ app }: AppProps) {
     KEY_ACCESS_ROW,
     describeStorage(app),
     describeKeyImport(app),
+    describeSpendLimits(app),
     describeAttestation(gatewayStatus.data),
     describeGateway(gatewayStatus.data)
   ];

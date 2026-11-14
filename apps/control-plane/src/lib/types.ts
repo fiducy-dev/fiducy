@@ -11,7 +11,18 @@ export interface AppSettings {
   allowedOrigins: string[];
   recordStorage?: RecordStorage;
   allowKeyImport?: boolean;
+  spendLimits?: SpendLimits;
 }
+
+export interface SpendLimits {
+  dailyDollarLimitPerKey?: number;
+  dailyDollarLimitPerApp?: number;
+  minuteDollarLimitPerApp?: number;
+  concurrentRequestLimitPerKey?: number;
+  maximumOutputTokens?: number;
+}
+
+export type SpendLimitName = keyof SpendLimits;
 
 export interface StoredApp extends AppSettings {
   appID: string;
@@ -19,11 +30,14 @@ export interface StoredApp extends AppSettings {
   appSecretHash: string;
   appSecretPreview: string;
   createdAt: string;
+  isFrozen?: boolean;
+  frozenAt?: string | null;
 }
 
 export type AppView = Omit<StoredApp, 'appSecretHash' | 'ownerID'>;
 
-export interface GatewayApp extends Omit<StoredApp, 'ownerID' | 'appSecretPreview' | 'createdAt'> {
+export interface GatewayApp
+  extends Omit<StoredApp, 'ownerID' | 'appSecretPreview' | 'createdAt' | 'frozenAt'> {
   revokedKeyIDs: string[];
 }
 
@@ -164,6 +178,12 @@ export interface GatewayConnection {
 
 export interface GatewayClient {
   deleteRecord: (appID: string, keyID: string) => Promise<ControlResult<null>>;
+  refreshApps: () => Promise<boolean>;
+}
+
+export interface RevokedKeys {
+  revokedCount: number;
+  failedCount: number;
 }
 
 export type KeyEventType = 'saved' | 'revoked';

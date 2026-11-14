@@ -3,6 +3,9 @@ import { describe, expect, it } from 'bun:test';
 import { hashSecret as hashSecretInGateway } from '../../gateway/src/hashing';
 import { createApp, deleteApp, listApps, listGatewayApps } from '../src/lib/appService';
 import { rotateAppSecret, updateApp } from '../src/lib/appService';
+import { freezeAppBySecret, setAppFrozen } from '../src/lib/appService';
+import { readReturnPath } from '../src/lib/client';
+import { isRecentSignIn } from '../src/lib/common';
 import { hashSecret } from '../src/lib/secrets';
 import { appSettingsSchema, appSettingsUpdateSchema } from '../src/lib/validators';
 import { CHAT_SETTINGS, OTHER_OWNER_ID, OWNER_ID, createTestStore } from './fixtures';
@@ -80,6 +83,28 @@ describe('changing an app', () => {
     expect(gatewayApp?.allowKeyImport).toBe(true);
   });
 
+  it('sends spend limits to the gateway and clears them with an empty object', async () => {
+    const store = createTestStore();
+    const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
+    const limits = appSettingsUpdateSchema.parse({
+      spendLimits: { dailyDollarLimitPerKey: 5, maximumOutputTokens: 4096 }
+    });
+    await updateApp(store, OWNER_ID, app.appID, limits);
+    expect((await listGatewayApps(store))[0]?.spendLimits).toEqual({
+      dailyDollarLimitPerKey: 5,
+      maximumOutputTokens: 4096
+    });
+    await updateApp(store, OWNER_ID, app.appID, appSettingsUpdateSchema.parse({ spendLimits: {} }));
+    expect((await listGatewayApps(store))[0]?.spendLimits).toEqual({});
+  });
+
+  it('refuses spend limits that make no sense', () => {
+    const negative = { spendLimits: { dailyDollarLimitPerApp: -1 } };
+    const fractional = { spendLimits: { concurrentRequestLimitPerKey: 1.5 } };
+    expect(appSettingsUpdateSchema.safeParse(negative).success).toBe(false);
+    expect(appSettingsUpdateSchema.safeParse(fractional).success).toBe(false);
+  });
+
   it('keeps where sealed keys live fixed after creation', () => {
     const parsed = appSettingsUpdateSchema.parse({ name: 'Renamed', recordStorage: 'app' });
     expect(parsed).toEqual({ name: 'Renamed' });
@@ -104,6 +129,38 @@ describe('changing an app', () => {
   });
 });
 
+describe('freezing an app', () => {
+  it('freezes and unfreezes for the owner and tells the gateway only the flag', async () => {
+    const store = createTestStore();
+    const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
+    const frozen = await setAppFrozen(store, OWNER_ID, app.appID, true);
+    expect(frozen).toMatchObject({ ok: true, value: { isFrozen: true } });
+    const [gatewayApp] = await listGatewayApps(store);
+    expect(gatewayApp?.isFrozen).toBe(true);
+    expect(gatewayApp).not.toHaveProperty('frozenAt');
+    await setAppFrozen(store, OWNER_ID, app.appID, false);
+    expect((await store.findApp(app.appID))?.frozenAt).toBeNull();
+  });
+
+  it('lets the app secret freeze its own app but nothing else', async () => {
+    const store = createTestStore();
+    const { app, appSecret } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
+    const other = await createApp(store, OTHER_OWNER_ID, { ...CHAT_SETTINGS, name: 'Other' });
+    expect(await freezeAppBySecret(store, appSecret)).toEqual({ ok: true, value: app.appID });
+    expect((await store.findApp(app.appID))?.isFrozen).toBe(true);
+    expect((await store.findApp(other.app.appID))?.isFrozen).toBeUndefined();
+    const wrong = await freezeAppBySecret(store, 'fsk_not_a_real_secret');
+    expect(wrong).toMatchObject({ ok: false, error: { status: 401 } });
+  });
+
+  it('refuses a stranger freezing an app they do not own', async () => {
+    const store = createTestStore();
+    const { app } = await createApp(store, OWNER_ID, CHAT_SETTINGS);
+    const attempt = await setAppFrozen(store, OTHER_OWNER_ID, app.appID, true);
+    expect(attempt).toMatchObject({ ok: false, error: { status: 404 } });
+  });
+});
+
 describe('the gateway feed', () => {
   it('lists every app with its secret hash and nothing the gateway does not need', async () => {
     const store = createTestStore();
@@ -119,5 +176,24 @@ describe('the gateway feed', () => {
       'name',
       'revokedKeyIDs'
     ]);
+  });
+});
+
+describe('confirming a destructive change', () => {
+  it('counts a sign-in as recent for five minutes', () => {
+    const signedInAt = new Date('2026-11-13T21:00:00Z');
+    const now = signedInAt.getTime();
+    expect(isRecentSignIn(signedInAt, now + 4 * 60 * 1000)).toBe(true);
+    expect(isRecentSignIn(signedInAt, now + 6 * 60 * 1000)).toBe(false);
+  });
+
+  it('only returns to an app on this dashboard after signing in', () => {
+    expect(readReturnPath('?app=app_Rk9_4HuntyOyhHz1')).toBe(
+      '/dashboard/app_Rk9_4HuntyOyhHz1?tab=settings'
+    );
+    expect(readReturnPath('?app=%2F%09%2Fevil.example')).toBe('/dashboard');
+    expect(readReturnPath('?app=app_1%2F..%2F..%2F%2Fevil.example')).toBe('/dashboard');
+    expect(readReturnPath('?app=javascript%3Aalert(1)')).toBe('/dashboard');
+    expect(readReturnPath('')).toBe('/dashboard');
   });
 });
