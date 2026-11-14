@@ -263,24 +263,24 @@
     },
     "packages/assistant-ui": {
       "name": "@fiducy/assistant-ui",
-      "version": "0.3.0-beta.7",
+      "version": "0.3.0-beta.8",
       "devDependencies": {
         "@assistant-ui/react": "0.15.28",
-        "@fiducy/sdk": "0.3.0-beta.6",
+        "@fiducy/sdk": "0.3.0-beta.8",
         "@types/react": "19.2.2",
         "ai": "7.0.139",
         "react": "19.2.7",
       },
       "peerDependencies": {
         "@assistant-ui/react": "^0.15.28",
-        "@fiducy/sdk": "^0.3.0-beta.6",
+        "@fiducy/sdk": "^0.3.0-beta.8",
         "ai": "^7.0.139",
         "react": "^19.2.0",
       },
     },
     "packages/cli": {
       "name": "fiducy",
-      "version": "0.3.0-beta.7",
+      "version": "0.3.0-beta.8",
       "bin": {
         "fiducy": "./dist/index.js",
       },
@@ -288,34 +288,34 @@
         "jiti": "2.7.0",
       },
       "devDependencies": {
-        "@fiducy/core": "0.3.0-beta.6",
+        "@fiducy/core": "0.3.0-beta.8",
         "@fiducy/gateway": "workspace:*",
-        "@fiducy/providers": "0.3.0-beta.6",
-        "@fiducy/sdk": "0.3.0-beta.6",
+        "@fiducy/providers": "0.3.0-beta.8",
+        "@fiducy/sdk": "0.3.0-beta.8",
         "@fiducy/testing": "0.1.0",
       },
     },
     "packages/core": {
       "name": "@fiducy/core",
-      "version": "0.3.0-beta.7",
+      "version": "0.3.0-beta.8",
     },
     "packages/farm": {
       "name": "@fiducy/farm",
-      "version": "0.3.0-beta.7",
+      "version": "0.3.0-beta.8",
       "devDependencies": {
         "@farm.js/core": "0.1.40",
-        "@fiducy/sdk": "0.3.0-beta.6",
+        "@fiducy/sdk": "0.3.0-beta.8",
       },
       "peerDependencies": {
         "@farm.js/core": "^0.1.40",
-        "@fiducy/sdk": "^0.3.0-beta.6",
+        "@fiducy/sdk": "^0.3.0-beta.8",
       },
     },
     "packages/providers": {
       "name": "@fiducy/providers",
-      "version": "0.3.0-beta.7",
+      "version": "0.3.0-beta.8",
       "dependencies": {
-        "@fiducy/core": "0.3.0-beta.6",
+        "@fiducy/core": "0.3.0-beta.8",
       },
       "devDependencies": {
         "@fiducy/testing": "0.1.0",
@@ -323,10 +323,10 @@
     },
     "packages/sdk": {
       "name": "@fiducy/sdk",
-      "version": "0.3.0-beta.7",
+      "version": "0.3.0-beta.8",
       "dependencies": {
-        "@fiducy/core": "0.3.0-beta.6",
-        "@fiducy/widget": "0.3.0-beta.6",
+        "@fiducy/core": "0.3.0-beta.8",
+        "@fiducy/widget": "0.3.0-beta.8",
       },
       "devDependencies": {
         "@ai-sdk/anthropic": "4.0.79",
@@ -376,9 +376,9 @@
     },
     "packages/widget": {
       "name": "@fiducy/widget",
-      "version": "0.3.0-beta.7",
+      "version": "0.3.0-beta.8",
       "dependencies": {
-        "@fiducy/core": "0.3.0-beta.6",
+        "@fiducy/core": "0.3.0-beta.8",
       },
     },
   },

@@ -1,5 +1,17 @@
 # @fiducy/providers
 
+## 0.3.0-beta.8
+
+### Minor Changes
+
+- [#86](https://github.com/fiducy-dev/fiducy/pull/86) [`72ba699`](https://github.com/fiducy-dev/fiducy/commit/72ba6996103aaf84d3dc51b6dd8bc0c3d844fdf2) Thanks [@Benonii](https://github.com/Benonii)! - Add `meterRequest`, `findModelPrice` and `estimateCostInMicrodollars` for spend limits. `meterRequest` caps a request's output tokens and turns on OpenAI stream usage. Token usage now counts Anthropic cache tokens as input and Gemini thinking tokens as output, and `relayResponse` reports usage for streams that stop early, with an `outcome` of `'interrupted'`.
+
+### Patch Changes
+
+- [#134](https://github.com/fiducy-dev/fiducy/pull/134) [`d2bc8d7`](https://github.com/fiducy-dev/fiducy/commit/d2bc8d70d36433ed25bd90582ea2868a5aee5d02) Thanks [@Benonii](https://github.com/Benonii)! - Price list moves to `prices.json` and covers current OpenAI, Anthropic, Gemini and popular open-weight models. Model names now match only exact names or dated snapshots, so a new model is blocked instead of priced as an older one.
+- Updated dependencies []:
+  - @fiducy/core@0.3.0-beta.8
+
 ## 0.3.0-beta.7
 
 ### Patch Changes
