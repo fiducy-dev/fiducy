@@ -53,6 +53,7 @@ async function storeUserKey(appID: string) {
 
 describe('a developer onboarding through the dashboard', () => {
   let created: { appID: string; appSecret: string };
+  let servedHandle = '';
   let page: Page;
 
   beforeAll(async () => {
@@ -71,6 +72,7 @@ describe('a developer onboarding through the dashboard', () => {
 
   it('lets the gateway serve the app as soon as it is created', async () => {
     const handle = await storeUserKey(created.appID);
+    servedHandle = handle;
     const openai = new OpenAI({
       apiKey: created.appSecret,
       baseURL: `${stack.gatewayURL}/openai/v1`,
@@ -81,6 +83,15 @@ describe('a developer onboarding through the dashboard', () => {
       messages: [{ role: 'user', content: 'Hello' }]
     });
     expect(completion.choices[0]?.message.content).toBeTruthy();
+  });
+
+  it('applies the default spend limits from the dashboard in the gateway', async () => {
+    const response = await fetch(`${stack.gatewayURL}/openai/v1/files`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${created.appSecret}`, 'x-key-handle': servedHandle },
+      body: '{}'
+    });
+    expect(response.status).toBe(403);
   });
 
   it('lets a user revoke their key through the gateway', async () => {

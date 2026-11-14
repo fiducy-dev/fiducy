@@ -9,6 +9,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
+import { SpendLimitFields } from './SpendLimitFields';
+
 import type { AppSettings } from '@/lib/types';
 import type { AppSettingsFieldsProps } from './types';
 
@@ -59,6 +61,7 @@ export function AppSettingsFields({ defaults }: AppSettingsFieldsProps) {
           defaultValue={defaults?.monthlyRequestLimitPerKey ?? 10000}
         />
       </Field>
+      <SpendLimitFields spendLimits={defaults ? (defaults.spendLimits ?? {}) : undefined} />
       <Field>
         <FieldLabel>Key import</FieldLabel>
         <Select
