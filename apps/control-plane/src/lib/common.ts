@@ -1,3 +1,5 @@
+import { RECENT_SIGN_IN_MILLISECONDS } from './constants';
+
 export function groupBy<Item>(items: Item[], toGroupKey: (item: Item) => string) {
   const groups = new Map<string, Item[]>();
   for (const item of items) {
@@ -20,4 +22,8 @@ export function splitIntoBatches<Item>(items: Item[], batchSize: number): Item[]
 export function readBearerToken(headers: Headers): string {
   const authorization = headers.get('authorization') ?? '';
   return authorization.replace(/^Bearer\s+/i, '').trim();
+}
+
+export function isRecentSignIn(signedInAt: Date, now = Date.now()): boolean {
+  return now - signedInAt.getTime() <= RECENT_SIGN_IN_MILLISECONDS;
 }

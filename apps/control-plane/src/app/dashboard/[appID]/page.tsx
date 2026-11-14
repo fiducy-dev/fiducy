@@ -15,6 +15,7 @@ import { PageStatus } from '@/components/PageStatus';
 import { QuickStart } from '@/components/QuickStart';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
 import { useSignInRedirect } from '@/components/useSignInRedirect';
+import { useSearchParam } from '@/hooks/useSearchParam';
 import { useApp, useGatewayURL } from '@/lib/queries';
 
 import type { AppTab, AppTabOption } from '@/components/types';
@@ -31,7 +32,10 @@ export default function AppPage({ params = {} }: PageProps) {
   const appID = String(params.appID ?? '');
   const app = useApp(appID);
   const gatewayURL = useGatewayURL();
-  const [tab, setTab] = useState<AppTab>('overview');
+  const tabParam = useSearchParam('tab');
+  const linkedTab = TABS.find((option) => option.value === tabParam)?.value;
+  const [chosenTab, setTab] = useState<AppTab | null>(null);
+  const tab = chosenTab ?? linkedTab ?? 'overview';
   const signedOut = useSignInRedirect(app.error);
 
   if (signedOut) return <PageStatus isLoading>Taking you to sign in</PageStatus>;
@@ -61,7 +65,7 @@ export default function AppPage({ params = {} }: PageProps) {
             <TabsPanel className="grid gap-6 pt-4" value="settings">
               <IncidentControls app={app.data} />
               <AppSettingsForm app={app.data} />
-              <DangerZone appID={appID} />
+              <DangerZone appID={appID} appName={app.data.name} />
             </TabsPanel>
             <TabsPanel className="pt-4" value="integration">
               {gatewayURL.data ? <QuickStart appID={appID} gatewayURL={gatewayURL.data} /> : null}

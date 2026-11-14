@@ -40,3 +40,5 @@ export const SPEND_LIMIT_NAMES = [
   'concurrentRequestLimitPerKey',
   'maximumOutputTokens'
 ] as const;
+export const RECENT_SIGN_IN_MILLISECONDS = 5 * 60 * 1000;
+export const SIGN_IN_AGAIN_MESSAGE = 'Sign in again to confirm this';

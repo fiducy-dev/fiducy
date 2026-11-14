@@ -52,6 +52,11 @@ export interface AppReferenceProps {
   appID: string;
 }
 
+export interface DangerZoneProps {
+  appID: string;
+  appName: string;
+}
+
 export interface AppProps {
   app: AppView;
 }
@@ -210,6 +215,7 @@ export interface ConfirmActionProps {
   title: string;
   description: string;
   confirmLabel: string;
+  confirmPhrase?: string;
   onConfirm: () => void;
 }
 

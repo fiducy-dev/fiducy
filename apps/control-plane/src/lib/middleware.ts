@@ -1,6 +1,7 @@
 import { auth } from '@farm.js/auth/server';
 
-import { readBearerToken } from './common';
+import { isRecentSignIn, readBearerToken } from './common';
+import { SIGN_IN_AGAIN_MESSAGE } from './constants';
 import { noteGatewayContact } from './gatewayStatusService';
 import { respondWith } from './responses';
 import { matchesToken } from './secrets';
@@ -12,6 +13,15 @@ export async function requireOwner() {
   const user = await auth.user();
   if (!user) return respondWith(401, null, 'Sign in to manage your apps');
   return { ownerID: user.id };
+}
+
+export async function requireRecentSignIn() {
+  const current = await auth.session();
+  if (!current) return respondWith(401, null, 'Sign in to manage your apps');
+  if (!isRecentSignIn(current.session.createdAt)) {
+    return respondWith(401, null, SIGN_IN_AGAIN_MESSAGE);
+  }
+  return { ownerID: current.user.id };
 }
 
 export async function requireGateway({ request }: EndpointMiddlewareContext) {

@@ -4,6 +4,8 @@ import { hashSecret as hashSecretInGateway } from '../../gateway/src/hashing';
 import { createApp, deleteApp, listApps, listGatewayApps } from '../src/lib/appService';
 import { rotateAppSecret, updateApp } from '../src/lib/appService';
 import { freezeAppBySecret, setAppFrozen } from '../src/lib/appService';
+import { readReturnPath } from '../src/lib/client';
+import { isRecentSignIn } from '../src/lib/common';
 import { hashSecret } from '../src/lib/secrets';
 import { appSettingsSchema, appSettingsUpdateSchema } from '../src/lib/validators';
 import { CHAT_SETTINGS, OTHER_OWNER_ID, OWNER_ID, createTestStore } from './fixtures';
@@ -174,5 +176,23 @@ describe('the gateway feed', () => {
       'name',
       'revokedKeyIDs'
     ]);
+  });
+});
+
+describe('confirming a destructive change', () => {
+  it('counts a sign-in as recent for five minutes', () => {
+    const signedInAt = new Date('2026-11-13T21:00:00Z');
+    const now = signedInAt.getTime();
+    expect(isRecentSignIn(signedInAt, now + 4 * 60 * 1000)).toBe(true);
+    expect(isRecentSignIn(signedInAt, now + 6 * 60 * 1000)).toBe(false);
+  });
+
+  it('only returns to a path on this dashboard after signing in', () => {
+    expect(readReturnPath('?next=%2Fdashboard%2Fapp_1%3Ftab%3Dsettings')).toBe(
+      '/dashboard/app_1?tab=settings'
+    );
+    expect(readReturnPath('?next=https%3A%2F%2Fevil.example')).toBe('/dashboard');
+    expect(readReturnPath('?next=%2F%2Fevil.example')).toBe('/dashboard');
+    expect(readReturnPath('')).toBe('/dashboard');
   });
 });

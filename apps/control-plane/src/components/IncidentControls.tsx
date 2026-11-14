@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { isSignedOut, signInAgain } from '@/lib/client';
 import { useFreezeApp, useRevokeAllKeys } from '@/lib/queries';
 
 import { ConfirmAction } from './ConfirmAction';
@@ -13,6 +14,14 @@ export function IncidentControls({ app }: AppProps) {
   const freezeApp = useFreezeApp(app.appID);
   const revokeAllKeys = useRevokeAllKeys(app.appID);
   const isFrozen = app.isFrozen === true;
+
+  function confirmRevokeAll() {
+    revokeAllKeys.mutate(undefined, {
+      onError: (error) => {
+        if (isSignedOut(error)) signInAgain(`/dashboard/${app.appID}?tab=settings`);
+      }
+    });
+  }
 
   return (
     <Panel
@@ -51,7 +60,8 @@ export function IncidentControls({ app }: AppProps) {
           title="Revoke every user key?"
           description="Every sealed key is deleted and every handle stops working. Each user has to connect their key again. This cannot be undone."
           confirmLabel="Revoke all keys"
-          onConfirm={() => revokeAllKeys.mutate()}
+          confirmPhrase={app.name}
+          onConfirm={confirmRevokeAll}
         />
       </div>
       {revokeAllKeys.data ? (

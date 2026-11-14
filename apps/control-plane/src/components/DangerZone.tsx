@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { isSignedOut, signInAgain } from '@/lib/client';
 import { useDeleteApp, useRotateSecret } from '@/lib/queries';
 
 import { ConfirmAction } from './ConfirmAction';
@@ -8,9 +9,9 @@ import { ErrorAlert } from './ErrorAlert';
 import { Panel } from './Panel';
 import { SecretReveal } from './SecretReveal';
 
-import type { AppReferenceProps } from './types';
+import type { DangerZoneProps } from './types';
 
-export function DangerZone({ appID }: AppReferenceProps) {
+export function DangerZone({ appID, appName }: DangerZoneProps) {
   const rotateSecret = useRotateSecret(appID);
   const deleteApp = useDeleteApp(appID);
 
@@ -18,6 +19,9 @@ export function DangerZone({ appID }: AppReferenceProps) {
     deleteApp.mutate(undefined, {
       onSuccess: () => {
         window.location.href = '/dashboard';
+      },
+      onError: (error) => {
+        if (isSignedOut(error)) signInAgain(`/dashboard/${appID}?tab=settings`);
       }
     });
   }
@@ -51,6 +55,7 @@ export function DangerZone({ appID }: AppReferenceProps) {
           title="Delete this app?"
           description="Every user key handle it holds stops working. This cannot be undone."
           confirmLabel="Delete app"
+          confirmPhrase={appName}
           onConfirm={confirmDelete}
         />
       </div>

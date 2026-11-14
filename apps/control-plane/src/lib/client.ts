@@ -63,3 +63,13 @@ export function readAppSettingsForm(form: HTMLFormElement): AppSettings {
     })
   };
 }
+
+export function readReturnPath(search: string): string {
+  const next = new URLSearchParams(search).get('next') ?? '';
+  const isLocalPath = next.startsWith('/') && !next.startsWith('//') && !next.includes('\\');
+  return isLocalPath ? next : '/dashboard';
+}
+
+export function signInAgain(returnPath: string) {
+  window.location.assign(`/sign-in?next=${encodeURIComponent(returnPath)}`);
+}
