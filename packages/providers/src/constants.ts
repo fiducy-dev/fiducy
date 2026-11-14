@@ -1,6 +1,6 @@
 import { GATEWAY_ERROR_HEADER } from '@fiducy/core';
 
-import type { MeteredEndpoint } from './types.ts';
+import type { MeteredEndpoint, ServiceTierRule } from './types.ts';
 
 export const STRIPPED_REQUEST_HEADERS = [
   'authorization',
@@ -43,6 +43,28 @@ export const CHARACTERS_PER_ESTIMATED_TOKEN = 4;
 export const MAXIMUM_ESTIMATED_INPUT_TOKENS = 128000;
 export const GEMINI_MODEL_PATTERN = /^\/v1beta\/models\/([^/:]+):/;
 
+const PINNED_OPENAI_TIER: ServiceTierRule = {
+  fields: ['service_tier'],
+  allowedValues: ['default', 'flex'],
+  pinnedValue: 'default'
+};
+
+const OPENAI_TIER: ServiceTierRule = { ...PINNED_OPENAI_TIER, pinnedValue: null };
+
+const ANTHROPIC_SPEED: ServiceTierRule = {
+  fields: ['speed'],
+  allowedValues: ['standard'],
+  pinnedValue: null
+};
+
+const GEMINI_TIER: ServiceTierRule = {
+  fields: ['service_tier', 'serviceTier'],
+  allowedValues: ['standard', 'flex'],
+  pinnedValue: null
+};
+
+export const REPLACED_SERVICE_TIERS = ['auto'];
+
 export const METERED_ENDPOINTS: MeteredEndpoint[] = [
   {
     provider: 'openai',
@@ -50,7 +72,8 @@ export const METERED_ENDPOINTS: MeteredEndpoint[] = [
     outputLimitStyle: 'top-level',
     outputLimitField: 'max_completion_tokens',
     clampedFields: ['max_completion_tokens', 'max_tokens'],
-    requestsStreamUsage: true
+    requestsStreamUsage: true,
+    serviceTierRule: PINNED_OPENAI_TIER
   },
   {
     provider: 'openai',
@@ -58,7 +81,8 @@ export const METERED_ENDPOINTS: MeteredEndpoint[] = [
     outputLimitStyle: 'top-level',
     outputLimitField: 'max_output_tokens',
     clampedFields: ['max_output_tokens'],
-    requestsStreamUsage: false
+    requestsStreamUsage: false,
+    serviceTierRule: PINNED_OPENAI_TIER
   },
   {
     provider: 'openai',
@@ -66,7 +90,8 @@ export const METERED_ENDPOINTS: MeteredEndpoint[] = [
     outputLimitStyle: 'top-level',
     outputLimitField: 'max_tokens',
     clampedFields: ['max_tokens'],
-    requestsStreamUsage: true
+    requestsStreamUsage: true,
+    serviceTierRule: OPENAI_TIER
   },
   {
     provider: 'openai',
@@ -74,7 +99,8 @@ export const METERED_ENDPOINTS: MeteredEndpoint[] = [
     outputLimitStyle: 'none',
     outputLimitField: '',
     clampedFields: [],
-    requestsStreamUsage: false
+    requestsStreamUsage: false,
+    serviceTierRule: null
   },
   {
     provider: 'anthropic',
@@ -82,7 +108,8 @@ export const METERED_ENDPOINTS: MeteredEndpoint[] = [
     outputLimitStyle: 'top-level',
     outputLimitField: 'max_tokens',
     clampedFields: ['max_tokens'],
-    requestsStreamUsage: false
+    requestsStreamUsage: false,
+    serviceTierRule: ANTHROPIC_SPEED
   },
   {
     provider: 'anthropic',
@@ -90,7 +117,8 @@ export const METERED_ENDPOINTS: MeteredEndpoint[] = [
     outputLimitStyle: 'none',
     outputLimitField: '',
     clampedFields: [],
-    requestsStreamUsage: false
+    requestsStreamUsage: false,
+    serviceTierRule: null
   },
   {
     provider: 'gemini',
@@ -98,7 +126,8 @@ export const METERED_ENDPOINTS: MeteredEndpoint[] = [
     outputLimitStyle: 'gemini',
     outputLimitField: 'maxOutputTokens',
     clampedFields: ['maxOutputTokens'],
-    requestsStreamUsage: false
+    requestsStreamUsage: false,
+    serviceTierRule: GEMINI_TIER
   },
   {
     provider: 'gemini',
@@ -106,7 +135,8 @@ export const METERED_ENDPOINTS: MeteredEndpoint[] = [
     outputLimitStyle: 'none',
     outputLimitField: '',
     clampedFields: [],
-    requestsStreamUsage: false
+    requestsStreamUsage: false,
+    serviceTierRule: null
   },
   {
     provider: 'openrouter',
@@ -114,7 +144,8 @@ export const METERED_ENDPOINTS: MeteredEndpoint[] = [
     outputLimitStyle: 'top-level',
     outputLimitField: 'max_tokens',
     clampedFields: ['max_tokens', 'max_completion_tokens'],
-    requestsStreamUsage: false
+    requestsStreamUsage: false,
+    serviceTierRule: OPENAI_TIER
   }
 ];
 

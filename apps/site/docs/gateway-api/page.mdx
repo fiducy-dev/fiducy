@@ -50,7 +50,7 @@ Errors from the gateway itself:
 | --- | --- |
 | `400` | Missing or malformed handle or record |
 | `401` | Bad app secret |
-| `403` | The handle belongs to another app or cannot open its key, a key was added outside the widget, the endpoint or model can't be priced while spend limits are on, or the app is frozen |
+| `403` | The handle belongs to another app or cannot open its key, a key was added outside the widget, the endpoint, model or speed tier can't be priced while spend limits are on, or the app is frozen |
 | `404` | No key with this ID for this app |
 | `409` | Revoke through the gateway on an app that stores its own records. Delete the record instead |
 | `429` | The key reached its monthly request limit, a spend limit was reached, or the key has too many requests running at once. The message says which |
@@ -73,6 +73,7 @@ How it works:
 - After the call, it replaces the reservation with the real cost from the provider's token counts. A provider error refunds it. A stream that stops early keeps the full reservation, since the provider may still bill for it.
 - It sets or lowers `max_tokens`, `max_completion_tokens`, `max_output_tokens` or Gemini's `maxOutputTokens` to `maximumOutputTokens`, and turns on `stream_options.include_usage` for OpenAI streams so the real cost can be read.
 - Only endpoints it can price are allowed: chat completions, completions, Responses, embeddings, Anthropic messages and token counts, Gemini generate, count and embed calls, and OpenRouter completions. Other `POST` endpoints (files, batches, images, audio) answer `403`. `GET` requests pass.
+- Paid speed tiers are blocked, since they cost up to twice the listed price: OpenAI and OpenRouter `service_tier` other than `default` or `flex`, Anthropic `speed: "fast"`, and Gemini `service_tier: "priority"` answer `403`. OpenAI calls without a `service_tier`, or with `auto`, are sent as `default`, so a project set to Fast still bills at the standard rate.
 - Prices come from `packages/providers/src/prices.json` in `@fiducy/providers`, in dollars per million tokens at each provider's standard rate. A request matches a listed name or a dated snapshot of it (`claude-opus-4-1-20250805`, `gpt-4o-mini-2024-07-18`, `-latest`, `-preview-*`); dots and dashes in version numbers count as the same. A model missing from the table answers `403` while spend limits are on, since its cost can't be counted.
 - With `FIDUCY_KEYS_TABLE` set, the totals live in that DynamoDB table and hold across restarts and enclaves. Without it they live in memory. The running-request count is per gateway process.
 
