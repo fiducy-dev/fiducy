@@ -44,6 +44,7 @@ export async function storeKey(request: Request, dependencies: GatewayDependenci
   if (!body.ok) return respondWithFailure(body.error);
   const app = await dependencies.appDirectory.findApp(body.value.appID);
   if (!app) return respondWith(404, null, 'No app is registered with this appID');
+  // active: ok when the app is not frozen
   const active = refuseFrozenApp(app);
   if (!active.ok) return respondWithFailure(active.error);
 
@@ -59,6 +60,7 @@ export async function importKeys(request: Request, dependencies: GatewayDependen
     return respondWith(403, null, 'Import keys from your server, not from a browser');
   const app = await authenticateApp(dependencies.appDirectory, request.headers);
   if (!app.ok) return respondWithFailure(app.error);
+  // active: ok when the app is not frozen
   const active = refuseFrozenApp(app.value);
   if (!active.ok) return respondWithFailure(active.error);
   if (!app.value.allowKeyImport) {
