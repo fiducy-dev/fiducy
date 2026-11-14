@@ -69,6 +69,7 @@ export type StoredValue =
   | StoredKeyEntry
   | DailyUsage
   | GatewayHeartbeat
+  | StoredTwoFactor
   | string[]
   | true;
 
@@ -96,6 +97,8 @@ export interface ControlStore {
   saveDailyUsage: (appID: string, usage: DailyUsage) => Promise<void>;
   readGatewayHeartbeat: () => Promise<GatewayHeartbeat | null>;
   saveGatewayHeartbeat: (heartbeat: GatewayHeartbeat) => Promise<void>;
+  findTwoFactor: (ownerID: string) => Promise<StoredTwoFactor | null>;
+  saveTwoFactor: (record: StoredTwoFactor) => Promise<void>;
 }
 
 export interface ControlFailure {
@@ -169,6 +172,24 @@ export interface DailyUsage extends TokenTotals {
 
 export interface GatewayHeartbeat {
   lastSeenAt: string;
+}
+
+export interface StoredTwoFactor {
+  ownerID: string;
+  secret: string;
+  confirmedAt: string | null;
+  lastUsedStep: number | null;
+  failedAttempts: number;
+  lockedUntil: string | null;
+}
+
+export interface TwoFactorEnrollment {
+  secret: string;
+  otpauthURL: string;
+}
+
+export interface TwoFactorStatus {
+  isEnabled: boolean;
 }
 
 export interface GatewayConnection {

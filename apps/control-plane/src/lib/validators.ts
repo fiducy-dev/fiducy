@@ -4,7 +4,7 @@ import { MAXIMUM_ALLOWED_ORIGINS, MAXIMUM_MONTHLY_REQUEST_LIMIT } from './consta
 import { MAXIMUM_USAGE_BATCH_SIZE } from './constants';
 import { DEFAULT_USAGE_SERIES_DAYS, MAXIMUM_USAGE_SERIES_DAYS } from './constants';
 import { MAXIMUM_CONCURRENT_REQUEST_LIMIT, MAXIMUM_DOLLAR_LIMIT } from './constants';
-import { MAXIMUM_OUTPUT_TOKEN_LIMIT } from './constants';
+import { MAXIMUM_OUTPUT_TOKEN_LIMIT, TWO_FACTOR_CODE_PATTERN } from './constants';
 
 function isBareOrigin(value: string): boolean {
   try {
@@ -75,4 +75,8 @@ export const keyEventSchema = z.object({
   appID: z.string().min(1).max(80),
   keyID: z.string().regex(/^[A-Za-z0-9_-]{22}$/, 'Use a 22 character key ID'),
   source: z.enum(['widget', 'import']).optional()
+});
+
+export const twoFactorCodeSchema = z.object({
+  code: z.string().trim().regex(TWO_FACTOR_CODE_PATTERN, 'Enter the 6-digit code')
 });

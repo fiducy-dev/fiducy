@@ -15,8 +15,8 @@ export function IncidentControls({ app }: AppProps) {
   const revokeAllKeys = useRevokeAllKeys(app.appID);
   const isFrozen = app.isFrozen === true;
 
-  function confirmRevokeAll() {
-    revokeAllKeys.mutate(undefined, {
+  function confirmRevokeAll(code: string) {
+    revokeAllKeys.mutate(code, {
       onError: (error) => {
         if (isSignedOut(error)) signInAgain(app.appID);
       }
@@ -61,6 +61,7 @@ export function IncidentControls({ app }: AppProps) {
           description="Every sealed key is deleted and every handle stops working. Each user has to connect their key again. This cannot be undone."
           confirmLabel="Revoke all keys"
           confirmPhrase={app.name}
+          requiresCode
           onConfirm={confirmRevokeAll}
         />
       </div>

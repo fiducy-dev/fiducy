@@ -96,7 +96,7 @@ Your users' keys can't be stolen from your servers, because they were never ther
 2. **Rotate the app secret.** Settings, "Secret and removal", "Rotate app secret". Put the new value in `FIDUCY_APP_SECRET` and redeploy. The old secret stops working at once.
 3. **Unfreeze.** Your users keep their keys and rotate nothing with their provider: no plaintext key was ever on your server.
 
-"Revoke all keys" in the same panel deletes every sealed key the dashboard has seen and makes every handle useless. Each user has to connect their key again. Use it when you are shutting the app down, or when your users must start over. A freeze already stops all use, including keys the dashboard never heard about.
+"Revoke all keys" in the same panel deletes every sealed key the dashboard has seen and makes every handle useless. Each user has to connect their key again. Use it when you are shutting the app down, or when your users must start over. A freeze already stops all use, including keys the dashboard never heard about. It and deleting an app ask for a code from your authenticator app, so set up two-factor on the Settings tab first.
 
 ## Who is responsible for what
 

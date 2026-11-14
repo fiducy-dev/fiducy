@@ -1,11 +1,12 @@
 import { auth } from '@farm.js/auth/server';
 
 import { isRecentSignIn, readBearerToken } from './common';
-import { SIGN_IN_AGAIN_MESSAGE } from './constants';
+import { SIGN_IN_AGAIN_MESSAGE, TWO_FACTOR_HEADER } from './constants';
 import { noteGatewayContact } from './gatewayStatusService';
-import { respondWith } from './responses';
+import { respondWith, respondWithFailure } from './responses';
 import { matchesToken } from './secrets';
 import { getControlStore } from './storage';
+import { checkSecondFactor } from './twoFactorService';
 
 import type { EndpointMiddlewareContext } from '@farm.js/core/api';
 
@@ -21,7 +22,17 @@ export async function requireRecentSignIn() {
   if (!isRecentSignIn(current.session.createdAt)) {
     return respondWith(401, null, SIGN_IN_AGAIN_MESSAGE);
   }
-  return { ownerID: current.user.id };
+  return { ownerID: current.user.id, ownerEmail: current.user.email };
+}
+
+export async function requireSecondFactor({
+  request,
+  context
+}: EndpointMiddlewareContext<{ ownerID: string }>) {
+  const code = (request.headers.get(TWO_FACTOR_HEADER) ?? '').trim();
+  const checked = await checkSecondFactor(getControlStore(), context.ownerID, code);
+  if (!checked.ok) return respondWithFailure(checked.error);
+  return true;
 }
 
 export async function requireGateway({ request }: EndpointMiddlewareContext) {
