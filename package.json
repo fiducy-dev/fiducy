@@ -26,5 +26,8 @@
   },
   "overrides": {
     "better-auth": "1.7.16"
+  },
+  "patchedDependencies": {
+    "@farming-labs/farmjs@0.2.143": "patches/@farming-labs%2Ffarmjs@0.2.143.patch"
   }
 }

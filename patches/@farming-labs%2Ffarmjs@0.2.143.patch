@@ -1,0 +1,31 @@
+diff --git a/dist/server.js b/dist/server.js
+index 9eb212f57960d0224a3dde04f7cc9c1608537076..2e49cb53e621db12f660453a2910fba85e968de4 100644
+--- a/dist/server.js
++++ b/dist/server.js
+@@ -2238,6 +2238,18 @@ function renderFarmDocsSocialMeta(config, data, baseUrl) {
+         .map(([attribute, key, value]) => `<meta ${attribute}="${key}" content="${escapeDocumentText(value)}">`)
+         .join("\n  ");
+ }
++function renderFarmDocsCanonicalMeta(config, data, baseUrl) {
++    if (!baseUrl)
++        return "";
++    const href = `${baseUrl.replace(/\/+$/, "")}${data.url.replace(/\/+$/, "")}`;
++    const siteName = config.nav?.title;
++    return [
++        `<link rel="canonical" href="${escapeDocumentText(href)}">`,
++        `<meta property="og:url" content="${escapeDocumentText(href)}">`,
++        `<meta property="og:type" content="article">`,
++        ...(typeof siteName === "string" ? [`<meta property="og:site_name" content="${escapeDocumentText(siteName)}">`] : []),
++    ].join("\n  ");
++}
+ function renderFarmDocsDocument(input) {
+     const { config, data } = input;
+     const markdownHref = `${input.origin ?? ""}${data.url.replace(/\/+$/, "")}.md`;
+@@ -2259,6 +2271,7 @@ function renderFarmDocsDocument(input) {
+   <title>${escapeDocumentText(data.documentTitle)}</title>
+   ${description ? `<meta name="description" content="${escapeDocumentText(description)}">` : ""}
+   ${renderFarmDocsSocialMeta(config, data, resolveDocsMetadataBaseUrl(config) ?? input.origin)}
++  ${renderFarmDocsCanonicalMeta(config, data, resolveDocsMetadataBaseUrl(config) ?? input.origin)}
+   <link rel="alternate" type="text/markdown" href="${escapeDocumentText(markdownHref)}">
+   ${favicon ? `<link rel="icon" href="${escapeDocumentText(favicon)}">` : ""}
+   ${renderThemeBootstrap(config)}

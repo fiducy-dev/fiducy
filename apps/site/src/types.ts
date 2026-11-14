@@ -315,3 +315,8 @@ export interface CipherWordProps {
   word: string;
   isHinted: boolean;
 }
+
+export interface PackageManifest {
+  dependencies?: Record<string, string>;
+  patchedDependencies?: Record<string, string>;
+}
