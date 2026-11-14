@@ -37,8 +37,13 @@ export interface RelayResponseInput {
 
 export type UsageOutcome = 'complete' | 'interrupted';
 
+export interface PriceEntry {
+  input: number;
+  output: number;
+}
+
 export interface ModelPrice {
-  modelPrefix: string;
+  model: string;
   inputDollarsPerMillionTokens: number;
   outputDollarsPerMillionTokens: number;
 }

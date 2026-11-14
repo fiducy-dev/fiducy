@@ -82,8 +82,21 @@ describe('capping how much one request can generate', () => {
 
 describe('pricing a request', () => {
   it('matches the most specific model name, also behind an OpenRouter vendor prefix', () => {
-    expect(findModelPrice('gpt-4o-mini-2024-07-18')?.modelPrefix).toBe('gpt-4o-mini');
-    expect(findModelPrice('openai/gpt-4o')?.modelPrefix).toBe('gpt-4o');
+    expect(findModelPrice('gpt-4o-mini-2024-07-18')?.model).toBe('gpt-4o-mini');
+    expect(findModelPrice('openai/gpt-4o')?.model).toBe('gpt-4o');
+    expect(findModelPrice('qwen/qwen3.8-flash:free')?.model).toBe('qwen3-8-flash');
+  });
+
+  it('reads dots and dashes in version numbers as the same name', () => {
+    expect(findModelPrice('claude-opus-4-1-20250805')?.model).toBe('claude-opus-4-1');
+    expect(findModelPrice('anthropic/claude-sonnet-4.5')?.model).toBe('claude-sonnet-4-5');
+  });
+
+  it('accepts dated snapshots and preview tags but not a different model', () => {
+    expect(findModelPrice('gemini-2.5-flash-preview-09-2025')?.model).toBe('gemini-2-5-flash');
+    expect(findModelPrice('claude-3-7-sonnet-latest')?.model).toBe('claude-3-7-sonnet');
+    expect(findModelPrice('gpt-5.6-sol')).toBeNull();
+    expect(findModelPrice('gpt-5-turbo-max')).toBeNull();
   });
 
   it('has no price for a model missing from the table', () => {
