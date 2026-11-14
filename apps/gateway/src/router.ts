@@ -4,12 +4,13 @@ import { importKeys, revokeKey, storeKey } from './controllers/keys';
 import { proxyProviderRequest } from './controllers/proxy';
 import { serveWidget, serveWidgetFont } from './controllers/widget';
 import { respondWith } from './responses';
+import { createConcurrencyTracker, createMemorySpendCounter } from './spendCounters';
 import { WIDGET_FONT_PATH } from './widget/font';
 
 import type { ProviderName } from '@fiducy/providers';
-import type { GatewayDependencies, RequestHandler } from './types';
+import type { GatewayDependencies, RequestHandler, ResolvedGatewayDependencies } from './types';
 
-async function routeRequest(request: Request, dependencies: GatewayDependencies) {
+async function routeRequest(request: Request, dependencies: ResolvedGatewayDependencies) {
   const { pathname, search } = new URL(request.url);
   if (request.method === 'GET' && pathname === '/health')
     return respondWith(200, { status: 'ok' }, 'Gateway is up');
@@ -35,9 +36,14 @@ async function routeRequest(request: Request, dependencies: GatewayDependencies)
 }
 
 export function createGateway(dependencies: GatewayDependencies): RequestHandler {
+  const resolvedDependencies: ResolvedGatewayDependencies = {
+    ...dependencies,
+    spendCounter: dependencies.spendCounter ?? createMemorySpendCounter(),
+    concurrencyTracker: dependencies.concurrencyTracker ?? createConcurrencyTracker()
+  };
   return async (request) => {
     try {
-      return await routeRequest(request, dependencies);
+      return await routeRequest(request, resolvedDependencies);
     } catch (error) {
       console.error(
         `Unexpected gateway error: ${error instanceof Error ? error.message : String(error)}`

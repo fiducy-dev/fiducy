@@ -1,6 +1,6 @@
 import { mergeUsage, parseJSON, readUsage } from './usage.ts';
 
-import type { TokenUsage } from './types.ts';
+import type { TokenUsage, UsageOutcome } from './types.ts';
 
 function readEventData(line: string): string | null {
   if (!line.startsWith('data:')) return null;
@@ -24,25 +24,46 @@ function createUsageObserver() {
   return { observeLines, readUsage: () => usage };
 }
 
+function reportUsageOnce(onUsage: (usage: TokenUsage, outcome: UsageOutcome) => void) {
+  let hasReported = false;
+  return (usage: TokenUsage, outcome: UsageOutcome) => {
+    if (hasReported) return;
+    hasReported = true;
+    onUsage(usage, outcome);
+  };
+}
+
 export function observeUsageInBody(
   body: NonNullable<Response['body']>,
-  onUsage: (usage: TokenUsage) => void
+  onUsage: (usage: TokenUsage, outcome: UsageOutcome) => void
 ): ReadableStream<Uint8Array> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   const observer = createUsageObserver();
+  const reportUsage = reportUsageOnce(onUsage);
+  const readChunk = async () => {
+    try {
+      return await reader.read();
+    } catch (error) {
+      reportUsage(observer.readUsage(), 'interrupted');
+      throw error;
+    }
+  };
   return new ReadableStream<Uint8Array>({
     pull: async (controller) => {
-      const { done, value } = await reader.read();
+      const { done, value } = await readChunk();
       if (done) {
         observer.observeLines(`${decoder.decode()}\n`);
-        onUsage(observer.readUsage());
+        reportUsage(observer.readUsage(), 'complete');
         controller.close();
         return;
       }
       controller.enqueue(value);
       observer.observeLines(decoder.decode(value, { stream: true }));
     },
-    cancel: (reason) => reader.cancel(reason)
+    cancel: (reason) => {
+      reportUsage(observer.readUsage(), 'interrupted');
+      return reader.cancel(reason);
+    }
   });
 }
