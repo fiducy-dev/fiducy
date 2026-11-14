@@ -25,12 +25,17 @@ export function createUsageEvent(appID: string, keyID: string, recordedAt: strin
 
 export function createFakeGateway(isReachable = true) {
   const deletedRecords: Array<{ appID: string; keyID: string }> = [];
+  const refreshes: number[] = [];
   const client: GatewayClient = {
+    refreshApps: async () => {
+      refreshes.push(Date.now());
+      return isReachable;
+    },
     deleteRecord: async (appID, keyID) => {
       if (!isReachable) return fail(GATEWAY_UNAVAILABLE);
       deletedRecords.push({ appID, keyID });
       return succeed(null);
     }
   };
-  return { client, deletedRecords };
+  return { client, deletedRecords, refreshes };
 }

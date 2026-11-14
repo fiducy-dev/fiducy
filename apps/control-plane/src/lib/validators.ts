@@ -46,6 +46,8 @@ export const appSettingsSchema = z.object({
 
 export const appSettingsUpdateSchema = appSettingsSchema.omit({ recordStorage: true }).partial();
 
+export const freezeSchema = z.object({ isFrozen: z.boolean() });
+
 export const usageEventSchema = z.object({
   appID: z.string().min(1),
   keyID: z.string().min(1),

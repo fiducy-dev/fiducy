@@ -1,6 +1,6 @@
 import { buildUpstreamRequest, isPathAllowed, relayResponse } from '@fiducy/providers';
 
-import { authenticateApp } from '../authentication';
+import { authenticateApp, refuseFrozenApp } from '../authentication';
 import { enforceRequestLimit, resolveApiKey } from '../resolveKey';
 import { describeFailure, respondWithFailure } from '../responses';
 import { startMeteredCall } from '../spendGuard';
@@ -52,7 +52,8 @@ export async function proxyProviderRequest(
   const provider = dependencies.providerRegistry[providerName];
   if (!isPathAllowed(provider, path))
     return respondWithFailure(describeFailure(400, 'This provider path is not allowed'));
-  const app = await authenticateApp(dependencies.appDirectory, request.headers);
+  const authenticated = await authenticateApp(dependencies.appDirectory, request.headers);
+  const app = authenticated.ok ? refuseFrozenApp(authenticated.value) : authenticated;
   if (!app.ok) return respondWithFailure(app.error);
   const resolved = await resolveApiKey(app.value, request.headers, dependencies);
   if (!resolved.ok) return respondWithFailure(resolved.error);

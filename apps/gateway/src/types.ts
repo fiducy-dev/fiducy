@@ -24,6 +24,7 @@ export interface RegisteredApp {
   allowKeyImport?: boolean;
   revokedKeyIDs?: string[];
   spendLimits?: SpendLimits;
+  isFrozen?: boolean;
 }
 
 export interface SpendLimits {
@@ -47,6 +48,7 @@ export interface KeyStore {
 export interface AppDirectory {
   findApp: (appID: string) => Promise<RegisteredApp | null>;
   findAppBySecret: (appSecret: string) => Promise<RegisteredApp | null>;
+  refresh?: () => Promise<void>;
 }
 
 export interface UsageEvent {

@@ -1,4 +1,4 @@
-import { SPEND_LIMIT_NAMES } from './constants';
+import { APP_ID_PATTERN, SPEND_LIMIT_NAMES } from './constants';
 
 import type { AppSettings, SpendLimits } from './types';
 
@@ -62,4 +62,14 @@ export function readAppSettingsForm(form: HTMLFormElement): AppSettings {
       recordStorage: formData.get('recordStorage') === 'app' ? 'app' : 'fiducy'
     })
   };
+}
+
+export function readReturnPath(search: string): string {
+  const appID = new URLSearchParams(search).get('app') ?? '';
+  if (!APP_ID_PATTERN.test(appID)) return '/dashboard';
+  return `/dashboard/${appID}?tab=settings`;
+}
+
+export function signInAgain(appID: string) {
+  window.location.assign(`/sign-in?app=${encodeURIComponent(appID)}`);
 }

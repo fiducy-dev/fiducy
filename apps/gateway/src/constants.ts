@@ -59,6 +59,8 @@ export const DAILY_APP_LIMIT_MESSAGE = 'This app reached its daily spend limit';
 export const MINUTE_APP_LIMIT_MESSAGE =
   'This app reached its spend limit for this minute. Try again shortly';
 export const UNMETERED_METHODS = ['GET', 'HEAD'];
+export const APP_REFRESH_PATH = '/apps/refresh';
+export const FROZEN_APP_MESSAGE = 'This app is frozen. Its owner can unfreeze it in the dashboard';
 export const IMDS_REGION_PATH = '/latest/meta-data/placement/region';
 export const ENCLAVE_CONFIG_PCR_INDEX = 16;
 export const ENCLAVE_CONFIG_FIELDS = [
