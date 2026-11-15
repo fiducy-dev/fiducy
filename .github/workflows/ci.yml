@@ -84,3 +84,7 @@ jobs:
           docker run --rm -e FIDUCY_PUBLIC_HOST=gateway.example.com
           -v "$PWD/enclave/Caddyfile:/etc/caddy/Caddyfile:ro"
           caddy:2.10.2 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Validate the parent host's HAProxy config
+        run: >-
+          docker run --rm -v "$PWD/infra/aws/parent/haproxy.cfg:/etc/haproxy/haproxy.cfg:ro"
+          haproxy:2.8 haproxy -c -f /etc/haproxy/haproxy.cfg
