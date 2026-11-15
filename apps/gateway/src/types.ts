@@ -136,6 +136,7 @@ export interface RemoteAppDirectoryOptions extends ControlPlaneConnection {
 
 export interface RemoteUsageLedgerOptions extends ControlPlaneConnection {
   flushIntervalMilliseconds: number;
+  maximumQueuedEvents?: number;
 }
 
 export interface RemoteAppConfig extends RegisteredApp {

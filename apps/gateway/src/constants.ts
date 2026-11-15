@@ -13,6 +13,7 @@ export const GATEWAY_USAGE_PATH = '/api/gateway/usage';
 export const GATEWAY_KEY_EVENTS_PATH = '/api/gateway/key-events';
 export const MINIMUM_REFRESH_GAP_MILLISECONDS = 1000;
 export const MAXIMUM_USAGE_BATCH_SIZE = 1000;
+export const MAXIMUM_QUEUED_USAGE_EVENTS = 10000;
 export const ATTESTATION_PATH = '/v1/attestation';
 export const MAXIMUM_NONCE_LENGTH = 512;
 export const GATEWAY_TOKEN_PURPOSE = 'gateway-token';
