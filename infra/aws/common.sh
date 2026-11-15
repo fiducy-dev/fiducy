@@ -5,7 +5,27 @@
 AMI_PARAMETER=/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
 BUILD_INFO_KEY=build-info.json
 
-log() { echo "[${SCRIPT_LABEL:-aws} $(date -u +%H:%M:%S)] $*"; }
+USE_COLOR=false
+{ [ -t 1 ] || [ -n "${FORCE_COLOR:-}" ]; } && [ -z "${NO_COLOR:-}" ] && USE_COLOR=true
+
+paint() {
+  if [ "$USE_COLOR" = true ]; then
+    printf '\033[%sm%s\033[0m' "$1" "$2"
+  else
+    printf '%s' "$2"
+  fi
+}
+label_color() { case "${SCRIPT_LABEL:-aws}" in deploy) echo 36 ;; pin) echo 35 ;; *) echo 34 ;; esac; }
+stamp() { printf '%s %s' "$(paint "1;$(label_color)" "[${SCRIPT_LABEL:-aws}]")" "$(paint 2 "$(date -u +%H:%M:%S)")"; }
+log() { echo "$(stamp) $*"; }
+fail() { echo "$(stamp) $(paint '1;31' "$*")"; }
+action() {
+  echo
+  echo "$(stamp) $(paint '1;30;43' ' ACTION ') $(paint 1 "$1")"
+  shift
+  for line in "$@"; do echo "  $(paint 33 '│') $line"; done
+  echo
+}
 summary() { [ -n "${GITHUB_STEP_SUMMARY:-}" ] && echo "$*" >> "$GITHUB_STEP_SUMMARY" || true; }
 
 stack_output() {
@@ -66,7 +86,7 @@ wait_for_ssm() {
     [ "$status" = "Online" ] && return 0
     sleep 10
   done
-  log "The host never came online in SSM"
+  fail "The host never came online in SSM"
   return 1
 }
 
@@ -122,7 +142,7 @@ run_on_host() {
   aws ssm get-command-invocation --command-id "$command_id" --instance-id "$INSTANCE_ID" \
     --query StandardOutputContent --output text | tail -n 60
   if [ "$status" != "Success" ]; then
-    log "Host step $step ended with $status. Last error output:"
+    fail "Host step $step ended with $status. Last error output:"
     aws ssm get-command-invocation --command-id "$command_id" --instance-id "$INSTANCE_ID" \
       --query StandardErrorContent --output text | tail -n 80
     return 1
@@ -138,7 +158,7 @@ check_endpoint() {
     fi
     sleep 6
   done
-  log "Not reachable: $url"
+  fail "Not reachable: $url"
   return 1
 }
 
