@@ -1,9 +1,10 @@
 # shellcheck shell=bash
-# Shared by deploy.sh and pin.sh. Both run from a machine with AWS credentials, never on the host.
-# Expects STACK_NAME, AWS_REGION, ROOT_DIR and TEMPLATE to be set before it is sourced.
+# Shared by deploy.sh, pin.sh and teardown.sh. They run from a machine with AWS credentials, never
+# on the host. Expects STACK_NAME, AWS_REGION and ROOT_DIR to be set before it is sourced.
 
 AMI_PARAMETER=/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
 BUILD_INFO_KEY=build-info.json
+KEY_STACK_NAME="${STACK_NAME}-key"
 
 USE_COLOR=false
 { [ -t 1 ] || [ -n "${FORCE_COLOR:-}" ]; } && [ -z "${NO_COLOR:-}" ] && USE_COLOR=true
@@ -30,33 +31,52 @@ action() {
 }
 summary() { [ -n "${GITHUB_STEP_SUMMARY:-}" ] && echo "$*" >> "$GITHUB_STEP_SUMMARY" || true; }
 
+stack_exists() { aws cloudformation describe-stacks --stack-name "$1" >/dev/null 2>&1; }
+
 stack_output() {
-  aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+  aws cloudformation describe-stacks --stack-name "${2:-$STACK_NAME}" \
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
 }
 
 stack_parameter() {
-  aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+  aws cloudformation describe-stacks --stack-name "${2:-$STACK_NAME}" \
     --query "Stacks[0].Parameters[?ParameterKey=='$1'].ParameterValue" --output text
 }
 
-# shellcheck disable=SC2120
+apply_template() {
+  local name="$1" template="$2"
+  shift 2
+  aws cloudformation deploy --stack-name "$name" --template-file "$template" \
+    --capabilities CAPABILITY_NAMED_IAM --no-fail-on-empty-changeset \
+    ${@:+--parameter-overrides "$@"}
+}
+
+# The key and its custodian role are a stack of their own, so pin.sh updates nothing else.
+deploy_key_stack() { apply_template "$KEY_STACK_NAME" "$ROOT_DIR/infra/aws/key.yaml" "$@"; }
+
+create_key_stack() {
+  log "Creating key stack $KEY_STACK_NAME"
+  deploy_key_stack "GatewayStackName=$STACK_NAME" \
+    "KeyCustodianUserArns=${FIDUCY_KEY_CUSTODIAN_USER_ARNS:?Set FIDUCY_KEY_CUSTODIAN_USER_ARNS to the IAM user ARNs (comma separated) that may pin enclave images}"
+}
+
 deploy_stack() {
-  local overrides=("$@")
-  if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME" >/dev/null 2>&1; then
-    local ami
+  local overrides=()
+  if ! stack_exists "$STACK_NAME"; then
+    stack_exists "$KEY_STACK_NAME" || create_key_stack
+    local ami key_arn custodian_role_id
     ami=$(aws ssm get-parameter --name "$AMI_PARAMETER" --query Parameter.Value --output text)
-    overrides+=("AmiId=$ami")
-    overrides+=("GitHubRepository=${FIDUCY_GITHUB_REPOSITORY:-fiducy-dev/fiducy}")
-    overrides+=("GitHubOIDCProviderArn=${FIDUCY_GITHUB_OIDC_PROVIDER_ARN:-}")
-    overrides+=("EnableGitHubDeploy=${FIDUCY_GITHUB_DEPLOY:-true}")
-    overrides+=("KeyCustodianUserArns=${FIDUCY_KEY_CUSTODIAN_USER_ARNS:?Set FIDUCY_KEY_CUSTODIAN_USER_ARNS to the IAM user ARNs (comma separated) that may pin enclave images}")
+    key_arn=$(stack_output KeyArn "$KEY_STACK_NAME")
+    custodian_role_id=$(stack_output KeyCustodianRoleId "$KEY_STACK_NAME")
+    [[ "$key_arn" == arn:* ]] || { fail "Stack $KEY_STACK_NAME has no key. Delete it and deploy again."; return 1; }
+    overrides=("AmiId=$ami" "KeyArn=$key_arn" "KeyCustodianRoleId=$custodian_role_id"
+      "GitHubRepository=${FIDUCY_GITHUB_REPOSITORY:-fiducy-dev/fiducy}"
+      "GitHubOIDCProviderArn=${FIDUCY_GITHUB_OIDC_PROVIDER_ARN:-}"
+      "EnableGitHubDeploy=${FIDUCY_GITHUB_DEPLOY:-true}")
     log "Creating stack $STACK_NAME with AMI $ami"
   fi
   [ -z "${FIDUCY_ALERT_EMAIL:-}" ] || overrides+=("AlertEmail=$FIDUCY_ALERT_EMAIL")
-  aws cloudformation deploy --stack-name "$STACK_NAME" --template-file "$TEMPLATE" \
-    --capabilities CAPABILITY_NAMED_IAM --no-fail-on-empty-changeset \
-    ${overrides[@]:+--parameter-overrides "${overrides[@]}"}
+  apply_template "$STACK_NAME" "$TEMPLATE" ${overrides[@]:+"${overrides[@]}"}
 }
 
 read_stack_outputs() {

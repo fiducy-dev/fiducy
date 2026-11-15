@@ -2,7 +2,7 @@
 # Trusts one enclave image: a key custodian runs this from their own machine, with MFA.
 #   1. Check the caller is the stack's key custodian role (or the account root user)
 #   2. Show what the last deploy built: commit, PCR0, the enclave config and its PCR16
-#   3. Lock the KMS key to that PCR0 and PCR16 (the only way the key policy changes)
+#   3. Lock the KMS key to that PCR0 and PCR16 by updating the key stack, and nothing else
 #   4. Publish the config and restart the enclave on the host with the pinned image
 # Usage: pin.sh <pcr0> <pcr16>
 # The deploy prints the command with both filled in. Compare them with the commit you reviewed
@@ -16,7 +16,6 @@ STACK_NAME="${FIDUCY_STACK_NAME:-fiducy-prototype}"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_DEFAULT_REGION="$AWS_REGION"
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-TEMPLATE="$ROOT_DIR/infra/aws/stack.yaml"
 CUSTODIAN_ROLE="${STACK_NAME}-key-custodian"
 
 # shellcheck source=infra/aws/common.sh
@@ -98,10 +97,11 @@ confirm_build() {
 
 require_custodian
 read_stack_outputs
+KEY_ARN=$(stack_output KeyArn "$KEY_STACK_NAME")
 confirm_build
 
 log "Locking the KMS key to enclave image $PCR0 with config $PCR16"
-deploy_stack "EnclaveImageSha384=$PCR0" "EnclaveConfigSha384=$PCR16"
+deploy_key_stack "EnclaveImageSha384=$PCR0" "EnclaveConfigSha384=$PCR16"
 PINNED_PCR0="$PCR0"
 PINNED_PCR16="$PCR16"
 

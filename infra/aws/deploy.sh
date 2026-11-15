@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploys the gateway host from a machine with AWS credentials (GitHub Actions or a laptop).
-#   1. Create or update the CloudFormation stack
+#   1. Create the key stack once, then create or update the gateway stack
 #   2. Make sure the gateway token exists in Parameter Store (replace it with --rotate-token)
 #   3. Remind you to give the token to the dashboard (wherever it runs)
 #   4. Ship the repo to the host and build the enclave image there
@@ -80,7 +80,6 @@ print_deploy_summary() {
   fi
 }
 
-# shellcheck disable=SC2119
 deploy_stack
 read_stack_outputs
 log "Host $INSTANCE_ID at $PUBLIC_IP, key $KEY_ARN"
@@ -95,8 +94,8 @@ BUILD_INFO=$(read_build_info)
 BUILT_PCR0=$(echo "$BUILD_INFO" | jq -r '.pcr0 // empty')
 BUILT_PCR16=$(echo "$BUILD_INFO" | jq -r '.pcr16 // empty')
 [ -n "$BUILT_PCR0" ] && [ -n "$BUILT_PCR16" ] || { fail "The host did not record a build"; exit 1; }
-PINNED_PCR0=$(stack_parameter EnclaveImageSha384)
-PINNED_PCR16=$(stack_parameter EnclaveConfigSha384)
+PINNED_PCR0=$(stack_parameter EnclaveImageSha384 "$KEY_STACK_NAME")
+PINNED_PCR16=$(stack_parameter EnclaveConfigSha384 "$KEY_STACK_NAME")
 [ "$PINNED_PCR0" != "none" ] || PINNED_PCR0=""
 [ "$PINNED_PCR16" != "none" ] || PINNED_PCR16=""
 log "Built enclave image $BUILT_PCR0 with config $BUILT_PCR16 from $RELEASE_COMMIT"

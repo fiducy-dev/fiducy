@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Fiducy gateway - one Graviton host running the gateway inside a Nitro enclave
+Description: Fiducy gateway - one Graviton host running the gateway inside a Nitro enclave. The key it uses lives in key.yaml
 
 Parameters:
   AmiId:
@@ -8,18 +8,15 @@ Parameters:
   InstanceType:
     Type: String
     Default: c6g.large
-  EnclaveImageSha384:
+  KeyArn:
     Type: String
-    Default: none
     Description: >-
-      PCR0 of the enclave image. Only an enclave with this hash can decrypt with the key. Changed
-      only by pin.sh, run by the key custodian role with MFA
-  EnclaveConfigSha384:
+      ARN of the wrapping key, the KeyArn output of the key stack (key.yaml). deploy.sh fills it in
+  KeyCustodianRoleId:
     Type: String
-    Default: none
     Description: >-
-      PCR16 of the enclave, the measurement of the deployment config it read at boot. Only an
-      enclave with this config can decrypt with the key. Changed only by pin.sh
+      Unique ID of the key custodian role, the KeyCustodianRoleId output of the key stack. The
+      alert topic's policy names it, so only that role decides who is alerted
   GitHubRepository:
     Type: String
     Default: fiducy-dev/fiducy
@@ -37,12 +34,6 @@ Parameters:
     Description: >-
       Create the GitHub OIDC provider and the deployer role so GitHub Actions can deploy. Set to
       false where IAM identity providers are not allowed; deploy.sh from a machine still works
-  KeyCustodianUserArns:
-    Type: CommaDelimitedList
-    Description: >-
-      ARNs of the IAM users allowed to assume the key custodian role, each with MFA. Name people,
-      not the whole account, so an IAM admin cannot hand themselves the role
-
   AlertEmail:
     Type: String
     Default: ''
@@ -98,11 +89,11 @@ Resources:
                 Action: [s3:GetObject, s3:PutObject]
                 Resource: !Sub '${DeployBucket.Arn}/*'
               # Decrypt is listed here but the key policy denies it unless the request carries
-              # an attestation document from the enclave image named in EnclaveImageSha384, with
-              # the config named in EnclaveConfigSha384.
+              # an attestation document from the enclave image and config the key stack
+              # (key.yaml) pinned.
               - Effect: Allow
                 Action: [kms:Encrypt, kms:Decrypt, kms:DescribeKey]
-                Resource: !GetAtt WrappingKey.Arn
+                Resource: !Ref KeyArn
               - Effect: Allow
                 Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:DeleteItem, dynamodb:UpdateItem]
                 Resource: !GetAtt KeysTable.Arn
@@ -126,83 +117,33 @@ Resources:
     Properties:
       Roles: [!Ref HostRole]
 
-  # Whoever assumes this role decides which enclave image the key trusts. It needs MFA, it is the
-  # only principal pin.sh accepts, and the key policy below refuses policy changes from anyone else.
-  KeyCustodianRole:
-    Type: AWS::IAM::Role
+  # What pin.sh needs from this stack, added to the custodian role the key stack owns. The role's
+  # rights over the key live in key.yaml, so a pin never has to read or update anything here.
+  KeyCustodianHostAccess:
+    Type: AWS::IAM::RolePolicy
     Properties:
       RoleName: !Sub '${AWS::StackName}-key-custodian'
-      Description: Pins the enclave image hash the KMS key trusts. Assume with MFA, run pin.sh
-      MaxSessionDuration: 3600
-      AssumeRolePolicyDocument:
+      PolicyName: fiducy-key-custodian-host
+      PolicyDocument:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
-            Principal: { AWS: !Ref KeyCustodianUserArns }
-            Action: sts:AssumeRole
-            Condition:
-              Bool: { aws:MultiFactorAuthPresent: 'true' }
-      Policies:
-        - PolicyName: fiducy-key-custodian
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - cloudformation:DescribeStacks
-                  - cloudformation:DescribeStackEvents
-                  - cloudformation:DescribeChangeSet
-                  - cloudformation:CreateChangeSet
-                  - cloudformation:ExecuteChangeSet
-                  - cloudformation:GetTemplate
-                  - cloudformation:GetTemplateSummary
-                Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*'
-              - Effect: Allow
-                Action: cloudformation:GetTemplateSummary
-                Resource: '*'
-              # By ARN pattern, not !GetAtt: the key policy names this role's unique ID, so a
-              # reference back to the key would be a circular dependency.
-              - Effect: Allow
-                Action:
-                  - kms:PutKeyPolicy
-                  - kms:GetKeyPolicy
-                  - kms:DescribeKey
-                  - kms:DisableKey
-                  - kms:ScheduleKeyDeletion
-                  - kms:CancelKeyDeletion
-                  - kms:ListResourceTags
-                  - kms:GetKeyRotationStatus
-                Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
-                Condition:
-                  StringEquals: { aws:ResourceTag/fiducy-stack: !Ref AWS::StackName }
-              - Effect: Allow
-                Action: ec2:Describe*
-                Resource: '*'
-              - Effect: Allow
-                Action: iam:GetRole
-                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-key-custodian'
-              - Effect: Allow
-                Action: s3:GetObject
-                Resource: !Sub '${DeployBucket.Arn}/*'
-              # By tag, not !Ref Host: the host's role reads the key, and the key names this
-              # role, so a direct reference would be a circular dependency.
-              - Effect: Allow
-                Action: ssm:SendCommand
-                Resource: !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*'
-                Condition:
-                  StringEquals: { ssm:resourceTag/fiducy-stack: !Ref AWS::StackName }
-              - Effect: Allow
-                Action: ssm:SendCommand
-                Resource: !Sub 'arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript'
-              - Effect: Allow
-                Action: [ssm:GetCommandInvocation, ssm:DescribeInstanceInformation]
-                Resource: '*'
-              - !If
-                - SendAlerts
-                - Effect: Allow
-                  Action: [sns:Subscribe, sns:Unsubscribe, sns:ListSubscriptionsByTopic]
-                  Resource: !Ref AlertTopic
-                - !Ref AWS::NoValue
+            Action: s3:GetObject
+            Resource: !Sub '${DeployBucket.Arn}/*'
+          - Effect: Allow
+            Action: ssm:SendCommand
+            Resource:
+              - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Host}'
+              - !Sub 'arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript'
+          - Effect: Allow
+            Action: [ssm:GetCommandInvocation, ssm:DescribeInstanceInformation]
+            Resource: '*'
+          - !If
+            - SendAlerts
+            - Effect: Allow
+              Action: [sns:Subscribe, sns:Unsubscribe, sns:ListSubscriptionsByTopic]
+              Resource: !Ref AlertTopic
+            - !Ref AWS::NoValue
 
   GitHubOIDCProvider:
     Type: AWS::IAM::OIDCProvider
@@ -256,6 +197,9 @@ Resources:
                   - cloudformation:GetTemplateSummary
                 Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*'
               - Effect: Allow
+                Action: cloudformation:DescribeStacks
+                Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}-key/*'
+              - Effect: Allow
                 Action: cloudformation:GetTemplateSummary
                 Resource: '*'
               - Effect: Allow
@@ -284,77 +228,6 @@ Resources:
                   - cloudformation:DeleteStack
                   - ec2:TerminateInstances
                 Resource: '*'
-
-  WrappingKey:
-    Type: AWS::KMS::Key
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      Description: Wraps share B of every stored API key. Decrypt only works inside the enclave
-      PendingWindowInDays: 7
-      Tags:
-        - { Key: fiducy-stack, Value: !Ref AWS::StackName }
-      # The lockout check would refuse this policy, because whoever creates the stack is not the
-      # custodian role and so cannot change the policy afterwards. That is the point.
-      BypassPolicyLockoutSafetyCheck: true
-      KeyPolicy:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: AccountAdministration
-            Effect: Allow
-            Principal: { AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root' }
-            Action: kms:*
-            Resource: '*'
-          # Changing what the key trusts, disabling it or scheduling its deletion is reserved for
-          # this stack's custodian role (MFA, named users) and the account root user. IAM admins, the deploy credentials
-          # and the host cannot, whatever their IAM policies say. Every attempt lands in CloudTrail.
-          - Sid: OnlyTheCustodianChangesTheKey
-            Effect: Deny
-            Principal: '*'
-            Action:
-              - kms:PutKeyPolicy
-              - kms:ScheduleKeyDeletion
-              - kms:DisableKey
-              - kms:CreateGrant
-            Resource: '*'
-            # Matched by the role's unique ID, not its name. An admin who deletes the role and
-            # creates a new one with the same name gets a new ID, so the new role is refused.
-            # The root user's aws:userid is the account ID.
-            Condition:
-              StringNotLike:
-                aws:userid:
-                  - !Sub '${KeyCustodianRole.RoleId}:*'
-                  - !Ref AWS::AccountId
-          # Applies to everyone, account admins included. A Decrypt without an attestation
-          # document for this exact enclave image is refused. Missing attestation counts as a
-          # mismatch, so the parent host and the AWS console cannot decrypt either.
-          - Sid: DecryptOnlyInsideTheEnclave
-            Effect: Deny
-            Principal: '*'
-            Action: kms:Decrypt
-            Resource: '*'
-            Condition:
-              StringNotEqualsIgnoreCase:
-                kms:RecipientAttestation:ImageSha384: !Ref EnclaveImageSha384
-          # A separate statement, because one Deny with two conditions only applies when both
-          # mismatch. The same image with a config nobody pinned (another key, table or control
-          # plane) measures a different PCR16 and is refused.
-          - Sid: DecryptOnlyWithThePinnedConfig
-            Effect: Deny
-            Principal: '*'
-            Action: kms:Decrypt
-            Resource: '*'
-            Condition:
-              StringNotEqualsIgnoreCase:
-                kms:RecipientAttestation:PCR16: !Ref EnclaveConfigSha384
-          # ReEncrypt decrypts under this key and re-encrypts under another one, without a Decrypt
-          # call. The gateway never uses it, so it is refused for everyone, or a stored share could
-          # be moved under a key the caller controls and opened there.
-          - Sid: NoReEncrypt
-            Effect: Deny
-            Principal: '*'
-            Action: kms:ReEncrypt*
-            Resource: '*'
 
   KeysTable:
     Type: AWS::DynamoDB::Table
@@ -521,7 +394,7 @@ Resources:
             Condition:
               StringNotLike:
                 aws:userid:
-                  - !Sub '${KeyCustodianRole.RoleId}:*'
+                  - !Sub '${KeyCustodianRoleId}:*'
                   - !Ref AWS::AccountId
 
   KeyChangeAlert:
@@ -536,7 +409,7 @@ Resources:
         detail:
           eventName: [PutKeyPolicy, ScheduleKeyDeletion, DisableKey, CreateGrant, UpdateKeyDescription]
           resources:
-            ARN: [!GetAtt WrappingKey.Arn]
+            ARN: [!Ref KeyArn]
       Targets:
         - Id: email
           Arn: !Ref AlertTopic
@@ -561,7 +434,7 @@ Resources:
           eventName: [Decrypt]
           errorCode: [{ exists: true }]
           resources:
-            ARN: [!GetAtt WrappingKey.Arn]
+            ARN: [!Ref KeyArn]
       Targets:
         - Id: email
           Arn: !Ref AlertTopic
@@ -593,8 +466,8 @@ Resources:
           requestParameters:
             roleName: !If
               - GitHubDeploy
-              - [!Ref KeyCustodianRole, !Ref DeployerRole, !Ref HostRole]
-              - [!Ref KeyCustodianRole, !Ref HostRole]
+              - [!Sub '${AWS::StackName}-key-custodian', !Ref DeployerRole, !Ref HostRole]
+              - [!Sub '${AWS::StackName}-key-custodian', !Ref HostRole]
       Targets:
         - Id: email
           Arn: !Ref AlertTopic
@@ -697,7 +570,7 @@ Resources:
     Condition: SendAlerts
     Properties:
       Name: !Sub '${AWS::StackName}-stack-change'
-      Description: The stack was updated or deleted
+      Description: The gateway stack or the key stack was updated or deleted
       EventPattern:
         source: [aws.cloudformation]
         detail-type: [AWS API Call via CloudTrail]
@@ -706,7 +579,9 @@ Resources:
           requestParameters:
             stackName:
               - !Ref AWS::StackName
+              - !Sub '${AWS::StackName}-key'
               - { prefix: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/' }
+              - { prefix: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}-key/' }
       Targets:
         - Id: email
           Arn: !Ref AlertTopic
@@ -715,7 +590,7 @@ Resources:
               name: $.detail.eventName
               who: $.detail.userIdentity.arn
               time: $.detail.eventTime
-            InputTemplate: '"Fiducy: <name> on the gateway stack by <who> at <time>. A deploy from CI or a pin by the custodian is expected; anything else is not."'
+            InputTemplate: '"Fiducy: <name> on the gateway or key stack by <who> at <time>. A deploy from CI or a pin by the custodian is expected; anything else is not."'
 
 Outputs:
   InstanceId:
@@ -723,7 +598,7 @@ Outputs:
   PublicIp:
     Value: !Ref HostAddress
   KeyArn:
-    Value: !GetAtt WrappingKey.Arn
+    Value: !Ref KeyArn
   BucketName:
     Value: !Ref DeployBucket
   KeysTableName:
@@ -738,4 +613,4 @@ Outputs:
     Value: !Ref AlertTopic
   KeyCustodianRoleArn:
     Description: The role to assume, with MFA, before running pin.sh
-    Value: !GetAtt KeyCustodianRole.Arn
+    Value: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-key-custodian'
