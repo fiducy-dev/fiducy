@@ -1,5 +1,11 @@
 # @fiducy/core
 
+## 0.3.0-beta.9
+
+### Patch Changes
+
+- [#151](https://github.com/fiducy-dev/fiducy/pull/151) [`454c60d`](https://github.com/fiducy-dev/fiducy/commit/454c60dd80d60b4b98a4de5edad8b35c09dc4d9e) Thanks [@Benonii](https://github.com/Benonii)! - Accept attestation documents whose payload AWS signed as an indefinite-length CBOR map. Current Nitro enclaves issue these, and the verifier refused them as `malformed_document`, so the widget and `importKeys` would not send keys to a real enclave gateway. Indefinite-length maps and arrays are now read under the same item and nesting limits; indefinite-length strings are still refused.
+
 ## 0.3.0-beta.8
 
 No changes in this release.
