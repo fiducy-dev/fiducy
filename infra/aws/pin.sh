@@ -98,6 +98,7 @@ confirm_build() {
 require_custodian
 read_stack_outputs
 KEY_ARN=$(stack_output KeyArn "$KEY_STACK_NAME")
+KEYS_TABLE=$(stack_output KeysTableName "$KEY_STACK_NAME")
 confirm_build
 
 log "Locking the KMS key to enclave image $PCR0 with config $PCR16"

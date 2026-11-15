@@ -70,12 +70,12 @@ deploy_stack() {
   local overrides=()
   if ! stack_exists "$STACK_NAME"; then
     stack_exists "$KEY_STACK_NAME" || create_key_stack
-    local ami key_arn alert_topic
+    local ami key_arn keys_table
     ami=$(aws ssm get-parameter --name "$AMI_PARAMETER" --query Parameter.Value --output text)
     key_arn=$(stack_output KeyArn "$KEY_STACK_NAME")
-    alert_topic=$(alert_topic_arn)
+    keys_table=$(stack_output KeysTableName "$KEY_STACK_NAME")
     [[ "$key_arn" == arn:* ]] || { fail "Stack $KEY_STACK_NAME has no key. Delete it and deploy again."; return 1; }
-    overrides=("AmiId=$ami" "KeyArn=$key_arn" "AlertTopicArn=$alert_topic"
+    overrides=("AmiId=$ami" "KeyArn=$key_arn" "KeysTableName=$keys_table" "AlertTopicArn=$(alert_topic_arn)"
       "GitHubRepository=${FIDUCY_GITHUB_REPOSITORY:-fiducy-dev/fiducy}"
       "GitHubOIDCProviderArn=${FIDUCY_GITHUB_OIDC_PROVIDER_ARN:-}"
       "EnableGitHubDeploy=${FIDUCY_GITHUB_DEPLOY:-true}")

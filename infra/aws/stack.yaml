@@ -29,6 +29,11 @@ Parameters:
     Description: >-
       Create the GitHub OIDC provider and the deployer role so GitHub Actions can deploy. Set to
       false where IAM identity providers are not allowed; deploy.sh from a machine still works
+  KeysTableName:
+    Type: String
+    Description: >-
+      Name of the sealed records table, the KeysTableName output of the key stack. deploy.sh
+      fills it in
   AlertTopicArn:
     Type: String
     Default: ''
@@ -84,7 +89,7 @@ Resources:
                 Resource: !Ref KeyArn
               - Effect: Allow
                 Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:DeleteItem, dynamodb:UpdateItem]
-                Resource: !GetAtt KeysTable.Arn
+                Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${KeysTableName}'
               - Effect: Allow
                 Action: [ssm:GetParameter]
                 Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/fiducy/*'
@@ -210,25 +215,6 @@ Resources:
                   - cloudformation:DeleteStack
                   - ec2:TerminateInstances
                 Resource: '*'
-
-  KeysTable:
-    Type: AWS::DynamoDB::Table
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - { AttributeName: keyID, AttributeType: S }
-      KeySchema:
-        - { AttributeName: keyID, KeyType: HASH }
-      DeletionProtectionEnabled: true
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      SSESpecification:
-        SSEEnabled: true
-      TimeToLiveSpecification:
-        AttributeName: expiresAt
-        Enabled: true
 
   HostSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -428,7 +414,7 @@ Resources:
         detail:
           eventName: [DeleteTable, UpdateTable, UpdateContinuousBackups]
           requestParameters:
-            tableName: [!Ref KeysTable]
+            tableName: [!Ref KeysTableName]
       Targets:
         - Id: email
           Arn: !Ref AlertTopicArn
@@ -476,7 +462,7 @@ Outputs:
   BucketName:
     Value: !Ref DeployBucket
   KeysTableName:
-    Value: !Ref KeysTable
+    Value: !Ref KeysTableName
   DeployerRoleArn:
     Condition: GitHubDeploy
     Description: Set this as the AWS_DEPLOY_ROLE_ARN repository variable in GitHub
