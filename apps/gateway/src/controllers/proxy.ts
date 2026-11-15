@@ -1,7 +1,8 @@
 import { buildUpstreamRequest, isPathAllowed, relayResponse } from '@fiducy/providers';
 
 import { authenticateApp, refuseFrozenApp } from '../authentication';
-import { enforceRequestLimit, resolveApiKey } from '../resolveKey';
+import { reserveRequest } from '../requestLimit';
+import { resolveApiKey } from '../resolveKey';
 import { describeFailure, respondWithFailure } from '../responses';
 import { startMeteredCall } from '../spendGuard';
 
@@ -32,9 +33,10 @@ async function relayWithSettlement(
   upstreamResponse: Response,
   apiKey: string,
   meteredCall: MeteredCall | null,
+  refund: () => void,
   onUsage: (usage: TokenUsage, outcome: UsageOutcome) => void
 ) {
-  if (!upstreamResponse.ok) meteredCall?.refund();
+  if (!upstreamResponse.ok) refund();
   try {
     return await relayResponse({ upstreamResponse, apiKey, onUsage });
   } catch (error) {
@@ -58,8 +60,8 @@ export async function proxyProviderRequest(
   const resolved = await resolveApiKey(app.value, request.headers, dependencies);
   if (!resolved.ok) return respondWithFailure(resolved.error);
   const { apiKey, record } = resolved.value;
-  const withinLimit = await enforceRequestLimit(app.value, record.keyID, dependencies);
-  if (!withinLimit.ok) return respondWithFailure(withinLimit.error);
+  const counted = await reserveRequest(app.value, record.keyID, dependencies.spendCounter);
+  if (!counted.ok) return respondWithFailure(counted.error);
   const metered = await startMeteredCall(
     request,
     providerName,
@@ -68,8 +70,16 @@ export async function proxyProviderRequest(
     record.keyID,
     dependencies
   );
-  if (!metered.ok) return respondWithFailure(metered.error);
+  if (!metered.ok) {
+    counted.value.refund();
+    return respondWithFailure(metered.error);
+  }
   const meteredCall = metered.value;
+  // A request that never got a successful answer from the provider does not count.
+  const refund = () => {
+    meteredCall?.refund();
+    counted.value.refund();
+  };
 
   const upstreamRequest = buildUpstreamRequest({
     provider,
@@ -80,13 +90,13 @@ export async function proxyProviderRequest(
     apiKey
   });
   if (!upstreamRequest.ok) {
-    meteredCall?.refund();
+    refund();
     return respondWithFailure(describeFailure(400, 'This provider path is not allowed'));
   }
 
   const upstreamResponse = await fetchUpstream(upstreamRequest.value);
   if (!upstreamResponse) {
-    meteredCall?.refund();
+    refund();
     return respondWithFailure(describeFailure(502, 'The provider could not be reached'));
   }
 
@@ -100,5 +110,5 @@ export async function proxyProviderRequest(
       recordedAt: new Date()
     });
   };
-  return relayWithSettlement(upstreamResponse, apiKey, meteredCall, onUsage);
+  return relayWithSettlement(upstreamResponse, apiKey, meteredCall, refund, onUsage);
 }

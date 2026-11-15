@@ -60,15 +60,3 @@ export async function resolveApiKey(
   if (!opened.ok) return fail(describeOpenFailure(opened.error));
   return succeed({ apiKey: opened.value, record });
 }
-
-export async function enforceRequestLimit(
-  app: RegisteredApp,
-  keyID: string,
-  { usageLedger }: GatewayDependencies
-): Promise<GatewayResult<number>> {
-  const requestCount = await usageLedger.countRequestsThisMonth(keyID);
-  if (requestCount >= app.monthlyRequestLimitPerKey) {
-    return fail(describeFailure(429, 'This key reached its monthly request limit'));
-  }
-  return succeed(requestCount);
-}

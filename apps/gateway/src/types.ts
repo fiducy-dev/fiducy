@@ -61,7 +61,6 @@ export interface UsageEvent {
 
 export interface UsageLedger {
   recordUsage: (event: UsageEvent) => Promise<void>;
-  countRequestsThisMonth: (keyID: string) => Promise<number>;
 }
 
 export type AttestationSource = (nonce: Uint8Array | null) => Promise<Uint8Array | null>;
@@ -316,6 +315,10 @@ export interface SpendScope {
   dollarLimit: number | undefined;
   lifetimeSeconds: number;
   limitMessage: string;
+}
+
+export interface RequestReservation {
+  refund: () => void;
 }
 
 export interface SpendReservation {

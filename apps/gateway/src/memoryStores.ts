@@ -40,23 +40,11 @@ export async function createMemoryAppDirectory(
   };
 }
 
-function isSameMonth(first: Date, second: Date): boolean {
-  return (
-    first.getUTCFullYear() === second.getUTCFullYear() &&
-    first.getUTCMonth() === second.getUTCMonth()
-  );
-}
-
 export function createMemoryUsageLedger(): UsageLedger & { listEvents: () => UsageEvent[] } {
   const events: UsageEvent[] = [];
   return {
     recordUsage: async (event) => {
       events.push(event);
-    },
-    countRequestsThisMonth: async (keyID) => {
-      const now = new Date();
-      return events.filter((event) => event.keyID === keyID && isSameMonth(event.recordedAt, now))
-        .length;
     },
     listEvents: () => [...events]
   };
