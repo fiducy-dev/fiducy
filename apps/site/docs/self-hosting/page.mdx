@@ -39,6 +39,7 @@ The dashboard (`apps/control-plane`) is a Node app that needs Postgres. Host it 
 | `FARM_AUTH_URL` | The dashboard's public URL |
 | `FIDUCY_GATEWAY_URL` | `https://<FIDUCY_GATEWAY_HOST>`, or `https://gw.<your-ip>.sslip.io` without a domain, from the deploy below |
 | `FIDUCY_GATEWAY_TOKEN` | The value of `/fiducy/gateway-token` in Parameter Store, created by the first deploy |
+| `FIDUCY_ENCLAVE_PCR0`, `FIDUCY_ENCLAVE_PCR16` | The values `pin.sh` printed. The dashboard checks the gateway's attestation with them, the same way the widget does, and shows the result in the sidebar and under **Security** |
 
 Run `bunx farm auth migrate` in `apps/control-plane` once, with `DATABASE_URL` set, before the first start.
 

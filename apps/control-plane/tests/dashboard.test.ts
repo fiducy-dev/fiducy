@@ -237,19 +237,31 @@ describe('the daily usage series', () => {
 });
 
 describe('the gateway status', () => {
-  it('is reachable for two minutes after the gateway last called in', async () => {
+  const verifiedProbe = async () => ({
+    healthy: true,
+    enclave: { pcr0: 'ab'.repeat(48), problem: null }
+  });
+  const downProbe = async () => ({
+    healthy: false,
+    enclave: { pcr0: null, problem: 'the gateway did not return an attestation document' }
+  });
+
+  it('comes from checking the gateway, not from when it last called in', async () => {
     const store = createTestStore();
-    expect(await readGatewayStatus(store, NOW)).toMatchObject({
-      reachable: false,
+    expect(await readGatewayStatus(store, verifiedProbe, NOW)).toMatchObject({
+      reachable: true,
       lastSeenAt: null,
-      pcr0: null
+      pcr0: 'ab'.repeat(48),
+      attestedAt: NOW.toISOString(),
+      attestationProblem: null
     });
     await noteGatewayContact(store, NOW);
-    expect(await readGatewayStatus(store, NOW)).toMatchObject({
-      reachable: true,
-      lastSeenAt: NOW.toISOString()
+    expect(await readGatewayStatus(store, downProbe, NOW)).toMatchObject({
+      reachable: false,
+      lastSeenAt: NOW.toISOString(),
+      pcr0: null,
+      attestedAt: null,
+      attestationProblem: 'the gateway did not return an attestation document'
     });
-    const later = new Date(NOW.getTime() + 3 * 60 * 1000);
-    expect(await readGatewayStatus(store, later)).toMatchObject({ reachable: false });
   });
 });

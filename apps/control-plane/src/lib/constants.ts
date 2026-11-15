@@ -17,7 +17,10 @@ export const DAILY_USAGE_NAMESPACE = 'usage-days';
 export const GATEWAY_HEARTBEAT_KEY = 'gateway:heartbeat';
 export const DEFAULT_GATEWAY_URL = 'http://localhost:8787';
 export const GATEWAY_RECORD_GONE_STATUSES = [200, 404, 409];
-export const GATEWAY_REACHABLE_WITHIN_MILLISECONDS = 2 * 60 * 1000;
+export const GATEWAY_HEALTH_PATH = '/health';
+export const GATEWAY_PROBE_TIMEOUT_MILLISECONDS = 5000;
+export const MISSING_ENCLAVE_PCRS =
+  'Set FIDUCY_ENCLAVE_PCR0 and FIDUCY_ENCLAVE_PCR16 on the dashboard to check the enclave';
 export const DEFAULT_USAGE_SERIES_DAYS = 30;
 export const MAXIMUM_USAGE_SERIES_DAYS = 90;
 export const UNKNOWN_PROVIDER = 'unknown';

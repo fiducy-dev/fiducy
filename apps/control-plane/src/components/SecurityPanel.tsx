@@ -63,35 +63,30 @@ function describeSpendLimits(app: AppView): SecurityRow {
 }
 
 function describeAttestation(status: GatewayStatus | undefined): SecurityRow {
-  if (!status?.pcr0) {
+  if (status?.pcr0) {
     return {
       label: 'Enclave',
-      value: 'Not attested yet',
-      detail: 'Shows the PCR0 hash once the gateway runs in a Nitro enclave.'
+      value: shortenIdentifier(status.pcr0, 16),
+      detail: 'PCR0. Checked against the AWS Nitro root with PCR16 and a fresh nonce.',
+      isMono: true
     };
   }
-  return {
-    label: 'Enclave',
-    value: shortenIdentifier(status.pcr0, 16),
-    detail: status.attestedAt ? `PCR0, attested ${formatRelativeTime(status.attestedAt)}` : 'PCR0',
-    isMono: true
-  };
-}
-
-function describeReachability(status: GatewayStatus | undefined): string {
-  if (!status) return 'Unknown';
-  return status.reachable ? 'Online' : 'Unreachable';
+  if (status?.attestationProblem) {
+    return { label: 'Enclave', value: 'Not verified', detail: `${status.attestationProblem}.` };
+  }
+  return { label: 'Enclave', value: 'None', detail: 'A local gateway has no enclave to check.' };
 }
 
 function describeGateway(status: GatewayStatus | undefined): SecurityRow {
-  const lastSeen = status?.lastSeenAt
-    ? `Last seen ${formatRelativeTime(status.lastSeenAt)}`
-    : 'Never seen';
-  const region = status?.region ? `, ${status.region}` : '';
+  if (!status) return { label: 'Gateway', value: 'Unknown', detail: 'Status unavailable.' };
+  const lastCall = status.lastSeenAt
+    ? `Last called in ${formatRelativeTime(status.lastSeenAt)}`
+    : 'Has not called in yet';
+  const region = status.region ? `, ${status.region}` : '';
   return {
     label: 'Gateway',
-    value: describeReachability(status),
-    detail: status ? `${lastSeen}${region}` : 'Status unavailable.'
+    value: status.reachable ? 'Online' : 'Unreachable',
+    detail: `${lastCall}${region}`
   };
 }
 
