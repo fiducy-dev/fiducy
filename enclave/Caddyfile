@@ -1,5 +1,18 @@
 {
 	cert_issuer acme
+	# Enclaver's ingress forwards raw TCP and drops the client's address, so every connection
+	# arrives from 127.0.0.1. HAProxy on the parent host prefixes each connection with a PROXY
+	# protocol header carrying the client's address, and Caddy requires it on 443. The gateway's
+	# per-client limits then see real clients instead of one shared address.
+	servers :443 {
+		listener_wrappers {
+			proxy_protocol {
+				timeout 5s
+				fallback_policy require
+			}
+			tls
+		}
+	}
 }
 
 {$FIDUCY_PUBLIC_HOST} {

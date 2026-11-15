@@ -6,7 +6,7 @@
 #   host.sh pin    -> check the last build and config are what the KMS key trusts
 #                     (FIDUCY_PINNED_PCR0, FIDUCY_PINNED_PCR16), publish the config to Parameter
 #                     Store, then stop the enclave, apply the allocator config and start the
-#                     pinned image. The enclave terminates TLS itself.
+#                     pinned image behind HAProxy. The enclave terminates TLS itself.
 # Required env: AWS_REGION, FIDUCY_BUCKET, FIDUCY_KMS_KEY_ID, FIDUCY_KEYS_TABLE, FIDUCY_PUBLIC_IP,
 #               FIDUCY_CONTROL_PLANE_URL, FIDUCY_RELEASE_COMMIT (build),
 #               FIDUCY_PINNED_PCR0 and FIDUCY_PINNED_PCR16 (pin)
@@ -45,6 +45,7 @@ install_tools() {
     mkdir -p "$STATE_DIR"
     touch "$STATE_DIR/tools-installed"
   fi
+  command -v haproxy >/dev/null || dnf install -y -q haproxy
 
   if ! swapon --show | grep -q /swapfile; then
     log "Adding 2 GB of swap for builds"
@@ -170,7 +171,8 @@ build_release() {
 }
 
 # The unit only ever runs the image recorded in the pinned-image file, so a restart after a build
-# that nobody trusted yet keeps the previous image.
+# that nobody trusted yet keeps the previous image. The enclave's 443 is published on localhost
+# only: HAProxy owns the public 443 and adds the PROXY header Caddy in the enclave requires.
 write_units() {
   local image="$1"
   mkdir -p /etc/fiducy
@@ -181,7 +183,7 @@ After=docker.service nitro-enclaves-allocator.service
 Requires=docker.service
 [Service]
 ExecStartPre=-/usr/bin/docker rm -f fiducy-enclave
-ExecStart=/usr/bin/docker run --rm --name fiducy-enclave --privileged --device /dev/nitro_enclaves -p 443:443 -p 80:80 ${image}
+ExecStart=/usr/bin/docker run --rm --name fiducy-enclave --privileged --device /dev/nitro_enclaves -p 127.0.0.1:8443:443 -p 80:80 ${image}
 ExecStop=/usr/bin/docker stop fiducy-enclave
 Restart=always
 RestartSec=5
@@ -199,6 +201,13 @@ retire_host_apps() {
   rm -f /etc/systemd/system/fiducy-control-plane.service /etc/systemd/system/fiducy-demo.service
   rm -f /etc/systemd/system/fiducy-caddy.service /etc/fiducy/Caddyfile
   rm -f /etc/fiducy/control-plane.env /etc/fiducy/demo.env
+}
+
+# Enclaver's ingress drops the client's address, so HAProxy passes it on (see haproxy.cfg).
+start_front() {
+  install -m 644 "$RELEASE_DIR/infra/aws/parent/haproxy.cfg" /etc/haproxy/haproxy.cfg
+  systemctl enable haproxy >/dev/null
+  systemctl restart haproxy
 }
 
 wait_for_gateway() {
@@ -236,6 +245,7 @@ start_services() {
   retire_host_apps
   restart_allocator
   write_units "$(cat "$PINNED_IMAGE_FILE")"
+  start_front
   systemctl enable fiducy-enclave >/dev/null
   systemctl restart fiducy-enclave
   wait_for_gateway
