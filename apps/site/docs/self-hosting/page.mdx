@@ -93,7 +93,7 @@ Set `FIDUCY_ALERT_EMAIL` when you run `deploy.sh` and the stack emails you, thro
 - the stack is updated or deleted
 - someone tries to silence the alerts: stops or changes the trail, disables or deletes a rule, removes a target, or unsubscribes or deletes the topic
 
-Confirm the subscription email SNS sends. Who gets these emails is locked like the key: the topic's policy refuses subscribe, unsubscribe and policy changes from everyone but the custodian role and the root user, so an attacker with admin rights cannot quietly redirect the alerts first. To change the address later, run `deploy.sh` with the new `FIDUCY_ALERT_EMAIL` as the root user. The stack also creates a multi-region CloudTrail trail so the rules receive these calls. Its bucket is versioned, survives a teardown and refuses deletes from anyone but the root user; pass `CreateAuditTrail=false` as a parameter override if the account already records management events. Everything here costs cents a month. Use a dedicated AWS account for the gateway and these emails stay rare.
+Confirm the subscription email SNS sends. Who gets these emails is locked like the key: the topic's policy refuses new subscriptions and policy changes from everyone but the custodian role and the root user, and the tamper alerts report any other change, so an attacker with admin rights cannot quietly redirect the alerts first. To change the address later, run `deploy.sh` with the new `FIDUCY_ALERT_EMAIL` as the root user. The stack also creates a multi-region CloudTrail trail so the rules receive these calls. Its bucket is versioned, survives a teardown and refuses deletes from anyone but the root user; pass `CreateAuditTrail=false` as a parameter override if the account already records management events. Everything here costs cents a month. Use a dedicated AWS account for the gateway and these emails stay rare.
 
 ## Deploy from your machine
 
@@ -120,7 +120,7 @@ The host name is part of the enclave config, so changing it produces a new `PCR1
 
 ## Tear down
 
-Run `bash infra/aws/teardown.sh` as the custodian profile or the root user; nobody else may schedule the key's deletion. The KMS key enters a 7 day deletion window; every key it wrapped becomes unrecoverable after that.
+Schedule the KMS key's deletion first, as the custodian profile or the root user (nobody else may): `aws kms schedule-key-deletion --key-id <KeyArn> --pending-window-in-days 7`. Then run `bash infra/aws/teardown.sh`; it keeps the key and the alert topic, so the stack deletes cleanly. The key enters a 7 day deletion window; every key it wrapped becomes unrecoverable after that.
 
 ## Run locally
 
