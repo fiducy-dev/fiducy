@@ -265,6 +265,8 @@ Resources:
 
   WrappingKey:
     Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       Description: Wraps share B of every stored API key. Decrypt only works inside the enclave
       PendingWindowInDays: 7
@@ -456,6 +458,8 @@ Resources:
   AlertTopic:
     Type: AWS::SNS::Topic
     Condition: SendAlerts
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       DisplayName: Fiducy gateway alerts
       Subscription:
@@ -485,8 +489,6 @@ Resources:
             Principal: '*'
             Action:
               - sns:Subscribe
-              - sns:Unsubscribe
-              - sns:SetSubscriptionAttributes
               - sns:SetTopicAttributes
               - sns:AddPermission
               - sns:RemovePermission

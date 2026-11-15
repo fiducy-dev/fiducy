@@ -18,7 +18,11 @@ if [ -n "$BUCKET" ] && [ "$BUCKET" != "None" ]; then
   aws s3 rm "s3://$BUCKET" --recursive --quiet
 fi
 
+KEY_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+  --query "Stacks[0].Outputs[?OutputKey=='KeyArn'].OutputValue" --output text)
+
 echo "Deleting stack $STACK_NAME"
 aws cloudformation delete-stack --stack-name "$STACK_NAME"
 aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME"
-echo "Deleted. Nothing is billing any more except the KMS key until its deletion date."
+echo "Deleted. The KMS key and the alert topic are kept: only the key custodian may delete them."
+echo "As the custodian, with MFA: aws kms schedule-key-deletion --key-id $KEY_ARN --pending-window-in-days 7"
