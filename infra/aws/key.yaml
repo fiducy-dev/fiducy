@@ -1,0 +1,165 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Fiducy key - the KMS key that wraps stored API keys and the custodian role that decides which
+  enclave it trusts. Its own stack, so pin.sh changes nothing but the key policy
+
+Parameters:
+  GatewayStackName:
+    Type: String
+    Description: Name of the gateway stack (stack.yaml) this key serves. Names the custodian role
+  EnclaveImageSha384:
+    Type: String
+    Default: none
+    Description: >-
+      PCR0 of the enclave image. Only an enclave with this hash can decrypt with the key. Changed
+      only by pin.sh, run by the key custodian role with MFA
+  EnclaveConfigSha384:
+    Type: String
+    Default: none
+    Description: >-
+      PCR16 of the enclave, the measurement of the deployment config it read at boot. Only an
+      enclave with this config can decrypt with the key. Changed only by pin.sh
+  KeyCustodianUserArns:
+    Type: CommaDelimitedList
+    Description: >-
+      ARNs of the IAM users allowed to assume the key custodian role, each with MFA. Name people,
+      not the whole account, so an IAM admin cannot hand themselves the role
+
+Resources:
+  # Whoever assumes this role decides which enclave image the key trusts. It needs MFA, it is the
+  # only principal pin.sh accepts, and the key policy below refuses policy changes from anyone else.
+  # The gateway stack adds what pin.sh needs on the host (release bucket, restart, alert emails).
+  KeyCustodianRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${GatewayStackName}-key-custodian'
+      Description: Pins the enclave image hash the KMS key trusts. Assume with MFA, run pin.sh
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { AWS: !Ref KeyCustodianUserArns }
+            Action: sts:AssumeRole
+            Condition:
+              Bool: { aws:MultiFactorAuthPresent: 'true' }
+      Policies:
+        - PolicyName: fiducy-key-custodian
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:GetTemplate
+                  - cloudformation:GetTemplateSummary
+                Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*'
+              - Effect: Allow
+                Action: cloudformation:DescribeStacks
+                Resource: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${GatewayStackName}/*'
+              - Effect: Allow
+                Action: cloudformation:GetTemplateSummary
+                Resource: '*'
+              # By ARN pattern and tag, not !GetAtt: the key policy names this role's unique ID,
+              # so a reference back to the key would be a circular dependency.
+              - Effect: Allow
+                Action:
+                  - kms:PutKeyPolicy
+                  - kms:GetKeyPolicy
+                  - kms:DescribeKey
+                  - kms:DisableKey
+                  - kms:ScheduleKeyDeletion
+                  - kms:CancelKeyDeletion
+                  - kms:ListResourceTags
+                  - kms:GetKeyRotationStatus
+                Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
+                Condition:
+                  StringEquals: { aws:ResourceTag/fiducy-stack: !Ref GatewayStackName }
+              # A pin makes CloudFormation read this role's unique ID for the key policy.
+              - Effect: Allow
+                Action: iam:GetRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${GatewayStackName}-key-custodian'
+
+  WrappingKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Description: Wraps share B of every stored API key. Decrypt only works inside the enclave
+      PendingWindowInDays: 7
+      Tags:
+        - { Key: fiducy-stack, Value: !Ref GatewayStackName }
+      # The lockout check would refuse this policy, because whoever creates the stack is not the
+      # custodian role and so cannot change the policy afterwards. That is the point.
+      BypassPolicyLockoutSafetyCheck: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AccountAdministration
+            Effect: Allow
+            Principal: { AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root' }
+            Action: kms:*
+            Resource: '*'
+          # Changing what the key trusts, disabling it or scheduling its deletion is reserved for
+          # this stack's custodian role (MFA, named users) and the account root user. IAM admins, the deploy credentials
+          # and the host cannot, whatever their IAM policies say. Every attempt lands in CloudTrail.
+          - Sid: OnlyTheCustodianChangesTheKey
+            Effect: Deny
+            Principal: '*'
+            Action:
+              - kms:PutKeyPolicy
+              - kms:ScheduleKeyDeletion
+              - kms:DisableKey
+              - kms:CreateGrant
+            Resource: '*'
+            # Matched by the role's unique ID, not its name. An admin who deletes the role and
+            # creates a new one with the same name gets a new ID, so the new role is refused.
+            # The root user's aws:userid is the account ID.
+            Condition:
+              StringNotLike:
+                aws:userid:
+                  - !Sub '${KeyCustodianRole.RoleId}:*'
+                  - !Ref AWS::AccountId
+          # Applies to everyone, account admins included. A Decrypt without an attestation
+          # document for this exact enclave image is refused. Missing attestation counts as a
+          # mismatch, so the parent host and the AWS console cannot decrypt either.
+          - Sid: DecryptOnlyInsideTheEnclave
+            Effect: Deny
+            Principal: '*'
+            Action: kms:Decrypt
+            Resource: '*'
+            Condition:
+              StringNotEqualsIgnoreCase:
+                kms:RecipientAttestation:ImageSha384: !Ref EnclaveImageSha384
+          # A separate statement, because one Deny with two conditions only applies when both
+          # mismatch. The same image with a config nobody pinned (another key, table or control
+          # plane) measures a different PCR16 and is refused.
+          - Sid: DecryptOnlyWithThePinnedConfig
+            Effect: Deny
+            Principal: '*'
+            Action: kms:Decrypt
+            Resource: '*'
+            Condition:
+              StringNotEqualsIgnoreCase:
+                kms:RecipientAttestation:PCR16: !Ref EnclaveConfigSha384
+          # ReEncrypt decrypts under this key and re-encrypts under another one, without a Decrypt
+          # call. The gateway never uses it, so it is refused for everyone, or a stored share could
+          # be moved under a key the caller controls and opened there.
+          - Sid: NoReEncrypt
+            Effect: Deny
+            Principal: '*'
+            Action: kms:ReEncrypt*
+            Resource: '*'
+
+Outputs:
+  KeyArn:
+    Value: !GetAtt WrappingKey.Arn
+  KeyCustodianRoleId:
+    Value: !GetAtt KeyCustodianRole.RoleId
+  KeyCustodianRoleArn:
+    Description: The role to assume, with MFA, before running pin.sh
+    Value: !GetAtt KeyCustodianRole.Arn

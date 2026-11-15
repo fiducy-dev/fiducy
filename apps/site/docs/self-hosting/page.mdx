@@ -10,14 +10,19 @@ Self-hosting is free. You pay AWS for one Graviton instance with enclaves (about
 
 ## What gets created
 
-`infra/aws/stack.yaml` is one CloudFormation stack:
+Two CloudFormation stacks. `infra/aws/key.yaml` is the key stack (`<stack>-key`), created once:
+
+- a KMS key whose policy only allows `kms:Decrypt` from the enclave image you built
+- a key custodian role (`<stack>-key-custodian`) that only the IAM users you name in `FIDUCY_KEY_CUSTODIAN_USER_ARNS` can assume, each with MFA. It is the one principal, besides the account root user, that the key policy lets change what the key trusts. The policy names the role by its unique ID, so deleting it and creating a look-alike does not work. A deploy, an IAM admin or the host cannot
+
+`infra/aws/stack.yaml` is the gateway stack, which every deploy updates:
 
 - an S3 bucket for releases and logs
-- a KMS key whose policy only allows `kms:Decrypt` from the enclave image you built
 - a `c6g.large` instance with Nitro enclaves on, an Elastic IP, and ports 80 and 443 open
 - a DynamoDB table (`KeysTable`) for sealed key records, on demand billing, with deletion protection and point-in-time recovery
 - an IAM role for the host, limited to the bucket, the key, the table and the `/fiducy/*` parameters
-- a key custodian role (`<stack>-key-custodian`) that only the IAM users you name in `FIDUCY_KEY_CUSTODIAN_USER_ARNS` can assume, each with MFA. It is the one principal, besides the account root user, that the key policy lets change what the key trusts. The policy names the role by its unique ID, so deleting it and creating a look-alike does not work. A deploy, an IAM admin or the host cannot
+
+The key lives apart from the host so that trusting a new enclave updates the key stack and nothing else. The custodian role needs no rights over the host's resources, and a deploy never updates the stack that holds the key.
 
 The host runs only the gateway enclave. TLS ends inside the enclave: Caddy runs next to the gateway and keeps its certificate sealed with the KMS key, so the parent host never sees plaintext traffic or a private key. The gateway reads and writes sealed records in `KeysTable` directly and talks to the dashboard over HTTPS with a token kept in Parameter Store (`/fiducy/gateway-token`).
 
@@ -39,7 +44,7 @@ Run `bunx farm auth migrate` in `apps/control-plane` once, with `DATABASE_URL` s
 
 There are no AWS keys in the repository. GitHub Actions assumes a role in your account with a short-lived OIDC token, and that role only accepts tokens from jobs in the repository's `aws-production` environment. Any other workflow, even one on `main`, is refused. The role can upload a release and build it on the host. It cannot change the key policy, touch IAM, delete the stack or assume the custodian role.
 
-1. Run the first deploy from your machine with admin credentials (see below). It creates the stack, including the deployer role and the GitHub OIDC provider. If your account already has a provider for `token.actions.githubusercontent.com`, set `FIDUCY_GITHUB_OIDC_PROVIDER_ARN` to its ARN first. For a fork, set `FIDUCY_GITHUB_REPOSITORY=<owner>/<name>`. If your account can't create IAM identity providers, set `FIDUCY_GITHUB_DEPLOY=false`: the stack skips the provider and the deployer role, and you deploy from your machine only.
+1. Run the first deploy from your machine with admin credentials (see below). It creates both stacks, including the deployer role and the GitHub OIDC provider. If your account already has a provider for `token.actions.githubusercontent.com`, set `FIDUCY_GITHUB_OIDC_PROVIDER_ARN` to its ARN first. For a fork, set `FIDUCY_GITHUB_REPOSITORY=<owner>/<name>`. If your account can't create IAM identity providers, set `FIDUCY_GITHUB_DEPLOY=false`: the stack skips the provider and the deployer role, and you deploy from your machine only.
 2. In the repository settings, create the environment `aws-production`: add yourself as a required reviewer and limit deployment branches to `main`. Every deploy then waits for your click.
 3. Add the repository variables `AWS_DEPLOY_ROLE_ARN` (the stack's `DeployerRoleArn` output), `FIDUCY_CONTROL_PLANE_URL` (the dashboard's URL) and optionally `AWS_REGION` (default `us-east-1`) and `FIDUCY_GATEWAY_HOST` (see [Use your own domain](#use-your-own-domain)).
 4. Run the **AWS deploy** workflow from `main` and approve it.
@@ -73,9 +78,9 @@ Then run the command the deploy printed:
 AWS_PROFILE=fiducy-custodian bash infra/aws/pin.sh <pcr0> <pcr16>
 ```
 
-It shows the commit the host built and when, and the config. It recomputes `PCR16` from that config on your machine and checks that the KMS key, table and region are your stack's, so a host cannot show you one config and pin another. Then it asks you to type the first characters of `PCR0`, updates the key policy and restarts the enclave. Check that the commit is the one you reviewed on `main` and that the dashboard URL and gateway host are yours before you confirm.
+It shows the commit the host built and when, and the config. It recomputes `PCR16` from that config on your machine and checks that the KMS key, table and region are your stack's, so a host cannot show you one config and pin another. Then it asks you to type the first characters of `PCR0`, updates the key policy (the key stack, nothing else) and restarts the enclave. Run it from the commit you deployed: it applies `key.yaml` from your checkout. Check that the commit is the one you reviewed on `main` and that the dashboard URL and gateway host are yours before you confirm.
 
-Upgrading a stack created before `PCR16` existed: the first deploy of the new template makes the key require a pinned `PCR16`, so the running gateway stops decrypting until you run `pin.sh` with the hashes that deploy prints. Do both back to back.
+Upgrading a deployment created as a single stack, before the key had its own: the key cannot move between stacks. Tear the old stack down with the `teardown.sh` of the commit that created it, then deploy again. The new deployment has a new key, so keys sealed under the old one have to be added again.
 
 The host keeps running the last pinned image through reboots and crashes. A build that nobody pinned sits on disk and is never started.
 
@@ -90,7 +95,7 @@ Set `FIDUCY_ALERT_EMAIL` when you run `deploy.sh` and the stack emails you, thro
 - a role is created, or one of the stack's roles is edited (IAM events only reach EventBridge in `us-east-1`, so deploy the stack there or this alert stays silent)
 - an instance profile is attached or swapped, or an instance is changed, stopped or terminated
 - the sealed records table is deleted or its protection or backups change
-- the stack is updated or deleted
+- the gateway stack or the key stack is updated or deleted
 - someone tries to silence the alerts: stops or changes the trail, disables or deletes a rule, removes a target, or unsubscribes or deletes the topic
 
 Confirm the subscription email SNS sends. Who gets these emails is locked like the key: the topic's policy refuses new subscriptions and policy changes from everyone but the custodian role and the root user, and the tamper alerts report any other change, so an attacker with admin rights cannot quietly redirect the alerts first. To add or remove an address later, use the custodian profile: `aws sns subscribe --topic-arn <AlertTopicArn> --protocol email --notification-endpoint <email>` (or `aws sns unsubscribe`). The stack also creates a multi-region CloudTrail trail so the rules receive these calls. Its bucket is versioned, survives a teardown and refuses deletes from anyone but the root user; pass `CreateAuditTrail=false` as a parameter override if the account already records management events. Everything here costs cents a month. Use a dedicated AWS account for the gateway and these emails stay rare.
@@ -104,9 +109,9 @@ export FIDUCY_KEY_CUSTODIAN_USER_ARNS=arn:aws:iam::<account-id>:user/<you>
 bash infra/aws/deploy.sh
 ```
 
-`FIDUCY_KEY_CUSTODIAN_USER_ARNS` is only read when the stack is created. To change who may pin later, update the `KeyCustodianUserArns` parameter as an admin; the role-change alert emails you when that happens.
+`FIDUCY_KEY_CUSTODIAN_USER_ARNS` is only read when the key stack is created. To change who may pin later, update the key stack's `KeyCustodianUserArns` parameter as an admin; the role-change alert emails you when that happens.
 
-Needs the AWS CLI, `jq`, `openssl` and admin credentials for the first run, which creates the stack. Template changes that touch IAM, the key or the host also need an admin run from your machine; the deployer role in CI is refused for those on purpose. Add `--rotate-token` to replace the gateway token. Trusting the image is the same `pin.sh` step as above.
+Needs the AWS CLI, `jq`, `openssl` and admin credentials for the first run, which creates both stacks. Template changes that touch IAM, the key or the host also need an admin run from your machine; the deployer role in CI is refused for those on purpose. Add `--rotate-token` to replace the gateway token. Trusting the image is the same `pin.sh` step as above.
 
 ## Use your own domain
 
@@ -120,7 +125,7 @@ The host name is part of the enclave config, so changing it produces a new `PCR1
 
 ## Tear down
 
-Schedule the KMS key's deletion first, as the custodian profile or the root user (nobody else may): `aws kms schedule-key-deletion --key-id <KeyArn> --pending-window-in-days 7`. Then run `bash infra/aws/teardown.sh`; it keeps the key and the alert topic, so the stack deletes cleanly. The key enters a 7 day deletion window; every key it wrapped becomes unrecoverable after that.
+`bash infra/aws/teardown.sh` deletes the gateway stack and keeps the key stack, so you can rebuild the host without losing the key. To delete the key too, schedule its deletion as the custodian profile or the root user (nobody else may): `aws kms schedule-key-deletion --key-id <KeyArn> --pending-window-in-days 7`, then run `teardown.sh` again. It refuses to delete the key stack before that, because the custodian role goes with it. The key enters a 7 day deletion window; every key it wrapped becomes unrecoverable after that. The alert topic is kept.
 
 ## Run locally
 
