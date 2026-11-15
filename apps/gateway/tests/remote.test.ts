@@ -92,6 +92,24 @@ describe('sending usage to the control plane', () => {
     await ledger.stop();
   });
 
+  it('keeps only the newest events when the control plane stays down', async () => {
+    const ledger = createRemoteUsageLedger({
+      ...connection,
+      flushIntervalMilliseconds: 60000,
+      maximumQueuedEvents: 2
+    });
+    controlPlane.failUsageWith(503);
+    for (const keyID of ['key_old', 'key_middle', 'key_new']) {
+      await ledger.recordUsage(createUsageEvent(keyID));
+    }
+    expect(await ledger.flush()).toBe(0);
+    controlPlane.failUsageWith(202);
+    expect(await ledger.flush()).toBe(2);
+    const sentKeys = controlPlane.usageBatches.at(-1)?.events.map((event) => event.keyID);
+    expect(sentKeys).toEqual(['key_middle', 'key_new']);
+    await ledger.stop();
+  });
+
   it('keeps events queued when the control plane is down and sends them later', async () => {
     const ledger = createRemoteUsageLedger({ ...connection, flushIntervalMilliseconds: 60000 });
     controlPlane.failUsageWith(503);
