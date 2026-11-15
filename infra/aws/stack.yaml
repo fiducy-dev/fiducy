@@ -179,6 +179,9 @@ Resources:
                 Action: ec2:Describe*
                 Resource: '*'
               - Effect: Allow
+                Action: iam:GetRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-key-custodian'
+              - Effect: Allow
                 Action: s3:GetObject
                 Resource: !Sub '${DeployBucket.Arn}/*'
               # By tag, not !Ref Host: the host's role reads the key, and the key names this
