@@ -362,9 +362,13 @@ Resources:
       Subscription:
         - { Protocol: email, Endpoint: !Ref AlertEmail }
 
+  # Kept on delete, like the topic: the policy below refuses changes from everyone but the
+  # custodian role and the root user, so a stack delete could not remove it and would fail.
   AlertTopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Condition: SendAlerts
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       Topics: [!Ref AlertTopic]
       PolicyDocument:

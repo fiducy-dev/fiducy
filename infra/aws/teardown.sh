@@ -24,7 +24,7 @@ delete_gateway_stack() {
     aws s3 rm "s3://$bucket" --recursive --quiet
   fi
   delete_stack "$STACK_NAME"
-  success "Deleted $STACK_NAME. The alert topic is kept (it costs nothing; only the root user may delete it)."
+  success "Deleted $STACK_NAME. The alert topic and its policy are kept (they cost nothing; only the root user may delete them)."
 }
 
 delete_key_stack() {

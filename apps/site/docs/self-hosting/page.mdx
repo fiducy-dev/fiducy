@@ -125,7 +125,7 @@ The host name is part of the enclave config, so changing it produces a new `PCR1
 
 ## Tear down
 
-`bash infra/aws/teardown.sh` deletes the gateway stack and keeps the key stack, so you can rebuild the host without losing the key. To delete the key too, schedule its deletion as the custodian profile or the root user (nobody else may): `aws kms schedule-key-deletion --key-id <KeyArn> --pending-window-in-days 7`, then run `teardown.sh` again. It refuses to delete the key stack before that, because the custodian role goes with it. The key enters a 7 day deletion window; every key it wrapped becomes unrecoverable after that. The alert topic is kept.
+`bash infra/aws/teardown.sh` deletes the gateway stack and keeps the key stack, so you can rebuild the host without losing the key. To delete the key too, schedule its deletion as the custodian profile or the root user (nobody else may): `aws kms schedule-key-deletion --key-id <KeyArn> --pending-window-in-days 7`, then run `teardown.sh` again. It refuses to delete the key stack before that, because the custodian role goes with it. The key enters a 7 day deletion window; every key it wrapped becomes unrecoverable after that. The alert topic and its policy are kept: the policy refuses changes from everyone but the custodian role and the root user, a stack delete included. They cost nothing.
 
 ## Run locally
 
