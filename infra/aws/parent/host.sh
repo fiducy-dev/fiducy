@@ -77,27 +77,20 @@ EOF
   systemctl enable nitro-enclaves-allocator >/dev/null
 }
 
-count_running_enclaves() {
-  nitro-cli describe-enclaves 2>/dev/null | jq length 2>/dev/null || echo 0
-}
-
-stop_enclave() {
-  systemctl stop fiducy-enclave >/dev/null 2>&1 || true
-  for _ in $(seq 1 30); do
-    [ "$(count_running_enclaves)" = 0 ] && return 0
-    nitro-cli terminate-enclave --all >/dev/null 2>&1 || true
-    sleep 2
-  done
-  log "An enclave is still running on this host, so its memory cannot be set up again"
-  return 1
-}
-
 # The allocator reserves the enclave's memory and CPU, and it refuses to restart while an enclave
 # runs. So the enclave is stopped first. Only the pin step does this, because it restarts the
-# enclave anyway and a build has to leave the running enclave alone.
+# enclave anyway and a build has to leave the running enclave alone. The host's nitro-cli cannot
+# see an enclave that Enclaver started inside the container, so the allocator is the check: it is
+# retried until the kernel has let the enclave go.
 restart_allocator() {
-  stop_enclave
-  systemctl restart nitro-enclaves-allocator
+  systemctl stop fiducy-enclave >/dev/null 2>&1 || true
+  for _ in $(seq 1 10); do
+    systemctl restart nitro-enclaves-allocator 2>/dev/null && return 0
+    sleep 3
+  done
+  log "The allocator would not restart. Its last lines:"
+  journalctl -u nitro-enclaves-allocator --no-pager -n 10 2>&1 | sed 's/^/    /' || true
+  return 1
 }
 
 read_parameter() {
