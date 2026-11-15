@@ -163,7 +163,13 @@ Resources:
               # By ARN pattern, not !GetAtt: the key policy names this role's unique ID, so a
               # reference back to the key would be a circular dependency.
               - Effect: Allow
-                Action: [kms:PutKeyPolicy, kms:GetKeyPolicy, kms:DescribeKey]
+                Action:
+                  - kms:PutKeyPolicy
+                  - kms:GetKeyPolicy
+                  - kms:DescribeKey
+                  - kms:DisableKey
+                  - kms:ScheduleKeyDeletion
+                  - kms:CancelKeyDeletion
                 Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
               - Effect: Allow
                 Action: s3:GetObject
