@@ -150,5 +150,8 @@ export async function startTlsFrontFromEnvironment(keyWrapper: KeyWrapper): Prom
   const directory = process.env.FIDUCY_TLS_STATE_DIR;
   const caddyConfigPath = process.env.FIDUCY_CADDY_CONFIG;
   if (!directory || !caddyConfigPath) return;
-  await startTlsFront({ directory, caddyConfigPath, blobStore: selectBlobStore(), keyWrapper });
+  const publicHost = process.env.FIDUCY_PUBLIC_HOST;
+  if (!publicHost) throw new Error('Set FIDUCY_PUBLIC_HOST to the hostname Caddy serves');
+  const blobStore = selectBlobStore();
+  await startTlsFront({ directory, caddyConfigPath, publicHost, blobStore, keyWrapper });
 }
