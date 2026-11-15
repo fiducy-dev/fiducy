@@ -56,26 +56,31 @@ deploy_key_stack() { apply_template "$KEY_STACK_NAME" "$ROOT_DIR/infra/aws/key.y
 
 create_key_stack() {
   log "Creating key stack $KEY_STACK_NAME"
-  deploy_key_stack "GatewayStackName=$STACK_NAME" \
+  deploy_key_stack "GatewayStackName=$STACK_NAME" "AlertEmail=${FIDUCY_ALERT_EMAIL:-}" \
     "KeyCustodianUserArns=${FIDUCY_KEY_CUSTODIAN_USER_ARNS:?Set FIDUCY_KEY_CUSTODIAN_USER_ARNS to the IAM user ARNs (comma separated) that may pin enclave images}"
+}
+
+alert_topic_arn() {
+  local arn
+  arn=$(stack_output AlertTopicArn "$KEY_STACK_NAME")
+  [[ "$arn" != arn:* ]] || echo "$arn"
 }
 
 deploy_stack() {
   local overrides=()
   if ! stack_exists "$STACK_NAME"; then
     stack_exists "$KEY_STACK_NAME" || create_key_stack
-    local ami key_arn custodian_role_id
+    local ami key_arn alert_topic
     ami=$(aws ssm get-parameter --name "$AMI_PARAMETER" --query Parameter.Value --output text)
     key_arn=$(stack_output KeyArn "$KEY_STACK_NAME")
-    custodian_role_id=$(stack_output KeyCustodianRoleId "$KEY_STACK_NAME")
+    alert_topic=$(alert_topic_arn)
     [[ "$key_arn" == arn:* ]] || { fail "Stack $KEY_STACK_NAME has no key. Delete it and deploy again."; return 1; }
-    overrides=("AmiId=$ami" "KeyArn=$key_arn" "KeyCustodianRoleId=$custodian_role_id"
+    overrides=("AmiId=$ami" "KeyArn=$key_arn" "AlertTopicArn=$alert_topic"
       "GitHubRepository=${FIDUCY_GITHUB_REPOSITORY:-fiducy-dev/fiducy}"
       "GitHubOIDCProviderArn=${FIDUCY_GITHUB_OIDC_PROVIDER_ARN:-}"
       "EnableGitHubDeploy=${FIDUCY_GITHUB_DEPLOY:-true}")
     log "Creating stack $STACK_NAME with AMI $ami"
   fi
-  [ -z "${FIDUCY_ALERT_EMAIL:-}" ] || overrides+=("AlertEmail=$FIDUCY_ALERT_EMAIL")
   apply_template "$STACK_NAME" "$TEMPLATE" ${overrides[@]:+"${overrides[@]}"}
 }
 
