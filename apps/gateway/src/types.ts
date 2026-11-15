@@ -227,6 +227,7 @@ export interface TlsStateKeeper {
 
 export interface TlsFrontOptions extends TlsStateOptions {
   caddyConfigPath: string;
+  publicHost: string;
 }
 
 export type EnclaveConfigField = (typeof ENCLAVE_CONFIG_FIELDS)[number];

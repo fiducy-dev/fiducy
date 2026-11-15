@@ -3,8 +3,15 @@ import { createTlsStateKeeper } from './tlsState';
 
 import type { TlsFrontOptions, TlsStateKeeper } from './types';
 
-function startCaddy(configPath: string): Bun.Subprocess {
+// A child process gets the environment this process started with unless it is handed one, and
+// the public host only arrives later, from the enclave config. So Caddy is handed it explicitly.
+export function createCaddyEnvironment(publicHost: string): Record<string, string | undefined> {
+  return { ...process.env, FIDUCY_PUBLIC_HOST: publicHost };
+}
+
+function startCaddy(configPath: string, publicHost: string): Bun.Subprocess {
   return Bun.spawn(['caddy', 'run', '--config', configPath, '--adapter', 'caddyfile'], {
+    env: createCaddyEnvironment(publicHost),
     stdout: 'inherit',
     stderr: 'inherit',
     onExit: (_process, exitCode) => {
@@ -16,6 +23,7 @@ function startCaddy(configPath: string): Bun.Subprocess {
 
 export async function startTlsFront({
   caddyConfigPath,
+  publicHost,
   ...stateOptions
 }: TlsFrontOptions): Promise<TlsStateKeeper> {
   const keeper = createTlsStateKeeper(stateOptions);
@@ -23,7 +31,7 @@ export async function startTlsFront({
   console.log(
     restored ? 'Restored the TLS state' : 'No TLS state yet; Caddy will request a certificate'
   );
-  startCaddy(caddyConfigPath);
+  startCaddy(caddyConfigPath, publicHost);
   keeper.start(TLS_STATE_PERSIST_INTERVAL_MILLISECONDS);
   return keeper;
 }
