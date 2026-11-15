@@ -170,9 +170,14 @@ Resources:
                   - kms:DisableKey
                   - kms:ScheduleKeyDeletion
                   - kms:CancelKeyDeletion
+                  - kms:ListResourceTags
+                  - kms:GetKeyRotationStatus
                 Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
                 Condition:
                   StringEquals: { aws:ResourceTag/fiducy-stack: !Ref AWS::StackName }
+              - Effect: Allow
+                Action: ec2:Describe*
+                Resource: '*'
               - Effect: Allow
                 Action: s3:GetObject
                 Resource: !Sub '${DeployBucket.Arn}/*'
