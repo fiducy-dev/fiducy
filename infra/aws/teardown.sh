@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Deletes everything the prototype created: the gateway stack, then the key stack.
-# The key stack goes only once a custodian has scheduled the KMS key's deletion (7 day window).
+# The key stack goes only once a custodian has scheduled the KMS key's deletion (7 day window)
+# and deleted the alert topic.
 set -euo pipefail
 
 STACK_NAME="${FIDUCY_STACK_NAME:-fiducy-prototype}"
@@ -24,22 +25,35 @@ delete_gateway_stack() {
     aws s3 rm "s3://$bucket" --recursive --quiet
   fi
   delete_stack "$STACK_NAME"
-  success "Deleted $STACK_NAME. The alert topic and its policy are kept (they cost nothing; only the root user may delete them)."
+  success "Deleted $STACK_NAME. The key, the alert topic and the audit trail stay in $KEY_STACK_NAME."
+}
+
+# What only the custodian may do, and so has to happen before the custodian role is deleted.
+custodian_steps_left() {
+  local key_arn="$1" topic_arn="$2" key_state
+  key_state=$(aws kms describe-key --key-id "$key_arn" --query KeyMetadata.KeyState --output text)
+  [ "$key_state" = "PendingDeletion" ] ||
+    echo "aws kms schedule-key-deletion --key-id $key_arn --pending-window-in-days 7"
+  if [ -n "$topic_arn" ] && aws sns get-topic-attributes --topic-arn "$topic_arn" >/dev/null 2>&1; then
+    echo "aws sns delete-topic --topic-arn $topic_arn"
+  fi
 }
 
 delete_key_stack() {
-  local key_arn key_state
+  local key_arn topic_arn steps
   key_arn=$(stack_output KeyArn "$KEY_STACK_NAME")
-  key_state=$(aws kms describe-key --key-id "$key_arn" --query KeyMetadata.KeyState --output text)
-  if [ "$key_state" != "PendingDeletion" ]; then
-    fail "Keeping $KEY_STACK_NAME: the KMS key is $key_state. Deleting the stack deletes the custodian"
-    fail "role, the only role that may delete the key."
-    action "First, as the custodian, with MFA, then run teardown.sh again:" \
-      "aws kms schedule-key-deletion --key-id $key_arn --pending-window-in-days 7"
+  topic_arn=$(alert_topic_arn)
+  steps=$(custodian_steps_left "$key_arn" "$topic_arn")
+  if [ -n "$steps" ]; then
+    fail "Keeping $KEY_STACK_NAME: deleting it deletes the custodian role, the only role that may"
+    fail "delete the KMS key and the alert topic."
+    local commands
+    mapfile -t commands <<< "$steps"
+    action "First, as the custodian, with MFA, then run teardown.sh again:" "${commands[@]}"
     return 1
   fi
   delete_stack "$KEY_STACK_NAME"
-  success "Deleted $KEY_STACK_NAME. The KMS key is pending deletion."
+  success "Deleted $KEY_STACK_NAME. The KMS key is pending deletion; the audit log bucket is kept."
 }
 
 if stack_exists "$STACK_NAME"; then

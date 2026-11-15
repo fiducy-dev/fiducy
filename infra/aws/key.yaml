@@ -1,7 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  Fiducy key - the KMS key that wraps stored API keys and the custodian role that decides which
-  enclave it trusts. Its own stack, so pin.sh changes nothing but the key policy
+  Fiducy key - the KMS key that wraps stored API keys, the custodian role that decides which
+  enclave it trusts, and the alert topic and audit trail that watch them. Its own stack, so
+  pin.sh changes nothing but the key policy and a rebuilt host keeps all of it
 
 Parameters:
   GatewayStackName:
@@ -24,11 +25,28 @@ Parameters:
     Description: >-
       ARNs of the IAM users allowed to assume the key custodian role, each with MFA. Name people,
       not the whole account, so an IAM admin cannot hand themselves the role
+  AlertEmail:
+    Type: String
+    Default: ''
+    Description: >-
+      Where to send an email when someone touches the key policy, the roles, the host, the table
+      or a stack, or when a Decrypt is refused. Empty turns the alerts off
+  CreateAuditTrail:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: >-
+      Create a CloudTrail trail so the alert rules receive API calls. Set to false when the account
+      already has a trail that records management events
+
+Conditions:
+  SendAlerts: !Not [!Equals [!Ref AlertEmail, '']]
+  CreateAuditTrail: !And [!Condition SendAlerts, !Equals [!Ref CreateAuditTrail, 'true']]
 
 Resources:
   # Whoever assumes this role decides which enclave image the key trusts. It needs MFA, it is the
   # only principal pin.sh accepts, and the key policy below refuses policy changes from anyone else.
-  # The gateway stack adds what pin.sh needs on the host (release bucket, restart, alert emails).
+  # The gateway stack adds what pin.sh needs on the host (release bucket, restart).
   KeyCustodianRole:
     Type: AWS::IAM::Role
     Properties:
@@ -83,6 +101,14 @@ Resources:
               - Effect: Allow
                 Action: iam:GetRole
                 Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${GatewayStackName}-key-custodian'
+              # Who is alerted, and retiring the topic with the key. The topic's own policy
+              # refuses these from anyone else.
+              - !If
+                - SendAlerts
+                - Effect: Allow
+                  Action: [sns:Subscribe, sns:Unsubscribe, sns:ListSubscriptionsByTopic, sns:DeleteTopic]
+                  Resource: !Ref AlertTopic
+                - !Ref AWS::NoValue
 
   WrappingKey:
     Type: AWS::KMS::Key
@@ -155,11 +181,130 @@ Resources:
             Action: kms:ReEncrypt*
             Resource: '*'
 
+  # Alerts. The gateway stack's rules match CloudTrail management events, which cost nothing to
+  # record once (the trail) and nothing to match (EventBridge), and email this topic. The email is
+  # the point: Zeabur learned about its breach from a user, and these are the calls that precede
+  # one here. The trail and the topic live here so they outlast a rebuilt host.
+  AuditBucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateAuditTrail
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-old-logs
+            Status: Enabled
+            ExpirationInDays: 90
+
+  AuditBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: CreateAuditTrail
+    Properties:
+      Bucket: !Ref AuditBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: NoDeletingAuditLogs
+            Effect: Deny
+            Principal: '*'
+            Action: [s3:DeleteObject, s3:DeleteObjectVersion, s3:PutLifecycleConfiguration]
+            Resource: [!GetAtt AuditBucket.Arn, !Sub '${AuditBucket.Arn}/*']
+            Condition:
+              StringNotLike:
+                aws:userid: [!Ref AWS::AccountId]
+          - Effect: Allow
+            Principal: { Service: cloudtrail.amazonaws.com }
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt AuditBucket.Arn
+            Condition:
+              StringEquals:
+                aws:SourceArn: !Sub 'arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${GatewayStackName}-audit'
+          - Effect: Allow
+            Principal: { Service: cloudtrail.amazonaws.com }
+            Action: s3:PutObject
+            Resource: !Sub '${AuditBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+                aws:SourceArn: !Sub 'arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${GatewayStackName}-audit'
+
+  AuditTrail:
+    Type: AWS::CloudTrail::Trail
+    Condition: CreateAuditTrail
+    DependsOn: AuditBucketPolicy
+    Properties:
+      TrailName: !Sub '${GatewayStackName}-audit'
+      S3BucketName: !Ref AuditBucket
+      IsLogging: true
+      IsMultiRegionTrail: true
+      IncludeGlobalServiceEvents: true
+      EnableLogFileValidation: true
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: SendAlerts
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DisplayName: Fiducy gateway alerts
+      Subscription:
+        - { Protocol: email, Endpoint: !Ref AlertEmail }
+
+  # Kept on delete, like the topic: the policy below refuses changes from everyone but the
+  # custodian role and the root user, so a stack delete could not remove either and would fail.
+  # The custodian deletes the topic before the key stack is deleted, and the policy goes with it.
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Condition: SendAlerts
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Topics: [!Ref AlertTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: events.amazonaws.com }
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${GatewayStackName}-*'
+          # Whoever gets these emails is decided like the key: only the custodian role (MFA) or the
+          # root user may change the subscription, the topic or its policy. Anyone else, an IAM admin
+          # or a stack update run by the deploy credentials included, is refused, so an attacker
+          # cannot quietly point the alerts at themselves before touching the key.
+          - Sid: OnlyTheCustodianChangesWhoIsAlerted
+            Effect: Deny
+            Principal: '*'
+            Action:
+              - sns:Subscribe
+              - sns:SetTopicAttributes
+              - sns:AddPermission
+              - sns:RemovePermission
+              - sns:DeleteTopic
+            Resource: !Ref AlertTopic
+            Condition:
+              StringNotLike:
+                aws:userid:
+                  - !Sub '${KeyCustodianRole.RoleId}:*'
+                  - !Ref AWS::AccountId
+
 Outputs:
   KeyArn:
     Value: !GetAtt WrappingKey.Arn
-  KeyCustodianRoleId:
-    Value: !GetAtt KeyCustodianRole.RoleId
+  AlertTopicArn:
+    Condition: SendAlerts
+    Description: Add or remove alert emails here, as the key custodian
+    Value: !Ref AlertTopic
   KeyCustodianRoleArn:
     Description: The role to assume, with MFA, before running pin.sh
     Value: !GetAtt KeyCustodianRole.Arn

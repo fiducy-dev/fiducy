@@ -12,11 +12,6 @@ Parameters:
     Type: String
     Description: >-
       ARN of the wrapping key, the KeyArn output of the key stack (key.yaml). deploy.sh fills it in
-  KeyCustodianRoleId:
-    Type: String
-    Description: >-
-      Unique ID of the key custodian role, the KeyCustodianRoleId output of the key stack. The
-      alert topic's policy names it, so only that role decides who is alerted
   GitHubRepository:
     Type: String
     Default: fiducy-dev/fiducy
@@ -34,25 +29,18 @@ Parameters:
     Description: >-
       Create the GitHub OIDC provider and the deployer role so GitHub Actions can deploy. Set to
       false where IAM identity providers are not allowed; deploy.sh from a machine still works
-  AlertEmail:
+  AlertTopicArn:
     Type: String
     Default: ''
     Description: >-
-      Where to send an email when someone touches the key policy, the roles, the host, the table
-      or the stack, or when a Decrypt is refused. Empty turns the alerts off
-  CreateAuditTrail:
-    Type: String
-    Default: 'true'
-    AllowedValues: ['true', 'false']
-    Description: >-
-      Create a CloudTrail trail so the alert rules receive API calls. Set to false when the account
-      already has a trail that records management events
+      ARN of the alert topic, the AlertTopicArn output of the key stack. The rules below email it
+      when someone touches the key, the roles, the host, the table or a stack, or when a Decrypt
+      is refused. Empty turns the rules off. deploy.sh fills it in
 
 Conditions:
   GitHubDeploy: !Equals [!Ref EnableGitHubDeploy, 'true']
   CreateGitHubOIDCProvider: !And [!Condition GitHubDeploy, !Equals [!Ref GitHubOIDCProviderArn, '']]
-  SendAlerts: !Not [!Equals [!Ref AlertEmail, '']]
-  CreateAuditTrail: !And [!Condition SendAlerts, !Equals [!Ref CreateAuditTrail, 'true']]
+  SendAlerts: !Not [!Equals [!Ref AlertTopicArn, '']]
 
 Resources:
   DeployBucket:
@@ -138,12 +126,6 @@ Resources:
           - Effect: Allow
             Action: [ssm:GetCommandInvocation, ssm:DescribeInstanceInformation]
             Resource: '*'
-          - !If
-            - SendAlerts
-            - Effect: Allow
-              Action: [sns:Subscribe, sns:Unsubscribe, sns:ListSubscriptionsByTopic]
-              Resource: !Ref AlertTopic
-            - !Ref AWS::NoValue
 
   GitHubOIDCProvider:
     Type: AWS::IAM::OIDCProvider
@@ -286,121 +268,9 @@ Resources:
       Domain: vpc
       InstanceId: !Ref Host
 
-  # Alerts. Every rule below matches CloudTrail management events, which cost nothing to record
-  # once (the trail) and nothing to match (EventBridge). The email is the point: Zeabur learned
-  # about its breach from a user, and these are the calls that precede one here.
-  AuditBucket:
-    Type: AWS::S3::Bucket
-    Condition: CreateAuditTrail
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      VersioningConfiguration:
-        Status: Enabled
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      LifecycleConfiguration:
-        Rules:
-          - Id: expire-old-logs
-            Status: Enabled
-            ExpirationInDays: 90
-
-  AuditBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Condition: CreateAuditTrail
-    Properties:
-      Bucket: !Ref AuditBucket
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: NoDeletingAuditLogs
-            Effect: Deny
-            Principal: '*'
-            Action: [s3:DeleteObject, s3:DeleteObjectVersion, s3:PutLifecycleConfiguration]
-            Resource: [!GetAtt AuditBucket.Arn, !Sub '${AuditBucket.Arn}/*']
-            Condition:
-              StringNotLike:
-                aws:userid: [!Ref AWS::AccountId]
-          - Effect: Allow
-            Principal: { Service: cloudtrail.amazonaws.com }
-            Action: s3:GetBucketAcl
-            Resource: !GetAtt AuditBucket.Arn
-            Condition:
-              StringEquals:
-                aws:SourceArn: !Sub 'arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AWS::StackName}-audit'
-          - Effect: Allow
-            Principal: { Service: cloudtrail.amazonaws.com }
-            Action: s3:PutObject
-            Resource: !Sub '${AuditBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
-            Condition:
-              StringEquals:
-                s3:x-amz-acl: bucket-owner-full-control
-                aws:SourceArn: !Sub 'arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AWS::StackName}-audit'
-
-  AuditTrail:
-    Type: AWS::CloudTrail::Trail
-    Condition: CreateAuditTrail
-    DependsOn: AuditBucketPolicy
-    Properties:
-      TrailName: !Sub '${AWS::StackName}-audit'
-      S3BucketName: !Ref AuditBucket
-      IsLogging: true
-      IsMultiRegionTrail: true
-      IncludeGlobalServiceEvents: true
-      EnableLogFileValidation: true
-
-  AlertTopic:
-    Type: AWS::SNS::Topic
-    Condition: SendAlerts
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      DisplayName: Fiducy gateway alerts
-      Subscription:
-        - { Protocol: email, Endpoint: !Ref AlertEmail }
-
-  # Kept on delete, like the topic: the policy below refuses changes from everyone but the
-  # custodian role and the root user, so a stack delete could not remove it and would fail.
-  AlertTopicPolicy:
-    Type: AWS::SNS::TopicPolicy
-    Condition: SendAlerts
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      Topics: [!Ref AlertTopic]
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal: { Service: events.amazonaws.com }
-            Action: sns:Publish
-            Resource: !Ref AlertTopic
-            Condition:
-              ArnLike:
-                aws:SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-*'
-          # Whoever gets these emails is decided like the key: only the custodian role (MFA) or the
-          # root user may change the subscription, the topic or its policy. Anyone else, an IAM admin
-          # or a stack update run by the deploy credentials included, is refused, so an attacker
-          # cannot quietly point the alerts at themselves before touching the key.
-          - Sid: OnlyTheCustodianChangesWhoIsAlerted
-            Effect: Deny
-            Principal: '*'
-            Action:
-              - sns:Subscribe
-              - sns:SetTopicAttributes
-              - sns:AddPermission
-              - sns:RemovePermission
-              - sns:DeleteTopic
-            Resource: !Ref AlertTopic
-            Condition:
-              StringNotLike:
-                aws:userid:
-                  - !Sub '${KeyCustodianRoleId}:*'
-                  - !Ref AWS::AccountId
-
+  # Alerts. Every rule below matches CloudTrail management events and emails the alert topic. The
+  # topic, who is subscribed to it and the audit trail live in the key stack (key.yaml), so they
+  # outlast this stack and stay under the custodian's lock.
   KeyChangeAlert:
     Type: AWS::Events::Rule
     Condition: SendAlerts
@@ -416,7 +286,7 @@ Resources:
             ARN: [!Ref KeyArn]
       Targets:
         - Id: email
-          Arn: !Ref AlertTopic
+          Arn: !Ref AlertTopicArn
           InputTransformer:
             InputPathsMap:
               name: $.detail.eventName
@@ -441,7 +311,7 @@ Resources:
             ARN: [!Ref KeyArn]
       Targets:
         - Id: email
-          Arn: !Ref AlertTopic
+          Arn: !Ref AlertTopicArn
           InputTransformer:
             InputPathsMap:
               who: $.detail.userIdentity.arn
@@ -474,7 +344,7 @@ Resources:
               - [!Sub '${AWS::StackName}-key-custodian', !Ref HostRole]
       Targets:
         - Id: email
-          Arn: !Ref AlertTopic
+          Arn: !Ref AlertTopicArn
           InputTransformer:
             InputPathsMap:
               name: $.detail.eventName
@@ -510,7 +380,7 @@ Resources:
             - SetTopicAttributes
       Targets:
         - Id: email
-          Arn: !Ref AlertTopic
+          Arn: !Ref AlertTopicArn
           InputTransformer:
             InputPathsMap:
               name: $.detail.eventName
@@ -537,7 +407,7 @@ Resources:
             - StopInstances
       Targets:
         - Id: email
-          Arn: !Ref AlertTopic
+          Arn: !Ref AlertTopicArn
           InputTransformer:
             InputPathsMap:
               name: $.detail.eventName
@@ -561,7 +431,7 @@ Resources:
             tableName: [!Ref KeysTable]
       Targets:
         - Id: email
-          Arn: !Ref AlertTopic
+          Arn: !Ref AlertTopicArn
           InputTransformer:
             InputPathsMap:
               name: $.detail.eventName
@@ -588,7 +458,7 @@ Resources:
               - { prefix: !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}-key/' }
       Targets:
         - Id: email
-          Arn: !Ref AlertTopic
+          Arn: !Ref AlertTopicArn
           InputTransformer:
             InputPathsMap:
               name: $.detail.eventName
@@ -611,10 +481,6 @@ Outputs:
     Condition: GitHubDeploy
     Description: Set this as the AWS_DEPLOY_ROLE_ARN repository variable in GitHub
     Value: !GetAtt DeployerRole.Arn
-  AlertTopicArn:
-    Condition: SendAlerts
-    Description: Add or remove alert emails here, as the key custodian
-    Value: !Ref AlertTopic
   KeyCustodianRoleArn:
     Description: The role to assume, with MFA, before running pin.sh
     Value: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-key-custodian'
