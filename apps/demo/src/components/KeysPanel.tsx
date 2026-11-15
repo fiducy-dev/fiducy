@@ -4,7 +4,10 @@ import { Button } from '@/components/ui/button';
 
 import type { FiducyKeysState } from '@fiducy/sdk/react';
 
-// What the app knows about each key: a provider and an ID. The key itself stays in the enclave.
+const addedFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+
+// What the app knows about each key: a provider, an ID and when it was added. The key itself
+// stays in the enclave. The ID is only used to remove the key, so people see the date instead.
 export function KeysPanel({ keys, isLoading, error, revoke }: FiducyKeysState) {
   return (
     <section aria-labelledby="keys-heading">
@@ -25,7 +28,9 @@ export function KeysPanel({ keys, isLoading, error, revoke }: FiducyKeysState) {
         {keys.map((key) => (
           <li key={key.keyID} className="flex items-baseline gap-2 text-sm">
             <span className="font-semibold text-foreground">{PROVIDER_LABELS[key.provider]}</span>
-            <span className="font-mono text-muted-foreground text-xs">{key.keyID.slice(0, 8)}</span>
+            <span className="text-muted-foreground text-xs">
+              added {addedFormat.format(new Date(key.createdAt))}
+            </span>
             <Button
               variant="link"
               size="xs"
