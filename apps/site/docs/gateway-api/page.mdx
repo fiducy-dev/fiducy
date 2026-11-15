@@ -57,6 +57,8 @@ Errors from the gateway itself:
 
 ## Spend limits
 
+Every app has `monthlyRequestLimitPerKey`: the requests one user key may make per UTC month. A request counts when it starts and is given back if the provider can't be reached or answers with an error, so parallel requests can't pass the limit. The count lives where the spend totals live (below), so with `FIDUCY_KEYS_TABLE` set it holds across restarts.
+
 An app can set spend limits. The gateway enforces them inside the enclave, before the user's key is used, so a leaked app secret can't spend more than they allow. Any limit you leave out is off.
 
 | Setting | What it caps |

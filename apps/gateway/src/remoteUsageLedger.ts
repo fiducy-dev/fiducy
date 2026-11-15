@@ -1,6 +1,5 @@
 import { GATEWAY_USAGE_PATH, MAXIMUM_USAGE_BATCH_SIZE } from './constants';
 import { callControlPlane, normalizeError } from './controlPlane';
-import { createMemoryUsageLedger } from './memoryStores';
 
 import type { FlushableUsageLedger, RemoteUsageLedgerOptions, UsageEvent } from './types';
 
@@ -16,7 +15,6 @@ function toUsagePayload(event: UsageEvent) {
 }
 
 export function createRemoteUsageLedger(options: RemoteUsageLedgerOptions): FlushableUsageLedger {
-  const localLedger = createMemoryUsageLedger();
   let queuedEvents: UsageEvent[] = [];
 
   const flush = async () => {
@@ -40,10 +38,8 @@ export function createRemoteUsageLedger(options: RemoteUsageLedgerOptions): Flus
 
   return {
     recordUsage: async (event) => {
-      await localLedger.recordUsage(event);
       queuedEvents.push(event);
     },
-    countRequestsThisMonth: localLedger.countRequestsThisMonth,
     flush,
     stop: async () => {
       clearInterval(timer);

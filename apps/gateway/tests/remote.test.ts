@@ -71,11 +71,10 @@ describe('loading app configs from the control plane', () => {
 });
 
 describe('sending usage to the control plane', () => {
-  it('batches token counts with the gateway token and keeps local request counts', async () => {
+  it('batches token counts with the gateway token', async () => {
     const ledger = createRemoteUsageLedger({ ...connection, flushIntervalMilliseconds: 60000 });
     await ledger.recordUsage(createUsageEvent('key_one'));
     await ledger.recordUsage(createUsageEvent('key_one'));
-    expect(await ledger.countRequestsThisMonth('key_one')).toBe(2);
     expect(await ledger.flush()).toBe(2);
     expect(controlPlane.usageBatches.at(-1)?.events).toEqual([
       {

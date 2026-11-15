@@ -74,7 +74,9 @@ function callCappedApp(path: string, body: object) {
 }
 
 function readKeySpend() {
-  const keyCounter = [...spending.totals.keys()].find((counterID) => counterID.includes(':key:'));
+  const keyCounter = [...spending.totals.keys()].find((counterID) =>
+    counterID.startsWith('spend:key:')
+  );
   return spending.totals.get(keyCounter ?? '') ?? 0;
 }
 
