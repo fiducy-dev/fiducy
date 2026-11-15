@@ -25,9 +25,25 @@ describe('reading malformed input', () => {
     for (const input of inputs) expect(await verifyTestDocument(input)).toEqual(malformed);
   });
 
-  it('refuses indefinite lengths', async () => {
-    const indefinite = new Uint8Array([0x9f, 0x40, 0xa0, 0x40, 0x40, 0xff]);
+  it('refuses an indefinite-length string in the envelope', async () => {
+    const indefinite = new Uint8Array([0x84, 0x5f, 0x40, 0xff, 0xa0, 0x40, 0x40]);
     expect(await verifyTestDocument(indefinite)).toEqual(malformed);
+  });
+
+  it('accepts a validly signed payload written as an indefinite-length map', async () => {
+    const payload = encodeCBOR(buildPayload());
+    const indefinite = joinBytes([
+      new Uint8Array([0xbf]),
+      payload.slice(1),
+      new Uint8Array([0xff])
+    ]);
+    expect((await verifyTestDocument(await signPayload(indefinite))).ok).toBe(true);
+  });
+
+  it('refuses a validly signed indefinite-length payload that never ends', async () => {
+    const payload = encodeCBOR(buildPayload());
+    const unfinished = joinBytes([new Uint8Array([0xbf]), payload.slice(1)]);
+    expect(await verifyTestDocument(await signPayload(unfinished))).toEqual(malformed);
   });
 
   it('accepts a non-minimal envelope header, since the signature covers only the signed bytes', async () => {
