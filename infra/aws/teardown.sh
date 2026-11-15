@@ -33,4 +33,4 @@ fi
 echo "Deleting stack $STACK_NAME"
 aws cloudformation delete-stack --stack-name "$STACK_NAME"
 aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME"
-echo "Deleted. The KMS key is pending deletion; the alert topic is kept, delete it as the root user if needed."
+echo "Deleted. The KMS key is pending deletion; the alert topic is kept (it costs nothing; only the root user may delete it)."

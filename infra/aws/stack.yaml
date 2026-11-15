@@ -171,6 +171,8 @@ Resources:
                   - kms:ScheduleKeyDeletion
                   - kms:CancelKeyDeletion
                 Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
+                Condition:
+                  StringEquals: { aws:ResourceTag/fiducy-stack: !Ref AWS::StackName }
               - Effect: Allow
                 Action: s3:GetObject
                 Resource: !Sub '${DeployBucket.Arn}/*'
@@ -276,6 +278,8 @@ Resources:
     Properties:
       Description: Wraps share B of every stored API key. Decrypt only works inside the enclave
       PendingWindowInDays: 7
+      Tags:
+        - { Key: fiducy-stack, Value: !Ref AWS::StackName }
       # The lockout check would refuse this policy, because whoever creates the stack is not the
       # custodian role and so cannot change the policy afterwards. That is the point.
       BypassPolicyLockoutSafetyCheck: true
