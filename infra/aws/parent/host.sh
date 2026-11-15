@@ -5,7 +5,8 @@
 #                     image) and PCR16 (the config). The running enclave is left alone.
 #   host.sh pin    -> check the last build and config are what the KMS key trusts
 #                     (FIDUCY_PINNED_PCR0, FIDUCY_PINNED_PCR16), publish the config to Parameter
-#                     Store, then (re)start the enclave. The enclave terminates TLS itself.
+#                     Store, then stop the enclave, apply the allocator config and start the
+#                     pinned image. The enclave terminates TLS itself.
 # Required env: AWS_REGION, FIDUCY_BUCKET, FIDUCY_KMS_KEY_ID, FIDUCY_KEYS_TABLE, FIDUCY_PUBLIC_IP,
 #               FIDUCY_CONTROL_PLANE_URL, FIDUCY_RELEASE_COMMIT (build),
 #               FIDUCY_PINNED_PCR0 and FIDUCY_PINNED_PCR16 (pin)
@@ -74,6 +75,28 @@ cpu_count: ${ENCLAVE_CPU_COUNT}
 EOF
   systemctl enable --now docker >/dev/null
   systemctl enable nitro-enclaves-allocator >/dev/null
+}
+
+count_running_enclaves() {
+  nitro-cli describe-enclaves 2>/dev/null | jq length 2>/dev/null || echo 0
+}
+
+stop_enclave() {
+  systemctl stop fiducy-enclave >/dev/null 2>&1 || true
+  for _ in $(seq 1 30); do
+    [ "$(count_running_enclaves)" = 0 ] && return 0
+    nitro-cli terminate-enclave --all >/dev/null 2>&1 || true
+    sleep 2
+  done
+  log "An enclave is still running on this host, so its memory cannot be set up again"
+  return 1
+}
+
+# The allocator reserves the enclave's memory and CPU, and it refuses to restart while an enclave
+# runs. So the enclave is stopped first. Only the pin step does this, because it restarts the
+# enclave anyway and a build has to leave the running enclave alone.
+restart_allocator() {
+  stop_enclave
   systemctl restart nitro-enclaves-allocator
 }
 
@@ -211,6 +234,7 @@ pin_last_build() {
 start_services() {
   [ -f "$PINNED_IMAGE_FILE" ] || { log "No pinned image. Run infra/aws/pin.sh first."; return 1; }
   retire_host_apps
+  restart_allocator
   write_units "$(cat "$PINNED_IMAGE_FILE")"
   systemctl enable fiducy-enclave >/dev/null
   systemctl restart fiducy-enclave
