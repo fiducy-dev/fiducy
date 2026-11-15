@@ -41,8 +41,8 @@ ensure_gateway_token() {
 }
 
 remind_token_handoff() {
-  log "The dashboard needs this token as FIDUCY_GATEWAY_TOKEN. Read it with:"
-  log "  aws ssm get-parameter --name $GATEWAY_TOKEN_PARAMETER --with-decryption --query Parameter.Value --output text"
+  action "Give the dashboard this token as FIDUCY_GATEWAY_TOKEN. Read it with:" \
+    "aws ssm get-parameter --name $GATEWAY_TOKEN_PARAMETER --with-decryption --query Parameter.Value --output text"
 }
 
 upload_release() {
@@ -54,8 +54,8 @@ upload_release() {
 print_pin_instructions() {
   log "The KMS key trusts image ${PINNED_PCR0:-nothing yet} with config ${PINNED_PCR16:-nothing yet},"
   log "so this build cannot open any key. Nothing was restarted; the running enclave keeps running."
-  log "To trust it, a key custodian runs this from their own machine with MFA:"
-  log "  bash infra/aws/pin.sh $BUILT_PCR0 $BUILT_PCR16"
+  action "To trust it, a key custodian runs this from their own machine with MFA:" \
+    "bash infra/aws/pin.sh $BUILT_PCR0 $BUILT_PCR16"
   summary "## Enclave built, not yet trusted"
   summary ""
   summary "- Commit: \`${RELEASE_COMMIT}\`"
@@ -94,7 +94,7 @@ run_on_host build
 BUILD_INFO=$(read_build_info)
 BUILT_PCR0=$(echo "$BUILD_INFO" | jq -r '.pcr0 // empty')
 BUILT_PCR16=$(echo "$BUILD_INFO" | jq -r '.pcr16 // empty')
-[ -n "$BUILT_PCR0" ] && [ -n "$BUILT_PCR16" ] || { log "The host did not record a build"; exit 1; }
+[ -n "$BUILT_PCR0" ] && [ -n "$BUILT_PCR16" ] || { fail "The host did not record a build"; exit 1; }
 PINNED_PCR0=$(stack_parameter EnclaveImageSha384)
 PINNED_PCR16=$(stack_parameter EnclaveConfigSha384)
 [ "$PINNED_PCR0" != "none" ] || PINNED_PCR0=""

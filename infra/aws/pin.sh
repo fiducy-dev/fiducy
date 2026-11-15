@@ -28,7 +28,7 @@ require_custodian() {
   case "$caller" in
     *":assumed-role/${CUSTODIAN_ROLE}/"*|*":root") log "Running as $caller" ;;
     *)
-      log "Refusing: $caller is not the key custodian."
+      fail "Refusing: $caller is not the key custodian."
       log "Only the ${CUSTODIAN_ROLE} role (assumed with MFA) or the account root user can change what the KMS key trusts."
       log "Add a profile to ~/.aws/config and run with AWS_PROFILE=fiducy-custodian:"
       log "  [profile fiducy-custodian]"
@@ -46,14 +46,29 @@ check_config() {
   local config
   config=$(echo "$1" | jq -cjS '.enclaveConfig // empty')
   [ "$(measure_config "$config")" = "$PCR16" ] || {
-    log "The config shown does not measure to $PCR16. Refusing."
+    fail "The config shown does not measure to $PCR16. Refusing."
     return 1
   }
   echo "$config" | jq -e --arg key "$KEY_ARN" --arg table "$KEYS_TABLE" --arg region "$AWS_REGION" \
     '.kmsKeyID == $key and .keysTable == $table and .region == $region' >/dev/null || {
-    log "The config names a KMS key, table or region that is not this stack's. Refusing."
+    fail "The config names a KMS key, table or region that is not this stack's. Refusing."
     return 1
   }
+}
+
+field() { log "  $(paint 2 "$(printf '%-9s' "$1")") $2"; }
+
+show_build() {
+  log "Last build on the host:"
+  field commit "$RELEASE_COMMIT"
+  field PCR0 "$(paint '1;33' "${BUILT_PCR0:0:8}")${BUILT_PCR0:8}"
+  field gateway "$GATEWAY_HOST"
+  field 'built at' "$1"
+  field PCR16 "$2"
+  log "  $(paint 2 'config, measured to PCR16:')"
+  local color_flag=-M
+  [ "$USE_COLOR" = true ] && color_flag=-C
+  echo "$3" | jq "$color_flag" '.enclaveConfig | .gatewayTokenCiphertext |= .[0:16] + "..."' | sed 's/^/    /'
 }
 
 confirm_build() {
@@ -68,22 +83,17 @@ confirm_build() {
   local built_pcr16
   built_pcr16=$(echo "$build_info" | jq -r '.pcr16 // empty')
   if [ "$BUILT_PCR0" != "$PCR0" ] || [ "$built_pcr16" != "$PCR16" ]; then
-    log "The last build on the host is ${BUILT_PCR0:-missing} with config ${built_pcr16:-missing},"
-    log "not $PCR0 with $PCR16. Deploy first, then pin what it built."
+    fail "The last build on the host is ${BUILT_PCR0:-missing} with config ${built_pcr16:-missing},"
+    fail "not $PCR0 with $PCR16. Deploy first, then pin what it built."
     return 1
   fi
-  log "Last build on the host:"
-  log "  commit   $RELEASE_COMMIT"
-  log "  PCR0     $BUILT_PCR0"
-  log "  gateway  $GATEWAY_HOST"
-  log "  built at $built_at"
-  log "  PCR16    $built_pcr16, measured from this config:"
-  echo "$build_info" | jq '.enclaveConfig | .gatewayTokenCiphertext |= .[0:16] + "..."' | sed 's/^/    /'
+  show_build "$built_at" "$built_pcr16" "$build_info"
   check_config "$build_info"
-  log "Check the commit is the one you reviewed on main and the URLs are yours, then type the first 8 characters of the PCR0 to trust both."
+  action "Check the commit is the one you reviewed on main and the URLs are yours." \
+    "Then type the first 8 characters of the PCR0 to trust both."
   local typed
-  read -r -p "PCR0 prefix: " typed
-  [ "$typed" = "${PCR0:0:8}" ] || { log "That does not match. Nothing changed."; return 1; }
+  read -r -p "$(paint '1;33' 'PCR0 prefix:') " typed
+  [ "$typed" = "${PCR0:0:8}" ] || { fail "That does not match. Nothing changed."; return 1; }
 }
 
 require_custodian
@@ -97,6 +107,7 @@ PINNED_PCR16="$PCR16"
 
 run_on_host pin
 check_gateway
-log "Trusted. The gateway at https://${GATEWAY_HOST} runs image $PCR0 from $RELEASE_COMMIT"
-log "Set FIDUCY_ENCLAVE_PCR0=$PCR0 and FIDUCY_ENCLAVE_PCR16=$PCR16 in your app so the SDK and"
-log "widget accept only this gateway"
+success "Trusted. The gateway at https://${GATEWAY_HOST} runs image $PCR0 from $RELEASE_COMMIT"
+action "Set these on every app that uses this gateway, so the SDK and widget accept only it:" \
+  "FIDUCY_ENCLAVE_PCR0=$PCR0" \
+  "FIDUCY_ENCLAVE_PCR16=$PCR16"
