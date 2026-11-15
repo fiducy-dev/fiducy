@@ -6,8 +6,8 @@ export function respondWith(status: number, data: unknown, message: string): Res
   return Response.json({ data, message }, { status });
 }
 
-export function respondWithRateLimit(retryAfterSeconds: number): Response {
-  const response = respondWith(429, null, 'Too many keys added. Try again shortly');
+export function respondWithRateLimit(retryAfterSeconds: number, message: string): Response {
+  const response = respondWith(429, null, message);
   response.headers.set('retry-after', String(retryAfterSeconds));
   return response;
 }
