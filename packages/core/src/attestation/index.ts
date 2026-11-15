@@ -1,5 +1,5 @@
 export { checkGateway } from './checkGateway.ts';
-export { AWS_NITRO_ROOT_FINGERPRINT } from './constants.ts';
+export { ATTESTATION_ERROR_MESSAGES, AWS_NITRO_ROOT_FINGERPRINT } from './constants.ts';
 export { encodeCBOR } from './encodeCBOR.ts';
 export { verifyGatewayAttestation } from './gateway.ts';
 export { isPCR, normalizePCR, parsePCRList } from './pcr.ts';

@@ -1,3 +1,4 @@
+import type { FetchAttestation } from '@fiducy/core/attestation';
 import type { Group, OrthographicCamera, PerspectiveCamera, Scene } from 'three';
 import type { Vector2, WebGLRenderTarget } from 'three';
 
@@ -143,7 +144,22 @@ export interface GatewayStatus {
   lastSeenAt: string | null;
   pcr0: string | null;
   attestedAt: string | null;
+  attestationProblem: string | null;
   region: string | null;
+}
+
+export interface EnclaveCheck {
+  pcr0: string | null;
+  problem: string | null;
+}
+
+export type GatewayProbe = () => Promise<{ healthy: boolean; enclave: EnclaveCheck }>;
+
+export interface GatewayProbeOptions {
+  gatewayURL: string;
+  enclavePCR0: string | null;
+  enclavePCR16: string | null;
+  fetch: FetchAttestation;
 }
 
 export interface StoredKeyEntry {
