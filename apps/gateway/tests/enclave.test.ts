@@ -10,10 +10,11 @@ import { createKmsKeyWrapper, decryptBootSecret } from '../src/kmsKeyWrapper';
 import { createMemoryAppDirectory, createMemoryUsageLedger } from '../src/memoryStores';
 import { createMemoryKeyStore } from '../src/memoryStores';
 import { createGateway } from '../src/router';
+import { createTokenBucketRateLimiter } from '../src/tokenBucketRateLimiter';
 import { CHAT_APP } from './harness';
 
 import type { AttributeValue } from '@aws-sdk/client-dynamodb';
-import type { DynamoSender, KmsOutput, KmsSender } from '../src/types';
+import type { DynamoSender, KmsOutput, KmsSender, RateLimiter } from '../src/types';
 
 const KEY_ID = 'arn:aws:kms:us-east-1:111122223333:key/test';
 
@@ -159,14 +160,18 @@ describe('keeping sealed records in DynamoDB', () => {
 });
 
 describe('serving attestation documents', () => {
-  const createTestGateway = async (attest?: (nonce: Uint8Array | null) => Promise<Uint8Array>) =>
+  const createTestGateway = async (
+    attest?: (nonce: Uint8Array | null) => Promise<Uint8Array>,
+    attestationRateLimiter?: RateLimiter
+  ) =>
     createGateway({
       keyWrapper: createKmsKeyWrapper({ client: createFakeKms().client, keyID: KEY_ID }),
       keyStore: createMemoryKeyStore(),
       appDirectory: await createMemoryAppDirectory([CHAT_APP]),
       usageLedger: createMemoryUsageLedger(),
       providerRegistry: createProviderRegistry(),
-      attest
+      attest,
+      attestationRateLimiter
     });
 
   it('returns the document with the caller nonce', async () => {
@@ -184,6 +189,25 @@ describe('serving attestation documents', () => {
     const response = await gateway(new Request('http://gateway/attestation?nonce=n123'));
     expect(response.headers.get('access-control-allow-origin')).toBe('*');
     expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('refuses a client that asks too often, without slowing other clients', async () => {
+    const rateLimiter = createTokenBucketRateLimiter({
+      capacity: 1,
+      refillPerSecond: 1 / 30,
+      maximumTrackedClients: 100
+    });
+    const gateway = await createTestGateway(async () => new Uint8Array([1]), rateLimiter);
+    const askFrom = (address: string) =>
+      gateway(
+        new Request('http://gateway/attestation', { headers: { 'x-forwarded-for': address } })
+      );
+    expect((await askFrom('203.0.113.7')).status).toBe(200);
+    const refused = await askFrom('203.0.113.7');
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get('retry-after')).toBe('30');
+    expect(refused.headers.get('access-control-allow-origin')).toBe('*');
+    expect((await askFrom('198.51.100.23')).status).toBe(200);
   });
 
   it('says so when it is not in an enclave', async () => {

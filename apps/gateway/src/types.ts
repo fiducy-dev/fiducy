@@ -77,6 +77,7 @@ export interface GatewayDependencies {
   keyEvents?: KeyEventReporter;
   controlPlaneToken?: string;
   rateLimiter?: RateLimiter;
+  attestationRateLimiter?: RateLimiter;
   spendCounter?: SpendCounter;
   concurrencyTracker?: ConcurrencyTracker;
 }

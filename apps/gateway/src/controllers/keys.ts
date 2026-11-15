@@ -1,6 +1,7 @@
 import { sealSecret } from '@fiducy/core';
 
 import { authenticateApp, identifyRevokeCaller, refuseFrozenApp } from '../authentication';
+import { KEY_UPLOAD_RATE_LIMIT_MESSAGE } from '../constants';
 import { respondWith, respondWithFailure, respondWithRateLimit } from '../responses';
 import { identifyClient } from '../tokenBucketRateLimiter';
 import { readJSONBody, validateImportKeysBody, validateStoreKeyBody } from '../validators';
@@ -37,7 +38,8 @@ async function sealAndStore(
 
 export async function storeKey(request: Request, dependencies: GatewayDependencies) {
   const rateLimit = dependencies.rateLimiter?.consumeToken(identifyClient(request));
-  if (rateLimit?.isAllowed === false) return respondWithRateLimit(rateLimit.retryAfterSeconds);
+  if (rateLimit?.isAllowed === false)
+    return respondWithRateLimit(rateLimit.retryAfterSeconds, KEY_UPLOAD_RATE_LIMIT_MESSAGE);
   if (isFromForeignOrigin(request))
     return respondWith(403, null, 'Keys can only be added through the key widget');
   const body = validateStoreKeyBody(await readJSONBody(request));

@@ -8,6 +8,8 @@ import { GATEWAY_TOKEN_PURPOSE, MOCK_PROVIDER_PATH_PREFIX } from './constants';
 import { SHARE_CACHE_MAXIMUM_ENTRIES, SHARE_CACHE_TIME_TO_LIVE_MILLISECONDS } from './constants';
 import { KEY_UPLOAD_BUCKET_CAPACITY, KEY_UPLOAD_MAXIMUM_TRACKED_CLIENTS } from './constants';
 import { KEY_UPLOAD_REFILL_PER_SECOND } from './constants';
+import { ATTESTATION_BUCKET_CAPACITY, ATTESTATION_MAXIMUM_TRACKED_CLIENTS } from './constants';
+import { ATTESTATION_REFILL_PER_SECOND } from './constants';
 import { createDynamoBlobStore } from './dynamoBlobStore';
 import { createDynamoClient, createDynamoKeyStore } from './dynamoKeyStore';
 import { createDynamoSpendCounter } from './dynamoSpendCounter';
@@ -108,6 +110,21 @@ function withMockProvider(gateway: RequestHandler, mockProviderURL: string | nul
   };
 }
 
+function createRateLimiters() {
+  return {
+    rateLimiter: createTokenBucketRateLimiter({
+      capacity: KEY_UPLOAD_BUCKET_CAPACITY,
+      refillPerSecond: KEY_UPLOAD_REFILL_PER_SECOND,
+      maximumTrackedClients: KEY_UPLOAD_MAXIMUM_TRACKED_CLIENTS
+    }),
+    attestationRateLimiter: createTokenBucketRateLimiter({
+      capacity: ATTESTATION_BUCKET_CAPACITY,
+      refillPerSecond: ATTESTATION_REFILL_PER_SECOND,
+      maximumTrackedClients: ATTESTATION_MAXIMUM_TRACKED_CLIENTS
+    })
+  };
+}
+
 export async function createGatewayFromEnvironment(): Promise<GatewayRuntime> {
   const kms = readKmsSettings();
   const connection = await readControlPlaneConnection(kms);
@@ -132,11 +149,7 @@ export async function createGatewayFromEnvironment(): Promise<GatewayRuntime> {
     attest: enclaveAPIURL ? createEnclaverAttestation(enclaveAPIURL) : undefined,
     mockProviders: mockProviderURL !== null,
     controlPlaneToken: connection?.gatewayToken,
-    rateLimiter: createTokenBucketRateLimiter({
-      capacity: KEY_UPLOAD_BUCKET_CAPACITY,
-      refillPerSecond: KEY_UPLOAD_REFILL_PER_SECOND,
-      maximumTrackedClients: KEY_UPLOAD_MAXIMUM_TRACKED_CLIENTS
-    })
+    ...createRateLimiters()
   });
   return {
     handleRequest: withMockProvider(gateway, mockProviderURL),
