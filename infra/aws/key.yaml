@@ -1,8 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  Fiducy key - the KMS key that wraps stored API keys, the custodian role that decides which
-  enclave it trusts, and the alert topic and audit trail that watch them. Its own stack, so
-  pin.sh changes nothing but the key policy and a rebuilt host keeps all of it
+  Fiducy key - what outlives the host: the KMS key that wraps stored API keys, the custodian role
+  that decides which enclave it trusts, the table of sealed records, and the alert topic and
+  audit trail that watch them. Its own stack, so pin.sh changes nothing but the key policy
 
 Parameters:
   GatewayStackName:
@@ -181,6 +181,26 @@ Resources:
             Action: kms:ReEncrypt*
             Resource: '*'
 
+  # The sealed records. Here, not next to the host, so a rebuilt host finds every stored key again.
+  KeysTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: keyID, AttributeType: S }
+      KeySchema:
+        - { AttributeName: keyID, KeyType: HASH }
+      DeletionProtectionEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
   # Alerts. The gateway stack's rules match CloudTrail management events, which cost nothing to
   # record once (the trail) and nothing to match (EventBridge), and email this topic. The email is
   # the point: Zeabur learned about its breach from a user, and these are the calls that precede
@@ -301,6 +321,8 @@ Resources:
 Outputs:
   KeyArn:
     Value: !GetAtt WrappingKey.Arn
+  KeysTableName:
+    Value: !Ref KeysTable
   AlertTopicArn:
     Condition: SendAlerts
     Description: Add or remove alert emails here, as the key custodian

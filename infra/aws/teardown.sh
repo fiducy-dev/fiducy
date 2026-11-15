@@ -25,7 +25,7 @@ delete_gateway_stack() {
     aws s3 rm "s3://$bucket" --recursive --quiet
   fi
   delete_stack "$STACK_NAME"
-  success "Deleted $STACK_NAME. The key, the alert topic and the audit trail stay in $KEY_STACK_NAME."
+  success "Deleted $STACK_NAME. The key, the sealed records, the alert topic and the audit trail stay in $KEY_STACK_NAME."
 }
 
 # What only the custodian may do, and so has to happen before the custodian role is deleted.
@@ -39,10 +39,18 @@ custodian_steps_left() {
   fi
 }
 
+explain_leftovers() {
+  action "Kept: the audit log bucket (its logs cannot be deleted) and the sealed records table $1." \
+    "Its records cannot be opened once the key is gone. To delete the table:" \
+    "aws dynamodb update-table --table-name $1 --no-deletion-protection-enabled" \
+    "aws dynamodb delete-table --table-name $1"
+}
+
 delete_key_stack() {
-  local key_arn topic_arn steps
+  local key_arn topic_arn keys_table steps
   key_arn=$(stack_output KeyArn "$KEY_STACK_NAME")
   topic_arn=$(alert_topic_arn)
+  keys_table=$(stack_output KeysTableName "$KEY_STACK_NAME")
   steps=$(custodian_steps_left "$key_arn" "$topic_arn")
   if [ -n "$steps" ]; then
     fail "Keeping $KEY_STACK_NAME: deleting it deletes the custodian role, the only role that may"
@@ -53,7 +61,8 @@ delete_key_stack() {
     return 1
   fi
   delete_stack "$KEY_STACK_NAME"
-  success "Deleted $KEY_STACK_NAME. The KMS key is pending deletion; the audit log bucket is kept."
+  success "Deleted $KEY_STACK_NAME. The KMS key is pending deletion."
+  explain_leftovers "$keys_table"
 }
 
 if stack_exists "$STACK_NAME"; then

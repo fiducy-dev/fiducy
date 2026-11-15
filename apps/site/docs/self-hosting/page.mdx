@@ -14,17 +14,17 @@ Two CloudFormation stacks. `infra/aws/key.yaml` is the key stack (`<stack>-key`)
 
 - a KMS key whose policy only allows `kms:Decrypt` from the enclave image you built
 - a key custodian role (`<stack>-key-custodian`) that only the IAM users you name in `FIDUCY_KEY_CUSTODIAN_USER_ARNS` can assume, each with MFA. It is the one principal, besides the account root user, that the key policy lets change what the key trusts. The policy names the role by its unique ID, so deleting it and creating a look-alike does not work. A deploy, an IAM admin or the host cannot
+- a DynamoDB table (`KeysTable`) for sealed key records, on demand billing, with deletion protection and point-in-time recovery
 - with `FIDUCY_ALERT_EMAIL` set, the alert topic and a CloudTrail trail with its log bucket (see [Alerts](#alerts))
 
 `infra/aws/stack.yaml` is the gateway stack, which every deploy updates:
 
 - an S3 bucket for releases and logs
 - a `c6g.large` instance with Nitro enclaves on, an Elastic IP, and ports 80 and 443 open
-- a DynamoDB table (`KeysTable`) for sealed key records, on demand billing, with deletion protection and point-in-time recovery
-- an IAM role for the host, limited to the bucket, the key, the table and the `/fiducy/*` parameters
+- an IAM role for the host, limited to the bucket, the key, the key stack's table and the `/fiducy/*` parameters
 - the alert rules, which email the key stack's topic
 
-The key lives apart from the host so that trusting a new enclave updates the key stack and nothing else, and so that rebuilding the host keeps the key, who is alerted and the audit trail. The custodian role needs no rights over the host's resources, and a deploy never updates the stack that holds the key.
+The key lives apart from the host so that trusting a new enclave updates the key stack and nothing else, and so that rebuilding the host keeps the key, every sealed record, who is alerted and the audit trail. The custodian role needs no rights over the host's resources, and a deploy never updates the stack that holds the key.
 
 The host runs only the gateway enclave. TLS ends inside the enclave: Caddy runs next to the gateway and keeps its certificate sealed with the KMS key, so the parent host never sees plaintext traffic or a private key. The gateway reads and writes sealed records in `KeysTable` directly and talks to the dashboard over HTTPS with a token kept in Parameter Store (`/fiducy/gateway-token`).
 
@@ -127,7 +127,7 @@ The host name is part of the enclave config, so changing it produces a new `PCR1
 
 ## Tear down
 
-`bash infra/aws/teardown.sh` deletes the gateway stack and keeps the key stack, so you can rebuild the host without losing the key. It keeps the alert topic, its subscriptions and the audit trail too. To delete the key stack as well, two things only the custodian profile or the root user may do come first: schedule the key's deletion with `aws kms schedule-key-deletion --key-id <KeyArn> --pending-window-in-days 7`, and delete the alert topic with `aws sns delete-topic --topic-arn <AlertTopicArn>`. Then run `teardown.sh` again. It refuses to delete the key stack before that, because the custodian role goes with it, and prints whichever command is still missing. The key enters a 7 day deletion window; every key it wrapped becomes unrecoverable after that. The audit log bucket is the one thing left behind: its logs cannot be deleted by anyone but the root user, on purpose.
+`bash infra/aws/teardown.sh` deletes the gateway stack and keeps the key stack, so you can rebuild the host without losing the key or the sealed records. It keeps the alert topic, its subscriptions and the audit trail too. To delete the key stack as well, two things only the custodian profile or the root user may do come first: schedule the key's deletion with `aws kms schedule-key-deletion --key-id <KeyArn> --pending-window-in-days 7`, and delete the alert topic with `aws sns delete-topic --topic-arn <AlertTopicArn>`. Then run `teardown.sh` again. It refuses to delete the key stack before that, because the custodian role goes with it, and prints whichever command is still missing. The key enters a 7 day deletion window; every key it wrapped becomes unrecoverable after that. Two things are left behind. The audit log bucket: its logs cannot be deleted by anyone but the root user, on purpose. And the sealed records table, which `teardown.sh` tells you how to delete.
 
 ## Run locally
 
