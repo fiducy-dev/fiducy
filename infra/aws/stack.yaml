@@ -170,9 +170,14 @@ Resources:
                   - kms:DisableKey
                   - kms:ScheduleKeyDeletion
                   - kms:CancelKeyDeletion
+                  - kms:ListResourceTags
+                  - kms:GetKeyRotationStatus
                 Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
                 Condition:
                   StringEquals: { aws:ResourceTag/fiducy-stack: !Ref AWS::StackName }
+              - Effect: Allow
+                Action: ec2:Describe*
+                Resource: '*'
               - Effect: Allow
                 Action: s3:GetObject
                 Resource: !Sub '${DeployBucket.Arn}/*'
@@ -189,6 +194,12 @@ Resources:
               - Effect: Allow
                 Action: [ssm:GetCommandInvocation, ssm:DescribeInstanceInformation]
                 Resource: '*'
+              - !If
+                - SendAlerts
+                - Effect: Allow
+                  Action: [sns:Subscribe, sns:Unsubscribe, sns:ListSubscriptionsByTopic]
+                  Resource: !Ref AlertTopic
+                - !Ref AWS::NoValue
 
   GitHubOIDCProvider:
     Type: AWS::IAM::OIDCProvider
@@ -718,6 +729,10 @@ Outputs:
     Condition: GitHubDeploy
     Description: Set this as the AWS_DEPLOY_ROLE_ARN repository variable in GitHub
     Value: !GetAtt DeployerRole.Arn
+  AlertTopicArn:
+    Condition: SendAlerts
+    Description: Add or remove alert emails here, as the key custodian
+    Value: !Ref AlertTopic
   KeyCustodianRoleArn:
     Description: The role to assume, with MFA, before running pin.sh
     Value: !GetAtt KeyCustodianRole.Arn
