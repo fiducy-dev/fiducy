@@ -27,6 +27,7 @@ deploy_stack() {
     overrides+=("AmiId=$ami")
     overrides+=("GitHubRepository=${FIDUCY_GITHUB_REPOSITORY:-fiducy-dev/fiducy}")
     overrides+=("GitHubOIDCProviderArn=${FIDUCY_GITHUB_OIDC_PROVIDER_ARN:-}")
+    overrides+=("EnableGitHubDeploy=${FIDUCY_GITHUB_DEPLOY:-true}")
     overrides+=("KeyCustodianUserArns=${FIDUCY_KEY_CUSTODIAN_USER_ARNS:?Set FIDUCY_KEY_CUSTODIAN_USER_ARNS to the IAM user ARNs (comma separated) that may pin enclave images}")
     log "Creating stack $STACK_NAME with AMI $ami"
   fi

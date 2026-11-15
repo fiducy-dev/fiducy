@@ -30,6 +30,13 @@ Parameters:
     Description: >-
       ARN of an existing GitHub OIDC provider in this account. Leave empty to create one; an
       account can only hold one for token.actions.githubusercontent.com
+  EnableGitHubDeploy:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: >-
+      Create the GitHub OIDC provider and the deployer role so GitHub Actions can deploy. Set to
+      false where IAM identity providers are not allowed; deploy.sh from a machine still works
   KeyCustodianUserArns:
     Type: CommaDelimitedList
     Description: >-
@@ -51,7 +58,8 @@ Parameters:
       already has a trail that records management events
 
 Conditions:
-  CreateGitHubOIDCProvider: !Equals [!Ref GitHubOIDCProviderArn, '']
+  GitHubDeploy: !Equals [!Ref EnableGitHubDeploy, 'true']
+  CreateGitHubOIDCProvider: !And [!Condition GitHubDeploy, !Equals [!Ref GitHubOIDCProviderArn, '']]
   SendAlerts: !Not [!Equals [!Ref AlertEmail, '']]
   CreateAuditTrail: !And [!Condition SendAlerts, !Equals [!Ref CreateAuditTrail, 'true']]
 
@@ -191,6 +199,7 @@ Resources:
   # custodian role (no MFA).
   DeployerRole:
     Type: AWS::IAM::Role
+    Condition: GitHubDeploy
     Properties:
       RoleName: !Sub '${AWS::StackName}-deployer'
       Description: Assumed by GitHub Actions from main to upload a release and build it on the host
@@ -556,7 +565,10 @@ Resources:
             - DetachRolePolicy
             - DeleteRole
           requestParameters:
-            roleName: [!Ref KeyCustodianRole, !Ref DeployerRole, !Ref HostRole]
+            roleName: !If
+              - GitHubDeploy
+              - [!Ref KeyCustodianRole, !Ref DeployerRole, !Ref HostRole]
+              - [!Ref KeyCustodianRole, !Ref HostRole]
       Targets:
         - Id: email
           Arn: !Ref AlertTopic
@@ -691,6 +703,7 @@ Outputs:
   KeysTableName:
     Value: !Ref KeysTable
   DeployerRoleArn:
+    Condition: GitHubDeploy
     Description: Set this as the AWS_DEPLOY_ROLE_ARN repository variable in GitHub
     Value: !GetAtt DeployerRole.Arn
   KeyCustodianRoleArn:
