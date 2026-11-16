@@ -1,0 +1,7 @@
+# The enclave image builds from the repo root (infra/aws/enclave-build.sh). Keep local installs and
+# build output out of it, so only tracked source goes in.
+**/node_modules
+**/dist
+**/.farm
+**/.next
+.git
