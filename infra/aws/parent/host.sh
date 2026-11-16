@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs on the parent EC2 host through SSM. Two steps:
-#   host.sh build  -> install tools, bundle the gateway, build the enclave image tagged with the
-#                     release commit, write this deployment's enclave config, record PCR0 (the
+#   host.sh build  -> install tools, build the enclave image for the release commit with
+#                     enclave-build.sh (same commit, same PCR0 on any machine), write this deployment's enclave config, record PCR0 (the
 #                     image) and PCR16 (the config). The running enclave is left alone.
 #   host.sh pin    -> check the last build and config are what the KMS key trusts
 #                     (FIDUCY_PINNED_PCR0, FIDUCY_PINNED_PCR16), publish the config to Parameter
@@ -23,7 +23,8 @@ BUILD_INFO_FILE="$STATE_DIR/build-info.json"
 PINNED_IMAGE_FILE="$STATE_DIR/pinned-image"
 ENCLAVE_CONFIG_FILE="$STATE_DIR/enclave-config.json"
 ENCLAVE_CONFIG_PARAMETER=/fiducy/enclave-config
-BUN_VERSION=1.4.2
+BUILDX_VERSION=0.38.1
+BUILDX_SHA256=3b83b3731916ba433feccaaa689fe5bcdc81c641d92c8e6c2ea865dfa141c97a
 ENCLAVER_VERSION=0.6.1
 ENCLAVER_SHA256=aac505a98438e399e042d0be9dc1bc8bff4b02beee3eb149e5301af6a289730f
 ENCLAVE_CPU_COUNT=1
@@ -52,12 +53,11 @@ install_tools() {
     swapon /swapfile
   fi
 
-  if [ ! -x /usr/local/bin/bun ] || [ "$(/usr/local/bin/bun --version)" != "$BUN_VERSION" ]; then
-    log "Installing Bun $BUN_VERSION"
-    curl -fsSL -o /tmp/bun.zip "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-aarch64.zip"
-    unzip -oq /tmp/bun.zip -d /tmp/bun
-    install -m 755 /tmp/bun/bun-linux-aarch64/bun /usr/local/bin/bun
-    ln -sf /usr/local/bin/bun /usr/local/bin/bunx
+  if ! docker buildx version >/dev/null 2>&1; then
+    log "Installing Docker Buildx $BUILDX_VERSION"
+    curl -fsSL -o /tmp/docker-buildx "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-arm64"
+    echo "${BUILDX_SHA256}  /tmp/docker-buildx" | sha256sum -c -
+    install -D -m 755 /tmp/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
   fi
 
   if [ ! -x /usr/local/bin/enclaver ]; then
@@ -148,19 +148,9 @@ record_build() {
 
 build_release() {
   local commit="${FIDUCY_RELEASE_COMMIT:?Set FIDUCY_RELEASE_COMMIT to the commit being built}"
-  log "Installing dependencies"
   cd "$RELEASE_DIR"
-  bun install --frozen-lockfile >/dev/null
-
-  log "Bundling the gateway"
-  bun build apps/gateway/src/server.ts --target=bun --outfile=enclave/gateway.js >/dev/null
-
-  log "Building the enclave image for commit $commit"
-  docker build -q -t "fiducy-gateway-app:${commit}" enclave >/dev/null
-  export FIDUCY_RELEASE_COMMIT
-  # shellcheck disable=SC2016
-  envsubst '${FIDUCY_RELEASE_COMMIT}' < enclave/enclaver.template.yaml > enclave/enclaver.yaml
-  (cd enclave && enclaver build -f enclaver.yaml > "$STATE_DIR/enclave-build.json")
+  FIDUCY_EIF_DIR="$STATE_DIR/eif" infra/aws/enclave-build.sh --source "$RELEASE_DIR" "$commit"
+  cp "$STATE_DIR/eif/measurements.json" "$STATE_DIR/enclave-build.json"
 
   log "Sealing the gateway token and writing the enclave config"
   local token_ciphertext
