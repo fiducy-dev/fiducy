@@ -11,13 +11,13 @@ import type { EndpointMiddlewareContext } from '@farm.js/core/api';
 
 export async function requireOwner() {
   const user = await auth.user();
-  if (!user) return respondWith(401, null, 'Sign in to manage your apps');
+  if (!user) return respondWith(401, null, 'Sign in first');
   return { ownerID: user.id };
 }
 
 export async function requireRecentSignIn() {
   const current = await auth.session();
-  if (!current) return respondWith(401, null, 'Sign in to manage your apps');
+  if (!current) return respondWith(401, null, 'Sign in first');
   if (!isRecentSignIn(current.session.createdAt)) {
     return respondWith(401, null, SIGN_IN_AGAIN_MESSAGE);
   }

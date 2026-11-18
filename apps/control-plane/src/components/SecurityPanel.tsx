@@ -18,9 +18,7 @@ function describeStorage(app: AppView): SecurityRow {
   return {
     label: 'Sealed keys live',
     value: isAppStorage ? 'In your database' : 'With Fiducy',
-    detail: isAppStorage
-      ? 'You send the sealed record with each call.'
-      : 'Your app stores a handle.'
+    detail: isAppStorage ? 'You send the sealed record each call.' : 'Your app stores a handle.'
   };
 }
 
@@ -29,7 +27,7 @@ function describeKeyImport(app: AppView): SecurityRow {
     label: 'Key import',
     value: app.allowKeyImport ? 'On' : 'Off',
     detail: app.allowKeyImport
-      ? 'Your server can send plain keys in. Turn it off once existing keys are moved.'
+      ? 'Your server can send keys in. Turn off when done.'
       : 'Keys only come in through the widget.'
   };
 }
@@ -58,7 +56,7 @@ function describeSpendLimits(app: AppView): SecurityRow {
     value: isOn ? 'On' : 'Off',
     detail: isOn
       ? `${dollarLimits.join(', ') || 'Output and concurrency caps only'}.`
-      : 'Set them in Settings to cap what a leaked app secret can spend.'
+      : 'Set them in Settings to cap a leaked secret.'
   };
 }
 
@@ -67,7 +65,7 @@ function describeAttestation(status: GatewayStatus | undefined): SecurityRow {
     return {
       label: 'Enclave',
       value: 'Not attested yet',
-      detail: 'Shows the PCR0 hash once the gateway runs in a Nitro enclave.'
+      detail: 'Shows PCR0 once running in a Nitro enclave.'
     };
   }
   return {

@@ -49,19 +49,19 @@ function buildSteps(
     { label: 'Create the app', detail: '', isDone: true },
     {
       label: 'Allow your site',
-      detail: 'Add the origin that embeds the key widget.',
+      detail: 'Add the site that embeds the widget.',
       isDone: app.allowedOrigins.length > 0,
       target: 'settings'
     },
     {
       label: 'A user stores a key',
-      detail: 'Mount the widget so users can paste a key.',
+      detail: 'Mount the widget.',
       isDone: Boolean(keys?.length) || hasKeyActivity,
       target: 'integration'
     },
     {
       label: 'First call through the gateway',
-      detail: 'Point your AI SDK at the gateway with your app secret.',
+      detail: 'Point your AI SDK at the gateway.',
       isDone: (usage?.requestCount ?? 0) > 0,
       target: 'integration'
     }
@@ -85,7 +85,7 @@ export function AppOverview({ app, onOpenTab }: OverviewProps) {
               collapsible
               defaultOpen={false}
               title="Busiest keys"
-              description="This month, against the per-key limit."
+              description="This month vs. the per-key limit."
             >
               {usage.data ? (
                 <KeyLoadList usage={usage.data} monthlyLimit={app.monthlyRequestLimitPerKey} />
@@ -120,7 +120,7 @@ export function AppOverview({ app, onOpenTab }: OverviewProps) {
             collapsible
             defaultOpen={false}
             title="Security"
-            description="How this app handles user keys."
+            description="How this app handles keys."
           >
             <SecurityPanel app={app} />
           </Panel>

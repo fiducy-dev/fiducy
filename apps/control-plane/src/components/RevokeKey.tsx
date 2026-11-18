@@ -25,7 +25,7 @@ export function RevokeKey({ appID, keyID }: RevokeKeyProps) {
           </Button>
         }
         title="Revoke this key?"
-        description="The sealed key is deleted and its handle stops working. The user has to paste a key again."
+        description="The key is deleted. The user must add it again."
         confirmLabel="Revoke key"
         onConfirm={() => revokeKey.mutate(keyID)}
       />

@@ -7,11 +7,10 @@ import type { FreezeNoticeProps } from './types';
 export function FreezeNotice({ frozenAt }: FreezeNoticeProps) {
   return (
     <Alert variant="error">
-      <AlertTitle>This app is frozen</AlertTitle>
+      <AlertTitle>App frozen</AlertTitle>
       <AlertDescription>
-        The gateway refuses every call for it
-        {frozenAt ? `, since ${formatRelativeTime(frozenAt)}` : ''}. Rotate the app secret and
-        deploy it before you unfreeze.
+        All calls are refused{frozenAt ? ` since ${formatRelativeTime(frozenAt)}` : ''}. Rotate the
+        secret before you unfreeze.
       </AlertDescription>
     </Alert>
   );

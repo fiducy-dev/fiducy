@@ -14,10 +14,7 @@ export function AppKeys({ app }: AppProps) {
   const keys = useAppKeys(app.appID);
   const usage = useUsage(app.appID);
   return (
-    <Panel
-      title="User keys"
-      description="Every key your users stored, through the widget or an import. Fiducy shows handles and counts, never the key."
-    >
+    <Panel title="User keys" description="Keys your users stored. You see handles, never keys.">
       {keys.isPending ? <Skeleton className="h-32 w-full" /> : null}
       {keys.isError ? (
         <QuietState title="Keys are not available" description={keys.error.message} />
@@ -25,7 +22,7 @@ export function AppKeys({ app }: AppProps) {
       {keys.data?.length === 0 ? (
         <QuietState
           title="No stored keys yet"
-          description="Keys appear here when a user pastes one into the widget on an allowed origin."
+          description="Keys show here once a user adds one in the widget."
         />
       ) : null}
       {keys.data?.length ? (

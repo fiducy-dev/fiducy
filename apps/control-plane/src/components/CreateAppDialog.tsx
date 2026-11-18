@@ -27,9 +27,7 @@ export function CreateAppDialog({ isOpen, onOpenChange, ...formProps }: CreateAp
       <DialogPopup className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create an app</DialogTitle>
-          <DialogDescription>
-            One app per product. Its secret is shown once, right after you create it.
-          </DialogDescription>
+          <DialogDescription>One app per product. The secret is shown once.</DialogDescription>
         </DialogHeader>
         <DialogPanel>
           <CreateAppForm {...formProps} />

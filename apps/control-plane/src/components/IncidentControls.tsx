@@ -24,10 +24,7 @@ export function IncidentControls({ app }: AppProps) {
   }
 
   return (
-    <Panel
-      title="If your app is breached"
-      description="Freeze first. It stops every call through the gateway and keeps every user's key."
-    >
+    <Panel title="If your app is breached" description="Freeze first. Calls stop, keys stay.">
       <div className="flex flex-wrap gap-2">
         {isFrozen ? (
           <Button
@@ -46,7 +43,7 @@ export function IncidentControls({ app }: AppProps) {
               </Button>
             }
             title="Freeze this app?"
-            description="The gateway refuses every AI call, key upload and import for this app until you unfreeze it. Stored keys stay as they are."
+            description="All calls and key uploads stop until you unfreeze. Keys stay."
             confirmLabel="Freeze app"
             onConfirm={() => freezeApp.mutate(true)}
           />
@@ -58,7 +55,7 @@ export function IncidentControls({ app }: AppProps) {
             </Button>
           }
           title="Revoke every user key?"
-          description="Every sealed key is deleted and every handle stops working. Each user has to connect their key again. This cannot be undone."
+          description="Every key is deleted. Users must add theirs again. This cannot be undone."
           confirmLabel="Revoke all keys"
           confirmPhrase={app.name}
           onConfirm={confirmRevokeAll}
@@ -68,7 +65,7 @@ export function IncidentControls({ app }: AppProps) {
         <p className="text-muted-foreground text-xs">
           Revoked {revokeAllKeys.data.revokedCount} keys.
           {revokeAllKeys.data.failedCount
-            ? ` ${revokeAllKeys.data.failedCount} could not be revoked. Try again.`
+            ? ` ${revokeAllKeys.data.failedCount} failed. Try again.`
             : ''}
         </p>
       ) : null}
