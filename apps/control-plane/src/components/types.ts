@@ -7,7 +7,7 @@ import type {
   UsageDay,
   UsageSummary
 } from '@/lib/types';
-import type { SpendLimits } from '@/lib/types';
+import type { SpendLimits, TwoFactorEnrollment } from '@/lib/types';
 import type { ReactElement, ReactNode } from 'react';
 
 export type AuthMode = 'sign-in' | 'sign-up';
@@ -216,7 +216,24 @@ export interface ConfirmActionProps {
   description: string;
   confirmLabel: string;
   confirmPhrase?: string;
-  onConfirm: () => void;
+  requiresCode?: boolean;
+  onConfirm: (code: string) => void;
+}
+
+export interface ConfirmFieldProps {
+  label: string;
+  value: string;
+  isCode?: boolean;
+  onChange: (value: string) => void;
+}
+
+export interface TwoFactorPanelProps {
+  appID: string;
+}
+
+export interface TwoFactorEnrollmentProps {
+  appID: string;
+  enrollment: TwoFactorEnrollment;
 }
 
 export interface QuickStartProps {

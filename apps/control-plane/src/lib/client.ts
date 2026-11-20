@@ -1,4 +1,4 @@
-import { APP_ID_PATTERN, SPEND_LIMIT_NAMES } from './constants';
+import { APP_ID_PATTERN, SPEND_LIMIT_NAMES, TWO_FACTOR_HEADER } from './constants';
 
 import type { AppSettings, SpendLimits } from './types';
 
@@ -72,4 +72,8 @@ export function readReturnPath(search: string): string {
 
 export function signInAgain(appID: string) {
   window.location.assign(`/sign-in?app=${encodeURIComponent(appID)}`);
+}
+
+export function withSecondFactor(method: string, code: string): RequestInit {
+  return { method, headers: { [TWO_FACTOR_HEADER]: code } };
 }

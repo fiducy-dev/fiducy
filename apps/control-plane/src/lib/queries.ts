@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { requestControlPlane } from './client';
+import { requestControlPlane, withSecondFactor } from './client';
 
 import type {
   AppKeyView,
@@ -20,6 +20,7 @@ export const queryKeys = {
   keys: (appID: string) => ['apps', appID, 'keys'] as const,
   usageSeries: (appID: string, days: number) => ['apps', appID, 'usage', 'series', days] as const,
   config: ['config'] as const,
+  twoFactor: ['two-factor'] as const,
   gatewayStatus: ['gateway-status'] as const
 };
 
@@ -97,7 +98,8 @@ export function useRotateSecret(appID: string) {
 export function useDeleteApp(appID: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => requestControlPlane<null>(`/api/apps/${appID}`, { method: 'DELETE' }),
+    mutationFn: (code: string) =>
+      requestControlPlane<null>(`/api/apps/${appID}`, withSecondFactor('DELETE', code)),
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: queryKeys.app(appID) });
       queryClient.invalidateQueries({ queryKey: queryKeys.apps, exact: true });
@@ -123,8 +125,8 @@ export function useFreezeApp(appID: string) {
 export function useRevokeAllKeys(appID: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () =>
-      requestControlPlane<RevokedKeys>(`/api/apps/${appID}/keys`, { method: 'DELETE' }),
+    mutationFn: (code: string) =>
+      requestControlPlane<RevokedKeys>(`/api/apps/${appID}/keys`, withSecondFactor('DELETE', code)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.keys(appID) })
   });
 }

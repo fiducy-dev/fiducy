@@ -2,7 +2,7 @@ import { createEndpoint } from '@farm.js/core/api';
 
 import { getGatewayClient } from '@/lib/gatewayClient';
 import { listAppKeys, revokeAllAppKeys } from '@/lib/keyService';
-import { requireOwner, requireRecentSignIn } from '@/lib/middleware';
+import { requireOwner, requireRecentSignIn, requireSecondFactor } from '@/lib/middleware';
 import { respondWith, respondWithFailure } from '@/lib/responses';
 import { getControlStore } from '@/lib/storage';
 
@@ -13,7 +13,7 @@ export const GET = createEndpoint({ middleware: [requireOwner] }, async ({ conte
 });
 
 export const DELETE = createEndpoint(
-  { middleware: [requireRecentSignIn] },
+  { middleware: [requireRecentSignIn, requireSecondFactor] },
   async ({ context, params }) => {
     const store = getControlStore();
     const appID = String(params.appID);

@@ -11,8 +11,9 @@ import {
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Field, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { TWO_FACTOR_CODE_PATTERN } from '@/lib/constants';
+
+import { ConfirmField } from './ConfirmField';
 
 import type { ConfirmActionProps } from './types';
 
@@ -22,12 +23,21 @@ export function ConfirmAction({
   description,
   confirmLabel,
   confirmPhrase,
+  requiresCode = false,
   onConfirm
 }: ConfirmActionProps) {
   const [typed, setTyped] = useState('');
-  const isConfirmed = !confirmPhrase || typed === confirmPhrase;
+  const [code, setCode] = useState('');
+  const isPhraseTyped = !confirmPhrase || typed === confirmPhrase;
+  const isCodeTyped = !requiresCode || TWO_FACTOR_CODE_PATTERN.test(code);
+
+  function reset() {
+    setTyped('');
+    setCode('');
+  }
+
   return (
-    <AlertDialog onOpenChange={() => setTyped('')}>
+    <AlertDialog onOpenChange={reset}>
       <AlertDialogTrigger render={trigger} />
       <AlertDialogPopup bottomStickOnMobile={false}>
         <AlertDialogHeader>
@@ -35,20 +45,20 @@ export function ConfirmAction({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         {confirmPhrase ? (
-          <Field className="px-6 pb-4">
-            <FieldLabel>Type {confirmPhrase} to confirm</FieldLabel>
-            <Input
-              autoComplete="off"
-              value={typed}
-              onChange={(event) => setTyped(event.target.value)}
-            />
-          </Field>
+          <ConfirmField
+            label={`Type ${confirmPhrase} to confirm`}
+            value={typed}
+            onChange={setTyped}
+          />
+        ) : null}
+        {requiresCode ? (
+          <ConfirmField isCode label="Authenticator code" value={code} onChange={setCode} />
         ) : null}
         <AlertDialogFooter>
           <AlertDialogClose render={<Button variant="ghost" />}>Cancel</AlertDialogClose>
           <AlertDialogClose
-            render={<Button variant="destructive" disabled={!isConfirmed} />}
-            onClick={onConfirm}
+            render={<Button variant="destructive" disabled={!isPhraseTyped || !isCodeTyped} />}
+            onClick={() => onConfirm(code)}
           >
             {confirmLabel}
           </AlertDialogClose>
